@@ -101,6 +101,13 @@ class LinuxInterfaceDriver(object):
             if ip_cidr not in preserve_ips:
                 device.addr.delete(ip_version, ip_cidr)
 
+    def bridged(self):
+        # Interfaces are normally plugged into some kind of bridge;
+        # the only exception is RoutedInterfaceDriver.  Hence return
+        # True by default here and override that in
+        # RoutedInterfaceDriver.
+        return True
+
     def check_bridge_exists(self, bridge):
         if not ip_lib.device_exists(bridge):
             raise exceptions.BridgeDoesNotExist(bridge=bridge)
@@ -368,6 +375,52 @@ class BridgeInterfaceDriver(LinuxInterfaceDriver):
 
     def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
         """Unplug the interface."""
+        device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
+        try:
+            device.link.delete()
+            LOG.debug(_("Unplugged interface '%s'"), device_name)
+        except RuntimeError:
+            LOG.error(_("Failed unplugging interface '%s'"),
+                      device_name)
+
+
+class RoutedInterfaceDriver(LinuxInterfaceDriver):
+    """Driver for DHCP service for routed virtual interfaces."""
+
+    DEV_NAME_PREFIX = 'ns-'
+
+    def bridged(self):
+        # Routed interfaces are not plugged into an L2 bridge.
+        return False
+
+    def plug(self, network_id, port_id, device_name, mac_address,
+             bridge=None, namespace=None, prefix=None):
+        """Plugin the interface."""
+        LOG.warning("RoutedInterfaceDriver::plug(%s, %s, %s, %s, %s, %s, %s)" %
+                    (network_id, port_id, device_name, mac_address,
+                     bridge, namespace, prefix));
+        if not ip_lib.device_exists(device_name,
+                                    self.root_helper,
+                                    namespace=namespace):
+            ip = ip_lib.IPWrapper(self.root_helper)
+
+            # Create ns_veth in a namespace if one is configured.
+            ns_veth = ip.add_dummy(device_name, namespace2=namespace)
+            ns_veth.link.set_address(mac_address)
+
+            if self.conf.network_device_mtu:
+                ns_veth.link.set_mtu(self.conf.network_device_mtu)
+
+            ns_veth.link.set_up()
+
+        else:
+            LOG.info(_("Device %s already exists"), device_name)
+
+    def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
+        """Unplug the interface."""
+        LOG.warning("BridgeInterfaceDriver::unplug(%s, %s, %s, %s)" %
+                    (device_name, mac_address,
+                     bridge, namespace, prefix));
         device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
         try:
             device.link.delete()
