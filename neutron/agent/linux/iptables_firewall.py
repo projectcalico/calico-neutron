@@ -168,6 +168,14 @@ class IptablesFirewallDriver(firewall.FirewallDriver):
         if direction == EGRESS_DIRECTION:
             self._add_rule_to_chain_v4v6('INPUT', jump_rule, jump_rule)
 
+        if direction == INGRESS_DIRECTION:
+            # Add equivalent ingress rules for routing instead of
+            # bridging.
+            jump_rule = ['-o %s -j $%s' % (device, SG_CHAIN)]
+            self._add_rule_to_chain_v4v6('FORWARD', jump_rule, jump_rule)
+            jump_rule = ['-o %s -j $%s' % (device, chain_name)]
+            self._add_rule_to_chain_v4v6(SG_CHAIN, jump_rule, jump_rule)
+
     def _split_sgr_by_ethertype(self, security_group_rules):
         ipv4_sg_rules = []
         ipv6_sg_rules = []
