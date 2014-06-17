@@ -919,7 +919,8 @@ class DeviceManager(object):
                     if gateway:
                         ip_cidrs.append('%s/24' % gateway)
 
-        if (self.conf.enable_isolated_metadata and
+        if (self.driver.bridged() and
+            self.conf.enable_isolated_metadata and
             self.conf.use_namespaces):
             ip_cidrs.append(METADATA_DEFAULT_CIDR)
 
@@ -933,14 +934,16 @@ class DeviceManager(object):
                                      self.root_helper)
             device.route.pullup_route(interface_name)
 
-        if self.conf.use_namespaces:
+        if (self.driver.bridged() and
+            self.conf.use_namespaces):
             self._set_default_route(network, interface_name)
 
         return interface_name
 
     def update(self, network, device_name):
         """Update device settings for the network's DHCP on this host."""
-        if self.conf.use_namespaces:
+        if (self.driver.bridged() and
+            self.conf.use_namespaces):
             self._set_default_route(network, device_name)
 
     def destroy(self, network, device_name):
