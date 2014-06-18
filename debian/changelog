@@ -1,3 +1,13 @@
+neutron (1:2014.1-0ubuntu1-calico0.1) trusty; urgency=medium
+
+  * Add VIF_TYPE constant for routed virtual interfaces.
+  * DHCP agent: support routed VM interfaces as well as bridged
+  * IPTables: support routed virtual interfaces as well as bridged
+  * ML2 plugin get_device_details: also return fixed IPs
+  * DHCP agent: ignore 'use_namespaces' config when serving routed VM interfaces
+
+ -- Neil Jerram <nj@metaswitch.com>  Wed, 18 Jun 2014 14:58:55 +0100
+
 neutron (1:2014.1-0ubuntu1) trusty; urgency=medium
 
   [ Chuck Short ]
