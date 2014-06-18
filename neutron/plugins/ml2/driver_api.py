@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
+from abc import ABCMeta, abstractmethod, abstractproperty
+
 import six
 
 # The following keys are used in the segment dictionaries passed via
@@ -27,7 +28,7 @@ PHYSICAL_NETWORK = 'physical_network'
 SEGMENTATION_ID = 'segmentation_id'
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class TypeDriver(object):
     """Define stable abstract interface for ML2 type drivers.
 
@@ -45,7 +46,7 @@ class TypeDriver(object):
     either be excluded or stored as None.
     """
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_type(self):
         """Get driver's network type.
 
@@ -53,7 +54,7 @@ class TypeDriver(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def initialize(self):
         """Perform driver initialization.
 
@@ -63,7 +64,7 @@ class TypeDriver(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def validate_provider_segment(self, segment):
         """Validate attributes of a provider network segment.
 
@@ -83,7 +84,7 @@ class TypeDriver(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def reserve_provider_segment(self, session, segment):
         """Reserve resource associated with a provider network segment.
 
@@ -97,7 +98,7 @@ class TypeDriver(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def allocate_tenant_segment(self, session):
         """Allocate resource for a new tenant network segment.
 
@@ -113,7 +114,7 @@ class TypeDriver(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def release_segment(self, session, segment):
         """Release network segment.
 
@@ -128,7 +129,7 @@ class TypeDriver(object):
         pass
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class NetworkContext(object):
     """Context passed to MechanismDrivers for changes to network resources.
 
@@ -138,7 +139,7 @@ class NetworkContext(object):
     MechanismDrivers can freely access the same information.
     """
 
-    @abc.abstractproperty
+    @abstractproperty
     def current(self):
         """Return the current state of the network.
 
@@ -148,7 +149,7 @@ class NetworkContext(object):
         """
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def original(self):
         """Return the original state of the network.
 
@@ -158,13 +159,13 @@ class NetworkContext(object):
         """
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def network_segments(self):
         """Return the segments associated with this network resource."""
         pass
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class SubnetContext(object):
     """Context passed to MechanismDrivers for changes to subnet resources.
 
@@ -174,7 +175,7 @@ class SubnetContext(object):
     MechanismDrivers can freely access the same information.
     """
 
-    @abc.abstractproperty
+    @abstractproperty
     def current(self):
         """Return the current state of the subnet.
 
@@ -184,7 +185,7 @@ class SubnetContext(object):
         """
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def original(self):
         """Return the original state of the subnet.
 
@@ -195,7 +196,7 @@ class SubnetContext(object):
         pass
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class PortContext(object):
     """Context passed to MechanismDrivers for changes to port resources.
 
@@ -205,7 +206,7 @@ class PortContext(object):
     freely access the same information.
     """
 
-    @abc.abstractproperty
+    @abstractproperty
     def current(self):
         """Return the current state of the port.
 
@@ -215,7 +216,7 @@ class PortContext(object):
         """
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def original(self):
         """Return the original state of the port.
 
@@ -225,17 +226,17 @@ class PortContext(object):
         """
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def network(self):
         """Return the NetworkContext associated with this port."""
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def bound_segment(self):
         """Return the currently bound segment dictionary."""
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def original_bound_segment(self):
         """Return the original bound segment dictionary.
 
@@ -245,12 +246,12 @@ class PortContext(object):
         """
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def bound_driver(self):
         """Return the currently bound mechanism driver name."""
         pass
 
-    @abc.abstractproperty
+    @abstractproperty
     def original_bound_driver(self):
         """Return the original bound mechanism driver name.
 
@@ -260,7 +261,7 @@ class PortContext(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def host_agents(self, agent_type):
         """Get agents of the specified type on port's host.
 
@@ -269,7 +270,7 @@ class PortContext(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def set_binding(self, segment_id, vif_type, vif_details,
                     status=None):
         """Set the binding for the port.
@@ -286,7 +287,7 @@ class PortContext(object):
         pass
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class MechanismDriver(object):
     """Define stable abstract interface for ML2 mechanism drivers.
 
@@ -308,7 +309,7 @@ class MechanismDriver(object):
     methods that are part of the database transaction.
     """
 
-    @abc.abstractmethod
+    @abstractmethod
     def initialize(self):
         """Perform driver initialization.
 

@@ -567,8 +567,9 @@ class CiscoCsrIPSecConnection(object):
                                   # encryption_algorithm -> encryption
                                   '3des': u'3des',
                                   'aes-128': u'aes',
-                                  'aes-192': u'aes192',
-                                  'aes-256': u'aes256',
+                                  # TODO(pcm) update these 2 once CSR updated
+                                  'aes-192': u'aes',
+                                  'aes-256': u'aes',
                                   # pfs -> dhGroup
                                   'group2': 2,
                                   'group5': 5,
@@ -583,8 +584,9 @@ class CiscoCsrIPSecConnection(object):
                                     # encryption_algorithm -> esp-encryption
                                     '3des': u'esp-3des',
                                     'aes-128': u'esp-aes',
-                                    'aes-192': u'esp-192-aes',
-                                    'aes-256': u'esp-256-aes',
+                                    # TODO(pcm) update these 2 once CSR updated
+                                    'aes-192': u'esp-aes',
+                                    'aes-256': u'esp-aes',
                                     # pfs -> pfs
                                     'group2': u'group2',
                                     'group5': u'group5',
@@ -662,7 +664,8 @@ class CiscoCsrIPSecConnection(object):
                         u'esp-authentication': auth_algorithm},
                     u'lifetime-sec': lifetime,
                     u'pfs': group,
-                    u'anti-replay-window-size': u'disable'}
+                    # TODO(pcm): Remove when CSR fixes 'Disable'
+                    u'anti-replay-window-size': u'64'}
         if transform_protocol:
             settings[u'protection-suite'][u'ah'] = transform_protocol
         return settings

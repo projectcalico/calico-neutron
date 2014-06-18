@@ -1,0 +1,19 @@
+#!/bin/bash
+#-----------------------
+# Testing brocade-plugin
+#-----------------------
+set -e
+apt-get -y install neutron-plugin-brocade
+
+# update plugin path
+sed -i 's/NEUTRON_PLUGIN_CONFIG\=.*/NEUTRON_PLUGIN_CONFIG\=\"\/etc\/neutron\/plugins\/brocade\/brocade\.ini\"/g' /etc/default/neutron-server
+sed -i 's/core_plugin/core_plugin \= neutron\.plugins\.brocade\.NeutronPlugin\.BrocadePluginV2/g' /etc/neutron/neutron.conf
+service neutron-server restart  > /dev/null 2>&1
+if pidof -x neutron-server > /dev/null; then
+    apt-get -y remove --purge neutron-plugin-brocade
+    echo "OK"
+else
+    echo "ERROR: BROCADE PLUGIN IS NOT RUNNING"
+    apt-get -y remove --purge neutron-plugin-brocade
+    exit 1
+fi

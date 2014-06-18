@@ -87,7 +87,7 @@ core_opts = [
                 help=_("Send notification to nova when port data (fixed_ips/"
                        "floatingip) changes so nova can update its cache.")),
     cfg.StrOpt('nova_url',
-               default='http://127.0.0.1:8774/v2',
+               default='http://127.0.0.1:8774',
                help=_('URL for connection to nova')),
     cfg.StrOpt('nova_admin_username',
                help=_('Username for connecting to nova in admin context')),
@@ -100,8 +100,6 @@ core_opts = [
                default='http://localhost:5000/v2.0',
                help=_('Authorization URL for connecting to nova in admin '
                       'context')),
-    cfg.BoolOpt('nova_api_insecure', default=False,
-                help=_("If True, ignore any SSL validation issues")),
     cfg.StrOpt('nova_region_name',
                help=_('Name of nova region to use. Useful if keystone manages'
                       ' more than one region.')),

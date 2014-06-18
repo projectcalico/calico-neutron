@@ -65,10 +65,13 @@ class TestBase(base.BaseTestCase):
         config.register_root_helper(self.conf)
         self.ip_dev_p = mock.patch.object(ip_lib, 'IPDevice')
         self.ip_dev = self.ip_dev_p.start()
+        self.addCleanup(self.ip_dev_p.stop)
         self.ip_p = mock.patch.object(ip_lib, 'IPWrapper')
         self.ip = self.ip_p.start()
+        self.addCleanup(self.ip_p.stop)
         self.device_exists_p = mock.patch.object(ip_lib, 'device_exists')
         self.device_exists = self.device_exists_p.start()
+        self.addCleanup(self.device_exists_p.stop)
 
 
 class TestABCDriver(TestBase):
@@ -374,6 +377,7 @@ class TestMetaInterfaceDriver(TestBase):
         self.conf.register_opts(dhcp.OPTS)
         self.client_cls_p = mock.patch('neutronclient.v2_0.client.Client')
         client_cls = self.client_cls_p.start()
+        self.addCleanup(self.client_cls_p.stop)
         self.client_inst = mock.Mock()
         client_cls.return_value = self.client_inst
 
@@ -515,6 +519,8 @@ class TestMidonetInterfaceDriver(TestBase):
         self.conf = config.setup_conf()
         self.conf.register_opts(interface.OPTS)
         config.register_root_helper(self.conf)
+        self.device_exists_p = mock.patch.object(ip_lib, 'device_exists')
+        self.device_exists = self.device_exists_p.start()
         self.driver = interface.MidonetInterfaceDriver(self.conf)
         self.network_id = uuidutils.generate_uuid()
         self.port_id = uuidutils.generate_uuid()
