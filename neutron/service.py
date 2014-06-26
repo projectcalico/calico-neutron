@@ -22,8 +22,10 @@ import random
 from oslo.config import cfg
 
 from neutron.common import config
+from neutron.common import legacy
 from neutron import context
 from neutron import manager
+from neutron import neutron_plugin_base_v2
 from neutron.openstack.common.db.sqlalchemy import session
 from neutron.openstack.common import excutils
 from neutron.openstack.common import importutils
@@ -89,6 +91,7 @@ class NeutronApiService(WsgiService):
         # Log the options used when starting if we're in debug mode...
 
         config.setup_logging(cfg.CONF)
+        legacy.modernize_quantum_config(cfg.CONF)
         # Dump the initial option values
         cfg.CONF.log_opt_values(LOG, std_logging.DEBUG)
         service = cls(app_name)
@@ -98,8 +101,13 @@ class NeutronApiService(WsgiService):
 def serve_wsgi(cls):
 
     try:
-        service = cls.create()
-        service.start()
+        try:
+            service = cls.create()
+            service.start()
+        except RuntimeError:
+            LOG.exception(_('Error occurred: trying old api-paste.ini.'))
+            service = cls.create('quantum')
+            service.start()
     except Exception:
         with excutils.save_and_reraise_exception():
             LOG.exception(_('Unrecoverable error: please check log '
@@ -136,9 +144,10 @@ def serve_rpc():
 
     # If 0 < rpc_workers then start_rpc_listener would be called in a
     # subprocess and we cannot simply catch the NotImplementedError.  It is
-    # simpler to check this up front by testing whether the plugin supports
-    # multiple RPC workers.
-    if not plugin.rpc_workers_supported():
+    # simpler to check this up front by testing whether the plugin overrides
+    # start_rpc_listener.
+    base = neutron_plugin_base_v2.NeutronPluginBaseV2
+    if plugin.__class__.start_rpc_listener == base.start_rpc_listener:
         LOG.debug(_("Active plugin doesn't implement start_rpc_listener"))
         if 0 < cfg.CONF.rpc_workers:
             msg = _("'rpc_workers = %d' ignored because start_rpc_listener "

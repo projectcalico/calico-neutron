@@ -1,0 +1,3 @@
+etc/metadata_agent.ini etc/neutron
+usr/bin/neutron-metadata-agent usr/bin
+usr/bin/neutron-ns-metadata-proxy usr/bin

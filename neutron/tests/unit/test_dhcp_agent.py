@@ -488,6 +488,15 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         )
         self.external_process = self.external_process_p.start()
 
+    def tearDown(self):
+        self.external_process_p.stop()
+        self.call_driver_p.stop()
+        self.cache_p.stop()
+        self.plugin_p.stop()
+        self.mock_makedirs_p.stop()
+        self.mock_init_p.stop()
+        super(TestDhcpAgentEventHandler, self).tearDown()
+
     def _enable_dhcp_helper(self, isolated_metadata=False):
         if isolated_metadata:
             cfg.CONF.set_override('enable_isolated_metadata', True)
@@ -840,6 +849,11 @@ class TestDhcpPluginApiProxy(base.BaseTestCase):
         self.make_msg_p = mock.patch.object(self.proxy, 'make_msg')
         self.make_msg = self.make_msg_p.start()
 
+    def tearDown(self):
+        self.make_msg_p.stop()
+        self.call_p.stop()
+        super(TestDhcpPluginApiProxy, self).tearDown()
+
     def test_get_network_info(self):
         self.call.return_value = dict(a=1)
         retval = self.proxy.get_network_info('netid')
@@ -1088,9 +1102,9 @@ class TestDeviceManager(base.BaseTestCase):
         cfg.CONF.set_override('use_namespaces', True)
         cfg.CONF.set_override('enable_isolated_metadata', True)
 
-        self.ensure_device_is_ready_p = mock.patch(
-            'neutron.agent.linux.ip_lib.ensure_device_is_ready')
-        self.ensure_device_is_ready = (self.ensure_device_is_ready_p.start())
+        self.device_exists_p = mock.patch(
+            'neutron.agent.linux.ip_lib.device_exists')
+        self.device_exists = self.device_exists_p.start()
 
         self.dvr_cls_p = mock.patch('neutron.agent.linux.interface.NullDriver')
         self.iproute_cls_p = mock.patch('neutron.agent.linux.'
@@ -1104,18 +1118,25 @@ class TestDeviceManager(base.BaseTestCase):
         driver_cls.return_value = self.mock_driver
         iproute_cls.return_value = self.mock_iproute
 
-    def _test_setup_helper(self, device_is_ready, net=None, port=None):
+    def tearDown(self):
+        self.dvr_cls_p.stop()
+        self.device_exists_p.stop()
+        self.iproute_cls_p.stop()
+        super(TestDeviceManager, self).tearDown()
+
+    def _test_setup_helper(self, device_exists, reuse_existing=False,
+                           net=None, port=None):
         net = net or fake_network
         port = port or fake_port1
         plugin = mock.Mock()
         plugin.create_dhcp_port.return_value = port or fake_port1
         plugin.get_dhcp_port.return_value = port or fake_port1
-        self.ensure_device_is_ready.return_value = device_is_ready
+        self.device_exists.return_value = device_exists
         self.mock_driver.get_device_name.return_value = 'tap12345678-12'
 
         dh = dhcp.DeviceManager(cfg.CONF, cfg.CONF.root_helper, plugin)
         dh._set_default_route = mock.Mock()
-        interface_name = dh.setup(net)
+        interface_name = dh.setup(net, reuse_existing)
 
         self.assertEqual(interface_name, 'tap12345678-12')
 
@@ -1135,7 +1156,7 @@ class TestDeviceManager(base.BaseTestCase):
                 expected_ips,
                 namespace=net.namespace)]
 
-        if not device_is_ready:
+        if not reuse_existing:
             expected.insert(1,
                             mock.call.plug(net.id,
                                            port.id,
@@ -1152,8 +1173,12 @@ class TestDeviceManager(base.BaseTestCase):
         cfg.CONF.set_override('enable_metadata_network', True)
         self._test_setup_helper(False)
 
-    def test_setup_device_is_ready(self):
-        self._test_setup_helper(True)
+    def test_setup_device_exists(self):
+        with testtools.ExpectedException(exceptions.PreexistingDeviceFailure):
+            self._test_setup_helper(True)
+
+    def test_setup_device_exists_reuse(self):
+        self._test_setup_helper(True, True)
 
     def test_create_dhcp_port_raise_conflict(self):
         plugin = mock.Mock()

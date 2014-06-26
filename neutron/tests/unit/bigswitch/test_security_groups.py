@@ -33,7 +33,6 @@ class RestProxySecurityGroupsTestCase(test_sg.SecurityGroupDBTestCase,
         plugin = manager.NeutronManager.get_plugin()
         self.notifier = plugin.notifier
         self.rpc = plugin.callbacks
-        self.startHttpPatch()
 
 
 class TestSecServerRpcCallBack(test_sg_rpc.SGServerRpcCallBackMixinTestCase,

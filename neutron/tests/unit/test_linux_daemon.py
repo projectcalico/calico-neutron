@@ -1,3 +1,4 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
 #
 # Copyright 2012 New Dream Network, LLC (DreamHost)
 #
@@ -32,10 +33,12 @@ class TestPidfile(base.BaseTestCase):
         super(TestPidfile, self).setUp()
         self.os_p = mock.patch.object(daemon, 'os')
         self.os = self.os_p.start()
+        self.addCleanup(self.os_p.stop)
         self.os.open.return_value = FAKE_FD
 
         self.fcntl_p = mock.patch.object(daemon, 'fcntl')
         self.fcntl = self.fcntl_p.start()
+        self.addCleanup(self.fcntl_p.stop)
         self.fcntl.flock.return_value = 0
 
     def test_init(self):
@@ -128,6 +131,11 @@ class TestDaemon(base.BaseTestCase):
 
         self.pidfile_p = mock.patch.object(daemon, 'Pidfile')
         self.pidfile = self.pidfile_p.start()
+
+    def tearDown(self):
+        self.pidfile_p.stop()
+        self.os_p.stop()
+        super(TestDaemon, self).tearDown()
 
     def test_init(self):
         d = daemon.Daemon('pidfile')

@@ -33,7 +33,6 @@ class HyperVSecurityGroupsDriver(firewall.FirewallDriver):
                       'egress': utilsv2.HyperVUtilsV2._ACL_DIR_OUT},
         'ethertype': {'IPv4': utilsv2.HyperVUtilsV2._ACL_TYPE_IPV4,
                       'IPv6': utilsv2.HyperVUtilsV2._ACL_TYPE_IPV6},
-        'protocol': {'icmp': utilsv2.HyperVUtilsV2._ICMP_PROTOCOL},
         'default': "ANY",
         'address_default': {'IPv4': '0.0.0.0/0', 'IPv6': '::/0'}
     }
@@ -84,7 +83,7 @@ class HyperVSecurityGroupsDriver(firewall.FirewallDriver):
             'direction': self._ACL_PROP_MAP['direction'][rule['direction']],
             'acl_type': self._ACL_PROP_MAP['ethertype'][rule['ethertype']],
             'local_port': local_port,
-            'protocol': self._get_rule_protocol(rule),
+            'protocol': self._get_rule_prop_or_default(rule, 'protocol'),
             'remote_address': self._get_rule_remote_address(rule)
         }
 
@@ -130,13 +129,6 @@ class HyperVSecurityGroupsDriver(firewall.FirewallDriver):
         if ip_prefix in rule:
             return rule[ip_prefix]
         return self._ACL_PROP_MAP['address_default'][rule['ethertype']]
-
-    def _get_rule_protocol(self, rule):
-        protocol = self._get_rule_prop_or_default(rule, 'protocol')
-        if protocol in self._ACL_PROP_MAP['protocol'].keys():
-            return self._ACL_PROP_MAP['protocol'][protocol]
-
-        return protocol
 
     def _get_rule_prop_or_default(self, rule, prop):
         if prop in rule:

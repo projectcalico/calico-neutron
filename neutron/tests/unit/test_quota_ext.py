@@ -78,6 +78,7 @@ class QuotaExtensionTestCase(testlib_api.WebTestCase):
         self.api = webtest.TestApp(ext_middleware)
 
     def tearDown(self):
+        self._plugin_patcher.stop()
         self.api = None
         self.plugin = None
         db.clear_db()

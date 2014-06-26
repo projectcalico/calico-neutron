@@ -82,6 +82,7 @@ class ConfigurationTest(base.BaseTestCase):
         # Avoid runs of the synchronizer looping call
         patch_sync = mock.patch.object(sync, '_start_loopingcall')
         patch_sync.start()
+        self.addCleanup(patch_sync.stop)
 
     def _assert_required_options(self, cluster):
         self.assertEqual(cluster.nsx_controllers, ['fake_1:443', 'fake_2:443'])
@@ -210,6 +211,7 @@ class OldNVPConfigurationTest(base.BaseTestCase):
         # Avoid runs of the synchronizer looping call
         patch_sync = mock.patch.object(sync, '_start_loopingcall')
         patch_sync.start()
+        self.addCleanup(patch_sync.stop)
 
     def _assert_required_options(self, cluster):
         self.assertEqual(cluster.nsx_controllers, ['fake_1:443', 'fake_2:443'])
