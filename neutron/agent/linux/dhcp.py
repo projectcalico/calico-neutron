@@ -904,7 +904,8 @@ class DeviceManager(object):
 
                 if subnet.ip_version == 4:
                     if gateway:
-                        ip_cidrs.append('%s/24' % gateway)
+                        net = netaddr.IPNetwork(subnet.cidr)
+                        ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
 
         if (self.driver.bridged() and
             self.conf.enable_isolated_metadata and
