@@ -1,0 +1,54 @@
+From 51ccb186c88ad108eb5e9f808d987c068ac5ecc5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?P=C3=A1draig=20Brady?= <P@draigBrady.com>
+Date: Fri, 13 Apr 2012 17:24:40 +0100
+Subject: [PATCH] use parallel installed versions in RHEL6
+
+of webob sqlalchemy python-routes paste-deploy python-jinja2-26
+
+Change-Id: I290f56eae61c87893639a9e5d29f7fff760452cf
+---
+ neutron/__init__.py | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/neutron/__init__.py b/neutron/__init__.py
+index b2c81bd..fef4d32 100644
+--- a/neutron/__init__.py
++++ b/neutron/__init__.py
+@@ -15,6 +15,37 @@
+ #    License for the specific language governing permissions and limitations
+ #    under the License.
+ 
++import sys
++import pkg_resources
++
++# If there is a conflicting non egg module,
++# i.e. an older standard system module installed,
++# then replace it with this requirement
++def replace_dist(requirement):
++    try:
++        return pkg_resources.require(requirement)
++    except pkg_resources.VersionConflict:
++        e = sys.exc_info()[1]
++        dist=e.args[0]
++        req=e.args[1]
++        if dist.key == req.key and not dist.location.endswith('.egg'):
++            del pkg_resources.working_set.by_key[dist.key]
++            # We assume there is no need to adjust sys.path
++            # and the associated pkg_resources.working_set.entries
++            return pkg_resources.require(requirement)
++
++replace_dist("WebOb >= 1.2")
++replace_dist("SQLAlchemy >= 0.6.3")
++replace_dist("Routes >= 1.12.3")
++replace_dist("Jinja2 >= 2.6")
++
++replace_dist("PasteDeploy >= 1.5.0")
++# This hack is needed because replace_dist() results in
++# the standard paste module path being at the start of __path__.
++# TODO: See can we get pkg_resources to do the right thing directly
++import paste
++paste.__path__.insert(0, paste.__path__.pop(-1))
++
+ import gettext
+ 
+ 

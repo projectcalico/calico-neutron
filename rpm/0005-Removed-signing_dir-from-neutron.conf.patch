@@ -1,0 +1,27 @@
+From 1e61f12a0ccc0e4a876bbe3e3529f96a52c2f1d7 Mon Sep 17 00:00:00 2001
+From: Ihar Hrachyshka <ihrachys@redhat.com>
+Date: Mon, 28 Apr 2014 15:05:30 +0200
+Subject: [PATCH] Removed signing_dir from neutron.conf
+
+The default value from keystone middleware ($TMPDIR) is good enough,
+so stick to it.
+
+Closes-Bug: 1313780
+Change-Id: Ideb393f9010f4f1706392ccdfdd5fa7307bda070
+(cherry picked from commit e423126965fb79d35f5f2281974cee6a216af8d4)
+---
+ etc/neutron.conf | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/etc/neutron.conf b/etc/neutron.conf
+index e258720..ce95fc4 100644
+--- a/etc/neutron.conf
++++ b/etc/neutron.conf
+@@ -398,7 +398,6 @@ auth_protocol = http
+ admin_tenant_name = %SERVICE_TENANT_NAME%
+ admin_user = %SERVICE_USER%
+ admin_password = %SERVICE_PASSWORD%
+-signing_dir = $state_path/keystone-signing
+ 
+ [database]
+ # This line MUST be changed to actually run the plugin.

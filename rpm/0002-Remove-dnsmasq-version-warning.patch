@@ -1,0 +1,31 @@
+From 9ca90822cdaef5ef102d953a5cc59c5ed1eb4aa6 Mon Sep 17 00:00:00 2001
+From: Terry Wilson <twilson@redhat.com>
+Date: Fri, 13 Dec 2013 09:41:43 -0600
+Subject: [PATCH] Remove dnsmasq version warning
+
+---
+ neutron/agent/linux/dhcp.py | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/neutron/agent/linux/dhcp.py b/neutron/agent/linux/dhcp.py
+index e650c00..fdac998 100644
+--- a/neutron/agent/linux/dhcp.py
++++ b/neutron/agent/linux/dhcp.py
+@@ -286,10 +286,13 @@ class Dnsmasq(DhcpLocalProcess):
+             ver = re.findall("\d+.\d+", out)[0]
+             is_valid_version = float(ver) >= cls.MINIMUM_VERSION
+             if not is_valid_version:
+-                LOG.warning(_('FAILED VERSION REQUIREMENT FOR DNSMASQ. '
+-                              'DHCP AGENT MAY NOT RUN CORRECTLY! '
+-                              'Please ensure that its version is %s '
+-                              'or above!'), cls.MINIMUM_VERSION)
++                if float(ver) < 2.48:
++                    LOG.warning(_('FAILED VERSION REQUIREMENT FOR DNSMASQ. '
++                                  'DHCP AGENT MAY NOT RUN CORRECTLY! '
++                                  'Please ensure that its version is %s '
++                                  'or above!'), cls.MINIMUM_VERSION)
++                else:
++                    LOG.info(_('dnsmasq version: %s'), ver)
+         except (OSError, RuntimeError, IndexError, ValueError):
+             LOG.warning(_('Unable to determine dnsmasq version. '
+                           'Please ensure that its version is %s '

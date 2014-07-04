@@ -1,0 +1,196 @@
+From 6338796ad354f7e82945a52ab14914e1fc490ae3 Mon Sep 17 00:00:00 2001
+From: Miguel Angel Ajo <mangelajo@redhat.com>
+Date: Mon, 26 May 2014 15:56:23 +0200
+Subject: [PATCH] Remove kernel version check for OVS VXLAN
+
+Upstream kernel version check for OVS VXLAN doesn't work
+in RHEL, because we backport those features to our 2.6.x
+kernel branch. The check is removed downstream until
+a solution that works for everyone is available.
+
+Resolves rhbz: 1100164
+Downstream-Only
+Upstream-Juno: https://review.openstack.org/#/c/88121/
+
+Change-Id: Ica9188c624bf8f7ba91eee2537a2219a97017b54
+Reviewed-on: https://code.engineering.redhat.com/gerrit/25694
+Tested-by: RHOS Jenkins <apevec+rhosci@redhat.com>
+Reviewed-by: Miguel Angel Ajo Pelayo <majopela@redhat.com>
+Reviewed-by: Ihar Hrachyshka <ihrachys@redhat.com>
+Tested-by: Ihar Hrachyshka <ihrachys@redhat.com>
+---
+ neutron/plugins/ofagent/agent/ofa_neutron_agent.py       |  1 -
+ neutron/plugins/openvswitch/agent/ovs_neutron_agent.py   |  1 -
+ neutron/tests/unit/ofagent/test_ofa_neutron_agent.py     | 10 +++++-----
+ neutron/tests/unit/openvswitch/test_ovs_lib.py           | 12 ++++++------
+ neutron/tests/unit/openvswitch/test_ovs_neutron_agent.py | 10 +++++-----
+ neutron/tests/unit/openvswitch/test_ovs_tunnel.py        |  2 +-
+ 6 files changed, 17 insertions(+), 19 deletions(-)
+
+diff --git a/neutron/plugins/ofagent/agent/ofa_neutron_agent.py b/neutron/plugins/ofagent/agent/ofa_neutron_agent.py
+index c6e65e5..5caef4b 100644
+--- a/neutron/plugins/ofagent/agent/ofa_neutron_agent.py
++++ b/neutron/plugins/ofagent/agent/ofa_neutron_agent.py
+@@ -266,7 +266,6 @@ class OFANeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin):
+         self.local_ip = local_ip
+         self.tunnel_count = 0
+         self.vxlan_udp_port = cfg.CONF.AGENT.vxlan_udp_port
+-        self._check_ovs_version()
+         if self.enable_tunneling:
+             self.setup_tunnel_br(tun_br)
+         # Collect additional bridges to monitor
+diff --git a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+index 79c03f1..17906d0 100644
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -212,7 +212,6 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         self.local_ip = local_ip
+         self.tunnel_count = 0
+         self.vxlan_udp_port = cfg.CONF.AGENT.vxlan_udp_port
+-        self._check_ovs_version()
+         self.tun_br = None
+         if self.enable_tunneling:
+             self.setup_tunnel_br(tun_br)
+diff --git a/neutron/tests/unit/ofagent/test_ofa_neutron_agent.py b/neutron/tests/unit/ofagent/test_ofa_neutron_agent.py
+index 71afcd2..9d8e83a 100644
+--- a/neutron/tests/unit/ofagent/test_ofa_neutron_agent.py
++++ b/neutron/tests/unit/ofagent/test_ofa_neutron_agent.py
+@@ -534,30 +534,30 @@ class TestOFANeutronAgent(OFAAgentTestCase):
+                         version_ok = False
+                 self.assertEqual(version_ok, expecting_ok)
+ 
+-    def test_check_minimum_version(self):
++    def _test_check_minimum_version(self):
+         min_vxlan_ver = constants.MINIMUM_OVS_VXLAN_VERSION
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(min_vxlan_ver, min_vxlan_ver,
+                                       min_kernel_ver, expecting_ok=True)
+ 
+-    def test_check_future_version(self):
++    def _test_check_future_version(self):
+         install_ver = str(float(constants.MINIMUM_OVS_VXLAN_VERSION) + 0.01)
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(install_ver, install_ver,
+                                       min_kernel_ver, expecting_ok=True)
+ 
+-    def test_check_fail_version(self):
++    def _test_check_fail_version(self):
+         install_ver = str(float(constants.MINIMUM_OVS_VXLAN_VERSION) - 0.01)
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(install_ver, install_ver,
+                                       min_kernel_ver, expecting_ok=False)
+ 
+-    def test_check_fail_no_version(self):
++    def _test_check_fail_no_version(self):
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(None, None,
+                                       min_kernel_ver, expecting_ok=False)
+ 
+-    def test_check_fail_klm_version(self):
++    def _test_check_fail_klm_version(self):
+         min_vxlan_ver = constants.MINIMUM_OVS_VXLAN_VERSION
+         min_kernel_ver = OVS_LINUX_KERN_VERS_WITHOUT_VXLAN
+         install_ver = str(float(min_vxlan_ver) - 0.01)
+diff --git a/neutron/tests/unit/openvswitch/test_ovs_lib.py b/neutron/tests/unit/openvswitch/test_ovs_lib.py
+index dbf155b..77e383a 100644
+--- a/neutron/tests/unit/openvswitch/test_ovs_lib.py
++++ b/neutron/tests/unit/openvswitch/test_ovs_lib.py
+@@ -899,31 +899,31 @@ class OVS_Lib_Test(base.BaseTestCase):
+                         version_ok = False
+                 self.assertEqual(version_ok, expecting_ok)
+ 
+-    def test_check_minimum_version(self):
++    def _test_check_minimum_version(self):
+         min_vxlan_ver = constants.MINIMUM_OVS_VXLAN_VERSION
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(min_vxlan_ver, min_vxlan_ver,
+                                       min_kernel_ver, expecting_ok=True)
+ 
+-    def test_check_future_version(self):
++    def _test_check_future_version(self):
+         install_ver = str(float(constants.MINIMUM_OVS_VXLAN_VERSION) + 0.01)
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(install_ver, install_ver,
+                                       min_kernel_ver, expecting_ok=True)
+ 
+-    def test_check_fail_version(self):
++    def _test_check_fail_version(self):
+         install_ver = str(float(constants.MINIMUM_OVS_VXLAN_VERSION) - 0.01)
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(install_ver, install_ver,
+                                       min_kernel_ver, expecting_ok=False)
+ 
+-    def test_check_fail_no_version(self):
++    def _test_check_fail_no_version(self):
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(None, None,
+                                       min_kernel_ver,
+                                       expecting_ok=False)
+ 
+-    def test_check_fail_klm_version(self):
++    def _test_check_fail_klm_version(self):
+         min_vxlan_ver = constants.MINIMUM_OVS_VXLAN_VERSION
+         min_kernel_ver = OVS_LINUX_KERN_VERS_WITHOUT_VXLAN
+         install_ver = str(float(min_vxlan_ver) - 0.01)
+@@ -932,7 +932,7 @@ class OVS_Lib_Test(base.BaseTestCase):
+                                       min_kernel_ver,
+                                       expecting_ok=False)
+ 
+-    def test_check_pass_kernel_version(self):
++    def _test_check_pass_kernel_version(self):
+         min_vxlan_ver = constants.MINIMUM_OVS_VXLAN_VERSION
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(min_vxlan_ver, min_vxlan_ver,
+diff --git a/neutron/tests/unit/openvswitch/test_ovs_neutron_agent.py b/neutron/tests/unit/openvswitch/test_ovs_neutron_agent.py
+index 94d3c93..651c991 100644
+--- a/neutron/tests/unit/openvswitch/test_ovs_neutron_agent.py
++++ b/neutron/tests/unit/openvswitch/test_ovs_neutron_agent.py
+@@ -520,30 +520,30 @@ class TestOvsNeutronAgent(base.BaseTestCase):
+                         version_ok = False
+                 self.assertEqual(version_ok, expecting_ok)
+ 
+-    def test_check_minimum_version(self):
++    def _test_check_minimum_version(self):
+         min_vxlan_ver = constants.MINIMUM_OVS_VXLAN_VERSION
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(min_vxlan_ver, min_vxlan_ver,
+                                       min_kernel_ver, expecting_ok=True)
+ 
+-    def test_check_future_version(self):
++    def _test_check_future_version(self):
+         install_ver = str(float(constants.MINIMUM_OVS_VXLAN_VERSION) + 0.01)
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(install_ver, install_ver,
+                                       min_kernel_ver, expecting_ok=True)
+ 
+-    def test_check_fail_version(self):
++    def _test_check_fail_version(self):
+         install_ver = str(float(constants.MINIMUM_OVS_VXLAN_VERSION) - 0.01)
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(install_ver, install_ver,
+                                       min_kernel_ver, expecting_ok=False)
+ 
+-    def test_check_fail_no_version(self):
++    def _test_check_fail_no_version(self):
+         min_kernel_ver = constants.MINIMUM_LINUX_KERNEL_OVS_VXLAN
+         self._check_ovs_vxlan_version(None, None,
+                                       min_kernel_ver, expecting_ok=False)
+ 
+-    def test_check_fail_klm_version(self):
++    def _test_check_fail_klm_version(self):
+         min_vxlan_ver = constants.MINIMUM_OVS_VXLAN_VERSION
+         min_kernel_ver = OVS_LINUX_KERN_VERS_WITHOUT_VXLAN
+         install_ver = str(float(min_vxlan_ver) - 0.01)
+diff --git a/neutron/tests/unit/openvswitch/test_ovs_tunnel.py b/neutron/tests/unit/openvswitch/test_ovs_tunnel.py
+index 126b9cc..2ae4fe8 100644
+--- a/neutron/tests/unit/openvswitch/test_ovs_tunnel.py
++++ b/neutron/tests/unit/openvswitch/test_ovs_tunnel.py
+@@ -249,7 +249,7 @@ class TunnelTest(base.BaseTestCase):
+                                           self.VETH_MTU)
+         self._verify_mock_calls()
+ 
+-    def test_construct_vxlan(self):
++    def _test_construct_vxlan(self):
+         with mock.patch.object(ovs_lib, 'get_installed_ovs_klm_version',
+                                return_value="1.10") as klm_ver:
+             with mock.patch.object(ovs_lib, 'get_installed_ovs_usr_version',

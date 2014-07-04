@@ -1,0 +1,35 @@
+From 9155f7bf00bb50e4988b047e311a2e089e8b8ac9 Mon Sep 17 00:00:00 2001
+From: Russell Bryant <rbryant@redhat.com>
+Date: Mon, 9 Jun 2014 16:53:21 -0400
+Subject: [PATCH] Ensure routing key is specified in the address for a direct
+ producer
+
+This change is already merged in oslo-incubator.  Original commit
+message body includes:
+
+    Porting this fix from oslo.messaging.  This fixes the impl_qpid.py
+    driver to allow it to work with the latest stable upstream QPID broker
+    (version 0.28).  See the Apache Qpid Jira bug
+    https://issues.apache.org/jira/browse/QPID-5557
+
+Change-Id: If71f78e50f8a9b3acfd1e9d02c8271f17c4ebee7
+Related-Bug: #1300318
+(cherry picked from commit 9b8e7362f564f622e765a6a9a14b23d87a50dac8)
+(cherry picked from commit cac3aa8dbd57dded631f54353e54f42b3911e45d)
+---
+ neutron/openstack/common/rpc/impl_qpid.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/neutron/openstack/common/rpc/impl_qpid.py b/neutron/openstack/common/rpc/impl_qpid.py
+index a7dcf29..5fb2c49 100644
+--- a/neutron/openstack/common/rpc/impl_qpid.py
++++ b/neutron/openstack/common/rpc/impl_qpid.py
+@@ -368,7 +368,7 @@ class DirectPublisher(Publisher):
+         """Init a 'direct' publisher."""
+ 
+         if conf.qpid_topology_version == 1:
+-            node_name = msg_id
++            node_name = "%s/%s" % (msg_id, msg_id)
+             node_opts = {"type": "direct"}
+         elif conf.qpid_topology_version == 2:
+             node_name = "amq.direct/%s" % msg_id

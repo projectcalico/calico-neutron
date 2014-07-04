@@ -1,0 +1,31 @@
+From 16c69ff1d86391ac97d2ed2bfc863513694655fd Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?P=C3=A1draig=20Brady?= <P@draigBrady.com>
+Date: Mon, 24 Mar 2014 14:50:23 +0000
+Subject: [PATCH] remove runtime dependency on pbr
+
+---
+ neutron/version.py | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/neutron/version.py b/neutron/version.py
+index 1819264..e5333c6 100644
+--- a/neutron/version.py
++++ b/neutron/version.py
+@@ -14,6 +14,15 @@
+ #    License for the specific language governing permissions and limitations
+ #    under the License.
+ 
+-import pbr.version
++class VersionInfo(object):
++    release = "RPMRELEASE"
++    version = "RPMVERSION"
+ 
+-version_info = pbr.version.VersionInfo('neutron')
++    def version_string(self):
++        return self.version
++
++    def release_string(self):
++        return self.release
++
++
++version_info = VersionInfo()
