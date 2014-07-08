@@ -1,7 +1,7 @@
 %global release_name icehouse
 
 Name:		openstack-neutron
-Version:	2014.1.1
+Version:	2014.1.1_calico0.2
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.3.b3
@@ -1101,6 +1101,16 @@ fi
 
 
 %changelog
+* Tue Jul 08 2014 Neil Jerram <nj@metaswitch.com> 2014.1.1_calico0.2-1
+- DHCP agent: correctly set the subnet mask on the interfaces used by DHCP
+
+* Tue Jul 08 2014 Neil Jerram <nj@metaswitch.com> 2014.1.1_calico0.1-1
+- Add VIF_TYPE constant for routed virtual interfaces.
+- DHCP agent: support routed VM interfaces as well as bridged
+- IPTables: support routed virtual interfaces as well as bridged
+- ML2 plugin get_device_details: also return fixed IPs
+- DHCP agent: ignore 'use_namespaces' config when serving routed VM interfaces
+
 * Fri Jun 13 2014 Ihar Hrachyshka <ihrachys@redhat.com> 2014.1.1-1
 - Update to upstream 2014.1.1
 - Added previously missing ml2_conf_mlnx.ini, bz#1100136
