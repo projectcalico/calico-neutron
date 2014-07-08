@@ -1,8 +1,0 @@
-neutron (1:2013.2~b2-0ubuntu1) saucy; urgency=low
-
-  Quantum has been renamed to Neutron during the Havana development cycle.
-
-  Please review changed configuration in /etc/quantum and apply to new
-  configuration files in /etc/neutron.
-
- -- James Page <james.page@ubuntu.com>  Thu, 18 Jul 2013 10:07:15 +0100

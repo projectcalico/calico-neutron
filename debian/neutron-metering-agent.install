@@ -1,2 +1,0 @@
-etc/metering_agent.ini etc/neutron
-usr/bin/neutron-metering-agent usr/bin

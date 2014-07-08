@@ -25,7 +25,6 @@ from neutron.agent.linux import iptables_manager
 from neutron.agent.linux import ovs_lib  # noqa
 from neutron.agent import rpc as agent_rpc
 from neutron.common import constants as l3_constants
-from neutron.common import legacy
 from neutron.common import topics
 from neutron.common import utils as common_utils
 from neutron import context
@@ -216,8 +215,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback, manager.Manager):
         self.removed_routers = set()
         self.sync_progress = False
 
-        self._delete_stale_namespaces = (self.conf.use_namespaces and
-                                         self.conf.router_delete_namespaces)
+        self._clean_stale_namespaces = self.conf.use_namespaces
 
         self.rpc_loop = loopingcall.FixedIntervalLoopingCall(
             self._rpc_loop)
@@ -245,7 +243,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback, manager.Manager):
     def _cleanup_namespaces(self, routers):
         """Destroy stale router namespaces on host when L3 agent restarts
 
-        This routine is called when self._delete_stale_namespaces is True.
+        This routine is called when self._clean_stale_namespaces is True.
 
         The argument routers is the list of routers that are recorded in
         the database as being hosted on this node.
@@ -281,7 +279,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback, manager.Manager):
             except RuntimeError:
                 LOG.exception(_('Failed to destroy stale router namespace '
                                 '%s'), ns)
-        self._delete_stale_namespaces = False
+        self._clean_stale_namespaces = False
 
     def _destroy_router_namespace(self, namespace):
         ns_ip = ip_lib.IPWrapper(self.root_helper, namespace=namespace)
@@ -861,7 +859,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback, manager.Manager):
 
         # Resync is not necessary for the cleanup of stale
         # namespaces.
-        if self._delete_stale_namespaces:
+        if self._clean_stale_namespaces:
             self._cleanup_namespaces(routers)
 
     def after_start(self):
@@ -907,6 +905,7 @@ class L3NATAgentWithStateReport(L3NATAgent):
                 'router_id': self.conf.router_id,
                 'handle_internal_only_routers':
                 self.conf.handle_internal_only_routers,
+                'external_network_bridge': self.conf.external_network_bridge,
                 'gateway_external_network_id':
                 self.conf.gateway_external_network_id,
                 'interface_driver': self.conf.interface_driver},
@@ -972,7 +971,6 @@ def main(manager='neutron.agent.l3_agent.L3NATAgentWithStateReport'):
     conf.register_opts(external_process.OPTS)
     conf(project='neutron')
     config.setup_logging(conf)
-    legacy.modernize_quantum_config(conf)
     server = neutron_service.Service.create(
         binary='neutron-l3-agent',
         topic=topics.L3_AGENT,

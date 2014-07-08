@@ -53,12 +53,14 @@ class PolicyFileTestCase(base.BaseTestCase):
             action = "example:test"
             with open(tmpfilename, "w") as policyfile:
                 policyfile.write("""{"example:test": ""}""")
+            policy.init()
             policy.enforce(self.context, action, self.target)
             with open(tmpfilename, "w") as policyfile:
                 policyfile.write("""{"example:test": "!"}""")
             # NOTE(vish): reset stored policy cache so we don't have to
             # sleep(1)
             policy._POLICY_CACHE = {}
+            policy.init()
             self.assertRaises(exceptions.PolicyNotAuthorized,
                               policy.enforce,
                               self.context,
@@ -268,7 +270,6 @@ class NeutronPolicyTestCase(base.BaseTestCase):
                                          'init',
                                          new=fakepolicyinit)
         self.patcher.start()
-        self.addCleanup(self.patcher.stop)
         self.addCleanup(remove_fake_resource)
         self.context = context.Context('fake', 'fake', roles=['user'])
         plugin_klass = importutils.import_class(
@@ -277,7 +278,6 @@ class NeutronPolicyTestCase(base.BaseTestCase):
         fake_manager = self.manager_patcher.start()
         fake_manager_instance = fake_manager.return_value
         fake_manager_instance.plugin = plugin_klass()
-        self.addCleanup(self.manager_patcher.stop)
 
     def _test_action_on_attr(self, context, action, attr, value,
                              exception=None):
@@ -471,6 +471,7 @@ class NeutronPolicyTestCase(base.BaseTestCase):
         # Trigger a policy with rule admin_or_owner
         action = "create_network"
         target = {'tenant_id': 'fake'}
+        policy.init()
         self.assertRaises(exceptions.PolicyCheckError,
                           policy.enforce,
                           self.context, action, target)

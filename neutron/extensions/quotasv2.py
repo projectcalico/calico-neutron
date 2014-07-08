@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright 2011 OpenStack Foundation.
 # All Rights Reserved.
 #
@@ -85,7 +83,7 @@ class QuotaSetsController(wsgi.Controller):
     def show(self, request, id):
         if id != request.context.tenant_id:
             self._check_admin(request.context,
-                              reason=_("Non-admin is not authorised "
+                              reason=_("Only admin is authorized "
                                        "to access quotas for another tenant"))
         return {self._resource_name: self._get_quotas(request, id)}
 

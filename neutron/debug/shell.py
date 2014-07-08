@@ -21,12 +21,11 @@ from oslo.config import cfg
 
 from neutron.agent.common import config
 from neutron.agent.linux import interface
-from neutron.common import legacy
 from neutron.debug.debug_agent import NeutronDebugAgent
 from neutron.openstack.common import importutils
 from neutronclient.common import exceptions as exc
 from neutronclient.common import utils
-from neutronclient.shell import env, NeutronShell, NEUTRON_API_VERSION
+from neutronclient import shell
 
 COMMAND_V2 = {
     'probe-create': utils.import_class(
@@ -46,7 +45,7 @@ COMMAND_V2 = {
 COMMANDS = {'2.0': COMMAND_V2}
 
 
-class NeutronDebugShell(NeutronShell):
+class NeutronDebugShell(shell.NeutronShell):
     def __init__(self, api_version):
         super(NeutronDebugShell, self).__init__(api_version)
         for k, v in COMMANDS[api_version].items():
@@ -56,7 +55,8 @@ class NeutronDebugShell(NeutronShell):
         parser = super(NeutronDebugShell, self).build_option_parser(
             description, version)
         default = (
-            env('NEUTRON_TEST_CONFIG_FILE') or env('QUANTUM_TEST_CONFIG_FILE')
+            shell.env('NEUTRON_TEST_CONFIG_FILE') or
+            shell.env('QUANTUM_TEST_CONFIG_FILE')
         )
         parser.add_argument(
             '--config-file',
@@ -79,10 +79,10 @@ class NeutronDebugShell(NeutronShell):
         config.register_root_helper(cfg.CONF)
         cfg.CONF(['--config-file', self.options.config_file])
         config.setup_logging(cfg.CONF)
-        legacy.modernize_quantum_config(cfg.CONF)
         driver = importutils.import_object(cfg.CONF.interface_driver, cfg.CONF)
         self.debug_agent = NeutronDebugAgent(cfg.CONF, client, driver)
 
 
 def main(argv=None):
-    return NeutronDebugShell(NEUTRON_API_VERSION).run(argv or sys.argv[1:])
+    return NeutronDebugShell(shell.NEUTRON_API_VERSION).run(
+        argv or sys.argv[1:])

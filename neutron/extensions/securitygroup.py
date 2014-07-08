@@ -1,5 +1,3 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
 # Copyright (c) 2012 OpenStack Foundation.
 # All rights reserved.
 #
@@ -17,6 +15,7 @@
 
 from abc import ABCMeta
 from abc import abstractmethod
+import netaddr
 
 from oslo.config import cfg
 import six
@@ -44,6 +43,11 @@ class SecurityGroupInvalidPortValue(qexception.InvalidInput):
 class SecurityGroupInvalidIcmpValue(qexception.InvalidInput):
     message = _("Invalid value for ICMP %(field)s (%(attr)s) "
                 "%(value)s. It must be 0 to 255.")
+
+
+class SecurityGroupMissingIcmpType(qexception.InvalidInput):
+    message = _("ICMP code (port-range-max) %(value)s is provided"
+                " but ICMP type (port-range-min) is missing.")
 
 
 class SecurityGroupInUse(qexception.InUse):
@@ -103,6 +107,10 @@ class SecurityGroupRuleExists(qexception.InUse):
     message = _("Security group rule already exists. Group id is %(id)s.")
 
 
+class SecurityGroupRuleParameterConflict(qexception.InvalidInput):
+    message = _("Conflicting value ethertype %(ethertype)s for CIDR %(cidr)s")
+
+
 def convert_protocol(value):
     if value is None:
         return
@@ -151,6 +159,16 @@ def convert_to_uuid_list_or_none(value_list):
             msg = _("'%s' is not an integer or uuid") % sg_id
             raise qexception.InvalidInput(error_message=msg)
     return value_list
+
+
+def convert_ip_prefix_to_cidr(ip_prefix):
+    if not ip_prefix:
+        return
+    try:
+        cidr = netaddr.IPNetwork(ip_prefix)
+        return str(cidr)
+    except (TypeError, netaddr.AddrFormatError):
+        raise qexception.InvalidCIDR(input=ip_prefix)
 
 
 def _validate_name_not_default(data, valid_values=None):
@@ -208,7 +226,8 @@ RESOURCE_ATTRIBUTE_MAP = {
                       'convert_to': convert_ethertype_to_case_insensitive,
                       'validate': {'type:values': sg_supported_ethertypes}},
         'remote_ip_prefix': {'allow_post': True, 'allow_put': False,
-                             'default': None, 'is_visible': True},
+                             'default': None, 'is_visible': True,
+                             'convert_to': convert_ip_prefix_to_cidr},
         'tenant_id': {'allow_post': True, 'allow_put': False,
                       'required_by_policy': True,
                       'is_visible': True},
