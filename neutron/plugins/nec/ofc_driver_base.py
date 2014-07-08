@@ -16,11 +16,12 @@
 # @author: Ryota MIBU
 # @author: Akihiro MOTOKI
 
-import abc
+from abc import ABCMeta, abstractmethod
+
 import six
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class OFCDriverBase(object):
     """OpenFlow Controller (OFC) Driver Specification.
 
@@ -28,7 +29,7 @@ class OFCDriverBase(object):
     It would be better that other methods like update_* are implemented.
     """
 
-    @abc.abstractmethod
+    @abstractmethod
     def create_tenant(self, description, tenant_id=None):
         """Create a new tenant at OpenFlow Controller.
 
@@ -40,7 +41,7 @@ class OFCDriverBase(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def delete_tenant(self, ofc_tenant_id):
         """Delete a tenant at OpenFlow Controller.
 
@@ -48,7 +49,7 @@ class OFCDriverBase(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def create_network(self, ofc_tenant_id, description, network_id=None):
         """Create a new network on specified OFC tenant at OpenFlow Controller.
 
@@ -63,7 +64,7 @@ class OFCDriverBase(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def delete_network(self, ofc_network_id):
         """Delete a netwrok at OpenFlow Controller.
 
@@ -71,7 +72,7 @@ class OFCDriverBase(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def create_port(self, ofc_network_id, portinfo,
                     port_id=None, filters=None):
         """Create a new port on specified network at OFC.
@@ -96,7 +97,7 @@ class OFCDriverBase(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def delete_port(self, ofc_port_id):
         """Delete a port at OpenFlow Controller.
 

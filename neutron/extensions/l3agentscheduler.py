@@ -1,3 +1,5 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 # Copyright (c) 2013 OpenStack Foundation.
 # All rights reserved.
 #
@@ -159,11 +161,6 @@ class RouterHostedByL3Agent(exceptions.Conflict):
 class RouterSchedulingFailed(exceptions.Conflict):
     message = _("Failed scheduling router %(router_id)s to"
                 " the L3 Agent %(agent_id)s.")
-
-
-class RouterReschedulingFailed(exceptions.Conflict):
-    message = _("Failed rescheduling router %(router_id)s: "
-                "no eligible l3 agent found.")
 
 
 class RouterNotHostedByL3Agent(exceptions.Conflict):

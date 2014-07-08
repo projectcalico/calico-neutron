@@ -1,3 +1,5 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 # Copyright 2012 Nachi Ueno, NTT MCL, Inc.
 # All rights reserved.
 #

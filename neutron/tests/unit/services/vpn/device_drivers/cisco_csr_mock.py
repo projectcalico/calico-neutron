@@ -28,6 +28,11 @@ from neutron.openstack.common import log as logging
 # now, uncomment and include httmock source to UT
 from neutron.tests.unit.services.vpn.device_drivers import httmock
 
+# TODO(pcm) Remove, once verified these have been fixed
+FIXED_CSCum35484 = False
+FIXED_CSCul82396 = False
+FIXED_CSCum10324 = False
+
 LOG = logging.getLogger(__name__)
 
 
@@ -138,7 +143,7 @@ def expired_request(url, request):
 def normal_get(url, request):
     if request.method != 'GET':
         return
-    LOG.debug("GET mock for %s", url)
+    LOG.debug("DEBUG: GET mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     if 'global/host-name' in url.path:
@@ -169,7 +174,7 @@ def normal_get(url, request):
                    u'priority-id': u'2',
                    u'version': u'v1',
                    u'local-auth-method': u'pre-share',
-                   u'encryption': u'aes256',
+                   u'encryption': u'aes',
                    u'hash': u'sha',
                    u'dhGroup': 5,
                    u'lifetime': 3600}
@@ -189,11 +194,11 @@ def normal_get(url, request):
                    u'mode': u'tunnel',
                    u'policy-id': u'%s' % ipsec_policy_id,
                    u'protection-suite': {
-                       u'esp-encryption': u'esp-256-aes',
+                       u'esp-encryption': u'esp-aes',
                        u'esp-authentication': u'esp-sha-hmac',
                        u'ah': u'ah-sha-hmac',
                    },
-                   u'anti-replay-window-size': u'Disable',
+                   u'anti-replay-window-size': u'128',
                    u'lifetime-sec': 120,
                    u'pfs': u'group5',
                    u'lifetime-kb': 4608000,
@@ -241,7 +246,7 @@ def normal_get(url, request):
 @filter_request(['get'], 'vpn-svc/ike/keyrings')
 @httmock.urlmatch(netloc=r'localhost')
 def get_fqdn(url, request):
-    LOG.debug("GET FQDN mock for %s", url)
+    LOG.debug("DEBUG: GET FQDN mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     content = {u'kind': u'object#ike-keyring',
@@ -257,7 +262,7 @@ def get_fqdn(url, request):
 @filter_request(['get'], 'vpn-svc/ipsec/policies/')
 @httmock.urlmatch(netloc=r'localhost')
 def get_no_ah(url, request):
-    LOG.debug("GET No AH mock for %s", url)
+    LOG.debug("DEBUG: GET No AH mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     ipsec_policy_id = url.path.split('/')[-1]
@@ -280,7 +285,7 @@ def get_no_ah(url, request):
 def get_defaults(url, request):
     if request.method != 'GET':
         return
-    LOG.debug("GET mock for %s", url)
+    LOG.debug("DEBUG: GET mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     if 'vpn-svc/ike/policies/2' in url.path:
@@ -388,7 +393,7 @@ def get_local_ip(url, request):
 def post(url, request):
     if request.method != 'POST':
         return
-    LOG.debug("POST mock for %s", url)
+    LOG.debug("DEBUG: POST mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     if 'interfaces/GigabitEthernet' in url.path:
@@ -427,7 +432,7 @@ def post(url, request):
 @filter_request(['post'], 'global/local-users')
 @httmock.urlmatch(netloc=r'localhost')
 def post_change_attempt(url, request):
-    LOG.debug("POST change value mock for %s", url)
+    LOG.debug("DEBUG: POST change value mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     return {'status_code': requests.codes.NOT_FOUND,
@@ -438,7 +443,7 @@ def post_change_attempt(url, request):
 
 @httmock.urlmatch(netloc=r'localhost')
 def post_duplicate(url, request):
-    LOG.debug("POST duplicate mock for %s", url)
+    LOG.debug("DEBUG: POST duplicate mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     return {'status_code': requests.codes.BAD_REQUEST,
@@ -451,7 +456,7 @@ def post_duplicate(url, request):
 @filter_request(['post'], 'vpn-svc/site-to-site')
 @httmock.urlmatch(netloc=r'localhost')
 def post_missing_ipsec_policy(url, request):
-    LOG.debug("POST missing ipsec policy mock for %s", url)
+    LOG.debug("DEBUG: POST missing ipsec policy mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     return {'status_code': requests.codes.BAD_REQUEST}
@@ -460,7 +465,7 @@ def post_missing_ipsec_policy(url, request):
 @filter_request(['post'], 'vpn-svc/site-to-site')
 @httmock.urlmatch(netloc=r'localhost')
 def post_missing_ike_policy(url, request):
-    LOG.debug("POST missing ike policy mock for %s", url)
+    LOG.debug("DEBUG: POST missing ike policy mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     return {'status_code': requests.codes.BAD_REQUEST}
@@ -469,7 +474,7 @@ def post_missing_ike_policy(url, request):
 @filter_request(['post'], 'vpn-svc/site-to-site')
 @httmock.urlmatch(netloc=r'localhost')
 def post_bad_ip(url, request):
-    LOG.debug("POST bad IP mock for %s", url)
+    LOG.debug("DEBUG: POST bad IP mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     return {'status_code': requests.codes.BAD_REQUEST}
@@ -478,7 +483,7 @@ def post_bad_ip(url, request):
 @filter_request(['post'], 'vpn-svc/site-to-site')
 @httmock.urlmatch(netloc=r'localhost')
 def post_bad_mtu(url, request):
-    LOG.debug("POST bad mtu mock for %s", url)
+    LOG.debug("DEBUG: POST bad mtu mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     return {'status_code': requests.codes.BAD_REQUEST}
@@ -487,16 +492,7 @@ def post_bad_mtu(url, request):
 @filter_request(['post'], 'vpn-svc/ipsec/policies')
 @httmock.urlmatch(netloc=r'localhost')
 def post_bad_lifetime(url, request):
-    LOG.debug("POST bad lifetime mock for %s", url)
-    if not request.headers.get('X-auth-token', None):
-        return {'status_code': requests.codes.UNAUTHORIZED}
-    return {'status_code': requests.codes.BAD_REQUEST}
-
-
-@filter_request(['post'], 'vpn-svc/ipsec/policies')
-@httmock.urlmatch(netloc=r'localhost')
-def post_bad_name(url, request):
-    LOG.debug("POST bad IPSec policy name for %s", url)
+    LOG.debug("DEBUG: POST bad lifetime mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     return {'status_code': requests.codes.BAD_REQUEST}
@@ -506,7 +502,7 @@ def post_bad_name(url, request):
 def put(url, request):
     if request.method != 'PUT':
         return
-    LOG.debug("PUT mock for %s", url)
+    LOG.debug("DEBUG: PUT mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     # Any resource
@@ -517,7 +513,7 @@ def put(url, request):
 def delete(url, request):
     if request.method != 'DELETE':
         return
-    LOG.debug("DELETE mock for %s", url)
+    LOG.debug("DEBUG: DELETE mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     # Any resource
@@ -528,7 +524,7 @@ def delete(url, request):
 def delete_unknown(url, request):
     if request.method != 'DELETE':
         return
-    LOG.debug("DELETE unknown mock for %s", url)
+    LOG.debug("DEBUG: DELETE unknown mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     # Any resource
@@ -542,7 +538,7 @@ def delete_unknown(url, request):
 def delete_not_allowed(url, request):
     if request.method != 'DELETE':
         return
-    LOG.debug("DELETE not allowed mock for %s", url)
+    LOG.debug("DEBUG: DELETE not allowed mock for %s", url)
     if not request.headers.get('X-auth-token', None):
         return {'status_code': requests.codes.UNAUTHORIZED}
     # Any resource

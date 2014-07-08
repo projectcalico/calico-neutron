@@ -1,3 +1,5 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 # Copyright (c) 2012 OpenStack Foundation.
 # All rights reserved.
 #
@@ -43,11 +45,6 @@ class SecurityGroupInvalidPortValue(qexception.InvalidInput):
 class SecurityGroupInvalidIcmpValue(qexception.InvalidInput):
     message = _("Invalid value for ICMP %(field)s (%(attr)s) "
                 "%(value)s. It must be 0 to 255.")
-
-
-class SecurityGroupMissingIcmpType(qexception.InvalidInput):
-    message = _("ICMP code (port-range-max) %(value)s is provided"
-                " but ICMP type (port-range-min) is missing.")
 
 
 class SecurityGroupInUse(qexception.InUse):
@@ -167,7 +164,7 @@ def convert_ip_prefix_to_cidr(ip_prefix):
     try:
         cidr = netaddr.IPNetwork(ip_prefix)
         return str(cidr)
-    except (TypeError, netaddr.AddrFormatError):
+    except (ValueError, TypeError, netaddr.AddrFormatError):
         raise qexception.InvalidCIDR(input=ip_prefix)
 
 

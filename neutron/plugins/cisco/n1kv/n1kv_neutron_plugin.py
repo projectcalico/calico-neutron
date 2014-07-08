@@ -21,8 +21,6 @@
 
 import eventlet
 
-from oslo.config import cfg as q_conf
-
 from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.v2 import attributes
@@ -37,12 +35,11 @@ from neutron.db import db_base_plugin_v2
 from neutron.db import dhcp_rpc_base
 from neutron.db import external_net_db
 from neutron.db import extraroute_db
-from neutron.db import l3_agentschedulers_db
+from neutron.db import l3_db
 from neutron.db import l3_rpc_base
 from neutron.db import portbindings_db
 from neutron.extensions import portbindings
 from neutron.extensions import providernet
-from neutron.openstack.common import importutils
 from neutron.openstack.common import log as logging
 from neutron.openstack.common import rpc
 from neutron.openstack.common import uuidutils as uuidutils
@@ -81,12 +78,12 @@ class N1kvRpcCallbacks(dhcp_rpc_base.DhcpRpcCallbackMixin,
 class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
                           external_net_db.External_net_db_mixin,
                           extraroute_db.ExtraRoute_db_mixin,
+                          l3_db.L3_NAT_db_mixin,
                           portbindings_db.PortBindingMixin,
                           n1kv_db_v2.NetworkProfile_db_mixin,
                           n1kv_db_v2.PolicyProfile_db_mixin,
                           network_db_v2.Credential_db_mixin,
-                          l3_agentschedulers_db.L3AgentSchedulerDbMixin,
-                          agentschedulers_db.DhcpAgentSchedulerDbMixin):
+                          agentschedulers_db.AgentSchedulerDbMixin):
 
     """
     Implement the Neutron abstractions using Cisco Nexus1000V.
@@ -102,9 +99,7 @@ class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
     supported_extension_aliases = ["provider", "agent",
                                    "n1kv", "network_profile",
                                    "policy_profile", "external-net", "router",
-                                   "binding", "credential",
-                                   "l3_agent_scheduler",
-                                   "dhcp_agent_scheduler"]
+                                   "binding", "credential"]
 
     def __init__(self, configfile=None):
         """
@@ -124,12 +119,6 @@ class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
         c_cred.Store.initialize()
         self._setup_vsm()
         self._setup_rpc()
-        self.network_scheduler = importutils.import_object(
-            q_conf.CONF.network_scheduler_driver
-        )
-        self.router_scheduler = importutils.import_object(
-            q_conf.CONF.router_scheduler_driver
-        )
 
     def _setup_rpc(self):
         # RPC support
@@ -154,15 +143,13 @@ class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
         """
         LOG.debug(_('_setup_vsm'))
         self.agent_vsm = True
-        # Retrieve all the policy profiles from VSM.
-        self._populate_policy_profiles()
-        # Continue to poll VSM for any create/delete of policy profiles.
+        # Poll VSM for create/delete of policy profile.
         eventlet.spawn(self._poll_policy_profiles)
 
     def _poll_policy_profiles(self):
         """Start a green thread to pull policy profiles from VSM."""
         while True:
-            self._poll_policies(event_type='port_profile')
+            self._populate_policy_profiles()
             eventlet.sleep(int(c_conf.CISCO_N1K.poll_duration))
 
     def _populate_policy_profiles(self):
@@ -177,52 +164,34 @@ class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
         try:
             n1kvclient = n1kv_client.Client()
             policy_profiles = n1kvclient.list_port_profiles()
-            LOG.debug(_('_populate_policy_profiles %s'), policy_profiles)
+            vsm_profiles = {}
+            plugin_profiles = {}
+            # Fetch policy profiles from VSM
             if policy_profiles:
                 for profile in policy_profiles['body'][c_const.SET]:
-                    if c_const.ID and c_const.NAME in profile:
-                        profile_id = profile[c_const.PROPERTIES][c_const.ID]
-                        profile_name = profile[c_const.
-                                               PROPERTIES][c_const.NAME]
-                        self._add_policy_profile(profile_name, profile_id)
+                    profile_name = (profile[c_const.PROPERTIES].
+                                    get(c_const.NAME, None))
+                    profile_id = (profile[c_const.PROPERTIES].
+                                  get(c_const.ID, None))
+                    if profile_id and profile_name:
+                        vsm_profiles[profile_id] = profile_name
+                # Fetch policy profiles previously populated
+                for profile in n1kv_db_v2.get_policy_profiles():
+                    plugin_profiles[profile.id] = profile.name
+                vsm_profiles_set = set(vsm_profiles)
+                plugin_profiles_set = set(plugin_profiles)
+                # Update database if the profile sets differ.
+                if vsm_profiles_set ^ plugin_profiles_set:
+                # Add profiles in database if new profiles were created in VSM
+                    for pid in vsm_profiles_set - plugin_profiles_set:
+                        self._add_policy_profile(vsm_profiles[pid], pid)
+                # Delete profiles from database if profiles were deleted in VSM
+                    for pid in plugin_profiles_set - vsm_profiles_set:
+                        self._delete_policy_profile(pid)
             self._remove_all_fake_policy_profiles()
         except (cisco_exceptions.VSMError,
                 cisco_exceptions.VSMConnectionFailed):
             LOG.warning(_('No policy profile populated from VSM'))
-
-    def _poll_policies(self, event_type=None, epoch=None, tenant_id=None):
-        """
-        Poll for Policy Profiles from Cisco Nexus1000V for any update/delete.
-        """
-        LOG.debug(_('_poll_policies'))
-        try:
-            n1kvclient = n1kv_client.Client()
-            policy_profiles = n1kvclient.list_events(event_type, epoch)
-            if policy_profiles:
-                for profile in policy_profiles['body'][c_const.SET]:
-                    if c_const.NAME in profile:
-                        # Extract commands from the events XML.
-                        cmd = profile[c_const.PROPERTIES]['cmd']
-                        cmds = cmd.split(';')
-                        cmdwords = cmds[1].split()
-                        profile_name = profile[c_const.
-                                               PROPERTIES][c_const.NAME]
-                        # Delete the policy profile from db if deleted on VSM
-                        if 'no' in cmdwords[0]:
-                            p = self._get_policy_profile_by_name(profile_name)
-                            if p:
-                                self._delete_policy_profile(p['id'])
-                        # Add policy profile to neutron DB idempotently
-                        elif c_const.ID in profile[c_const.PROPERTIES]:
-                            profile_id = profile[c_const.
-                                                 PROPERTIES][c_const.ID]
-                            self._add_policy_profile(
-                                profile_name, profile_id, tenant_id)
-                # Replace tenant-id for profile bindings with admin's tenant-id
-                self._remove_all_fake_policy_profiles()
-        except (cisco_exceptions.VSMError,
-                cisco_exceptions.VSMConnectionFailed):
-            LOG.warning(_('No policy profile updated from VSM'))
 
     def _extend_network_dict_provider(self, context, network):
         """Add extended network parameters."""
@@ -1166,9 +1135,7 @@ class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
         :returns: port object
         """
         if ('device_id' in port['port'] and port['port']['device_owner'] in
-            [constants.DEVICE_OWNER_DHCP, constants.DEVICE_OWNER_ROUTER_INTF,
-             constants.DEVICE_OWNER_ROUTER_GW,
-             constants.DEVICE_OWNER_FLOATINGIP]):
+            [constants.DEVICE_OWNER_DHCP, constants.DEVICE_OWNER_ROUTER_INTF]):
             p_profile_name = c_conf.CISCO_N1K.network_node_policy_profile
             p_profile = self._get_policy_profile_by_name(p_profile_name)
             if p_profile:
@@ -1426,21 +1393,4 @@ class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
                                             net_profile_id,
                                             network_profile))
             self._send_update_network_profile_request(net_p)
-            return net_p
-
-    def create_router(self, context, router):
-        """
-        Handle creation of router.
-
-        Schedule router to L3 agent as part of the create handling.
-        :param context: neutron api request context
-        :param router: router dictionary
-        :returns: router object
-        """
-        session = context.session
-        with session.begin(subtransactions=True):
-            rtr = (super(N1kvNeutronPluginV2, self).
-                   create_router(context, router))
-            LOG.debug(_("Scheduling router %s"), rtr['id'])
-            self.schedule_router(context, rtr['id'])
-        return rtr
+        return net_p

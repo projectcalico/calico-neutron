@@ -43,9 +43,11 @@ class IptablesFwaasTestCase(base.BaseTestCase):
         self.utils_exec_p = mock.patch(
             'neutron.agent.linux.utils.execute')
         self.utils_exec = self.utils_exec_p.start()
+        self.addCleanup(self.utils_exec_p.stop)
         self.iptables_cls_p = mock.patch(
             'neutron.agent.linux.iptables_manager.IptablesManager')
         self.iptables_cls_p.start()
+        self.addCleanup(self.iptables_cls_p.stop)
         self.firewall = fwaas.IptablesFwaasDriver()
 
     def _fake_rules_v4(self, fwid, apply_list):

@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
+from abc import ABCMeta, abstractmethod
+
 import six
 
 from neutron.extensions import portbindings
@@ -23,7 +24,7 @@ from neutron.plugins.ml2 import driver_api as api
 LOG = log.getLogger(__name__)
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class AgentMechanismDriverBase(api.MechanismDriver):
     """Base class for drivers that attach to networks using an L2 agent.
 
@@ -73,7 +74,7 @@ class AgentMechanismDriverBase(api.MechanismDriver):
                 LOG.warning(_("Attempting to bind with dead agent: %s"),
                             agent)
 
-    @abc.abstractmethod
+    @abstractmethod
     def try_to_bind_segment_for_agent(self, context, segment, agent):
         """Try to bind with segment for agent.
 
@@ -93,7 +94,7 @@ class AgentMechanismDriverBase(api.MechanismDriver):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
+@six.add_metaclass(ABCMeta)
 class SimpleAgentMechanismDriverBase(AgentMechanismDriverBase):
     """Base class for simple drivers using an L2 agent.
 
@@ -133,7 +134,7 @@ class SimpleAgentMechanismDriverBase(AgentMechanismDriverBase):
         else:
             return False
 
-    @abc.abstractmethod
+    @abstractmethod
     def check_segment_for_agent(self, segment, agent):
         """Check if segment can be bound for agent.
 

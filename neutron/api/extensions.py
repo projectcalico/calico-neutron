@@ -1,3 +1,5 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 # Copyright 2011 OpenStack Foundation.
 # Copyright 2011 Justin Santa Barbara
 # All Rights Reserved.
@@ -544,7 +546,7 @@ class ExtensionManager(object):
         # Neutron Servers
         for f in sorted(os.listdir(path)):
             try:
-                LOG.debug(_('Loading extension file: %s'), f)
+                LOG.info(_('Loading extension file: %s'), f)
                 mod_name, file_ext = os.path.splitext(os.path.split(f)[-1])
                 ext_path = os.path.join(path, f)
                 if file_ext.lower() == '.py' and not mod_name.startswith('_'):

@@ -322,6 +322,7 @@ class VcnsDriverTestCase(base.BaseTestCase):
         self.vcns_patch()
 
         self.addCleanup(self.fc.reset_all)
+        self.addCleanup(self.mock_vcns.stop)
 
         self.vcns_driver = vcns_driver.VcnsDriver(self)
 

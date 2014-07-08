@@ -451,6 +451,7 @@ class NetworkGatewayMixin(networkgw.NetworkGatewayPluginBase):
         query = self._get_collection_query(context,
                                            NetworkGatewayDevice,
                                            filters=filters,
+                                           fields=fields,
                                            sorts=sorts,
                                            limit=limit,
                                            marker_obj=marker_obj,

@@ -259,20 +259,6 @@ class TestCiscoCsrIPsecConnectionCreateTransforms(base.BaseTestCase):
                                                              self.conn_info)
         self.assertEqual(expected, policy_info)
 
-    def test_create_ike_policy_info_different_encryption(self):
-        """Ensure that IKE policy info is mapped/created correctly."""
-        self.conn_info['ike_policy']['encryption_algorithm'] = 'aes-192'
-        expected = {u'priority-id': 222,
-                    u'encryption': u'aes192',
-                    u'hash': u'sha',
-                    u'dhGroup': 5,
-                    u'version': u'v1',
-                    u'lifetime': 3600}
-        policy_id = self.conn_info['cisco']['ike_policy_id']
-        policy_info = self.ipsec_conn.create_ike_policy_info(policy_id,
-                                                             self.conn_info)
-        self.assertEqual(expected, policy_info)
-
     def test_create_ike_policy_info_non_defaults(self):
         """Ensure that IKE policy info with different values."""
         self.conn_info['ike_policy'] = {
@@ -284,7 +270,7 @@ class TestCiscoCsrIPsecConnectionCreateTransforms(base.BaseTestCase):
             'lifetime_value': 60
         }
         expected = {u'priority-id': 222,
-                    u'encryption': u'aes256',
+                    u'encryption': u'aes',  # TODO(pcm): fix
                     u'hash': u'sha',
                     u'dhGroup': 14,
                     u'version': u'v1',
@@ -295,11 +281,7 @@ class TestCiscoCsrIPsecConnectionCreateTransforms(base.BaseTestCase):
         self.assertEqual(expected, policy_info)
 
     def test_ipsec_policy_info(self):
-        """Ensure that IPSec policy info is mapped/created correctly.
-
-        Note: That although the default for anti-replay-window-size on the
-        CSR is 64, we force it to disabled, for OpenStack use.
-        """
+        """Ensure that IPSec policy info is mapped/created correctly."""
         expected = {u'policy-id': 333,
                     u'protection-suite': {
                         u'esp-encryption': u'esp-aes',
@@ -308,25 +290,7 @@ class TestCiscoCsrIPsecConnectionCreateTransforms(base.BaseTestCase):
                     },
                     u'lifetime-sec': 3600,
                     u'pfs': u'group5',
-                    u'anti-replay-window-size': u'disable'}
-        ipsec_policy_id = self.conn_info['cisco']['ipsec_policy_id']
-        policy_info = self.ipsec_conn.create_ipsec_policy_info(ipsec_policy_id,
-                                                               self.conn_info)
-        self.assertEqual(expected, policy_info)
-
-    def test_ipsec_policy_info_different_encryption(self):
-        """Create IPSec policy with different settings."""
-        self.conn_info['ipsec_policy']['transform_protocol'] = 'ah-esp'
-        self.conn_info['ipsec_policy']['encryption_algorithm'] = 'aes-192'
-        expected = {u'policy-id': 333,
-                    u'protection-suite': {
-                        u'esp-encryption': u'esp-192-aes',
-                        u'esp-authentication': u'esp-sha-hmac',
-                        u'ah': u'ah-sha-hmac'
-                    },
-                    u'lifetime-sec': 3600,
-                    u'pfs': u'group5',
-                    u'anti-replay-window-size': u'disable'}
+                    u'anti-replay-window-size': u'64'}
         ipsec_policy_id = self.conn_info['cisco']['ipsec_policy_id']
         policy_info = self.ipsec_conn.create_ipsec_policy_info(ipsec_policy_id,
                                                                self.conn_info)
@@ -339,8 +303,7 @@ class TestCiscoCsrIPsecConnectionCreateTransforms(base.BaseTestCase):
                                           'auth_algorithm': 'sha1',
                                           'pfs': 'group14',
                                           'lifetime_units': 'seconds',
-                                          'lifetime_value': 120,
-                                          'anti-replay-window-size': 'disable'}
+                                          'lifetime_value': 120}
         expected = {u'policy-id': 333,
                     u'protection-suite': {
                         u'esp-encryption': u'esp-3des',
@@ -348,7 +311,7 @@ class TestCiscoCsrIPsecConnectionCreateTransforms(base.BaseTestCase):
                     },
                     u'lifetime-sec': 120,
                     u'pfs': u'group14',
-                    u'anti-replay-window-size': u'disable'}
+                    u'anti-replay-window-size': u'64'}
         ipsec_policy_id = self.conn_info['cisco']['ipsec_policy_id']
         policy_info = self.ipsec_conn.create_ipsec_policy_info(ipsec_policy_id,
                                                                self.conn_info)
@@ -1266,7 +1229,7 @@ class TestCiscoCsrIPsecDeviceDriverSyncStatuses(base.BaseTestCase):
         Shows the case where all the connections are down, so that the
         service should report as DOWN, as well.
         """
-        # Simulate one service with two ACTIVE connections
+        # Simulated one service with two ACTIVE connections
         conn1_data = {u'id': u'1', u'status': constants.ACTIVE,
                       u'admin_state_up': True,
                       u'cisco': {u'site_conn_id': u'Tunnel1'}}
@@ -1312,7 +1275,7 @@ class TestCiscoCsrIPsecDeviceDriverSyncStatuses(base.BaseTestCase):
         is deleted and the remaining connection is DOWN, the service will
         indicate as DOWN.
         """
-        # Simulate one service with one connection up, one down
+        # Simulated one service with one connection up, one down
         conn1_data = {u'id': u'1', u'status': constants.ACTIVE,
                       u'admin_state_up': True,
                       u'cisco': {u'site_conn_id': u'Tunnel1'}}
@@ -1368,7 +1331,7 @@ class TestCiscoCsrIPsecDeviceDriverSyncStatuses(base.BaseTestCase):
         When the service is admin down, all the connections will report
         as DOWN.
         """
-        # Simulate one service (admin down) with two ACTIVE connections
+        # Simulated one service (admin down) with two ACTIVE connections
         conn1_data = {u'id': u'1', u'status': constants.ACTIVE,
                       u'admin_state_up': True,
                       u'cisco': {u'site_conn_id': u'Tunnel1'}}
