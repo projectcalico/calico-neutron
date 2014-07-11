@@ -18,7 +18,6 @@
 
 import httplib
 import socket
-import uuid
 
 import eventlet
 import httplib2
@@ -56,13 +55,14 @@ class NetworkMetadataProxyHandler(object):
     accessible within the isolated tenant context.
     """
 
-    def __init__(self, network_id=None, router_id=None, flat=False):
+    def __init__(self, network_id=None, router_id=None, flat=None):
         self.network_id = network_id
         self.router_id = router_id
         self.flat = flat
 
-        if network_id is None and router_id is None and not flat:
-            msg = _('network_id and router_id are None. One must be provided.')
+        if network_id is None and router_id is None and flat is None:
+            msg = _('network_id, router_id and flat are None. One must be '
+                    'provided.')
             raise ValueError(msg)
 
     @webob.dec.wsgify(RequestClass=webob.Request)
@@ -130,8 +130,8 @@ class NetworkMetadataProxyHandler(object):
 
 class ProxyDaemon(daemon.Daemon):
     def __init__(self, pidfile, port, network_id=None, router_id=None,
-                 flat=False):
-        this_uuid = network_id or router_id or uuid.uuid4()
+                 flat=None):
+        this_uuid = network_id or router_id or flat
         super(ProxyDaemon, self).__init__(pidfile, uuid=this_uuid)
         self.network_id = network_id
         self.router_id = router_id
@@ -158,9 +158,9 @@ def main():
                    help=_('Router that will have connected instances\' '
                           'metadata proxied.')),
         cfg.StrOpt('flat',
-                   default=False,
-                   help=_('Flat networking is being used: neither the network'
-                          'nor the router ID is provided.')),
+                   help=_('Flat networking is being used: neither the network '
+                          'nor the router ID is provided. This argument takes '
+                          'a UUID to identify the instance.')),
         cfg.StrOpt('pid_file',
                    help=_('Location of pid file of this process.')),
         cfg.BoolOpt('daemonize',
