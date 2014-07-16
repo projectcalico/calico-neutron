@@ -1,7 +1,7 @@
 Source: neutron
 Section: net
 Priority: optional
-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Maintainer: Project Calico Maintainers <maintainers@projectcalico.org>
 XSBC-Original-Maintainer: Chuck Short <zulcss@ubuntu.com>
 Build-Depends: debhelper (>= 8.0.0), python-all (>= 2.6)
 Build-Depends-Indep:
