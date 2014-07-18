@@ -1,7 +1,7 @@
 %global release_name icehouse
 
 Name:		openstack-neutron
-Version:	2014.1.1_calico0.2
+Version:	2014.1.1_calico0.3
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.3.b3
@@ -1101,6 +1101,9 @@ fi
 
 
 %changelog
+* Mon Jul 21 2014 Neil Jerram <nj@metaswitch.com> 2014.1.1_calico0.3-1
+- Support providing metadata in a flat routed network
+
 * Tue Jul 08 2014 Neil Jerram <nj@metaswitch.com> 2014.1.1_calico0.2-1
 - DHCP agent: correctly set the subnet mask on the interfaces used by DHCP
 

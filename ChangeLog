@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+2014.1.1_calico0.3
+------------------
+
+* Support providing metadata in a flat routed network
+
 2014.1.1_calico0.2
 ------------------
 
