@@ -1,3 +1,9 @@
+neutron (1:2014.1-0ubuntu1-calico0.3) trusty; urgency=medium
+
+  * Support providing metadata in a flat routed network.
+
+ -- Neil Jerram <nj@metaswitch.com>  Mon, 21 Jul 2014 11:21:21 +0100
+
 neutron (1:2014.1-0ubuntu1-calico0.2) trusty; urgency=medium
 
   * DHCP agent: correctly set the subnet mask on the interfaces used by DHCP.
