@@ -413,7 +413,7 @@ class Dnsmasq(DhcpLocalProcess):
                 continue
             if subnet.ip_version == 4:
                 mode = 'static'
-            else:
+            elif self.device_manager.bridged():
                 # Note(scollins) If the IPv6 attributes are not set, set it as
                 # static to preserve previous behavior
                 addr_mode = getattr(subnet, 'ipv6_address_mode', None)
@@ -422,6 +422,12 @@ class Dnsmasq(DhcpLocalProcess):
                                   constants.DHCPV6_STATELESS] or
                         not addr_mode and not ra_mode):
                     mode = 'static'
+            else:
+                # For routed IPv6 networking specify 'off-link' flag
+                # to Dnsmasq.  This results in VM adding a default
+                # route to the link-local address of the TAP interface
+                # on the compute host.
+                mode = 'static,off-link'
 
             cidr = netaddr.IPNetwork(subnet.cidr)
 
