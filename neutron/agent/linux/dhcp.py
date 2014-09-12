@@ -363,10 +363,16 @@ class Dnsmasq(DhcpLocalProcess):
                 continue
             if subnet.ip_version == 4:
                 mode = 'static'
-            else:
+            elif self.device_manager.bridged():
                 # TODO(mark): how do we indicate other options
                 # ra-only, slaac, ra-nameservers, and ra-stateless.
                 mode = 'static'
+            else:
+                # For routed IPv6 networking specify 'off-link' flag
+                # to Dnsmasq.  This results in VM adding a default
+                # route to the link-local address of the TAP interface
+                # on the compute host.
+                mode = 'static,off-link'
             if self.version >= self.MINIMUM_VERSION:
                 set_tag = 'set:'
             else:
