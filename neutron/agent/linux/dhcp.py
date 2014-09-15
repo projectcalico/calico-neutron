@@ -367,6 +367,7 @@ class Dnsmasq(DhcpLocalProcess):
                 '--dhcp-optsfile=%s' % self._output_opts_file(),
                 '--leasefile-ro',
                 '--dhcp-authoritative',
+                '--enable-ra',
                 ]
 
         possible_leases = 0
