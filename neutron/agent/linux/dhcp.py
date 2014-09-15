@@ -898,10 +898,9 @@ class DeviceManager(object):
                     if hr.destination == "0.0.0.0/0":
                         gateway = hr.nexthop
 
-                if subnet.ip_version == 4:
-                    if gateway:
-                        net = netaddr.IPNetwork(subnet.cidr)
-                        ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
+                if gateway:
+                    net = netaddr.IPNetwork(subnet.cidr)
+                    ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
 
         if (self.driver.bridged() and
             self.conf.enable_isolated_metadata and
