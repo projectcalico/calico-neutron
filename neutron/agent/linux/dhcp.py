@@ -363,6 +363,7 @@ class Dnsmasq(DhcpLocalProcess):
                 '--addn-hosts=%s' % self._output_addn_hosts_file(),
                 '--dhcp-optsfile=%s' % self._output_opts_file(),
                 '--leasefile-ro',
+                '--enable-ra',
                 ]
 
         possible_leases = 0
