@@ -340,7 +340,8 @@ class Dnsmasq(DhcpLocalProcess):
                 '--dhcp-optsfile=%s' % self.get_conf_file_name('opts'),
                 '--leasefile-ro',
                 '--dhcp-authoritative',
-            ]
+                '--enable-ra',
+                ]
 
         possible_leases = 0
         for i, subnet in enumerate(self.network.subnets):
