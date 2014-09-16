@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+2014.1.1_calico0.4
+------------------
+
+* DHCP agent enhancements for Calico/IPv6 networking
+
 2014.1.1_calico0.3
 ------------------
 
