@@ -27,11 +27,11 @@
 #* It is implemented as a Neutron/ML2 mechanism driver.                      *#
 #*****************************************************************************#
 
+from neutron.common import constants
 from neutron.extensions import portbindings
 from neutron.openstack.common import log
 from neutron.plugins.ml2 import driver_api as api
 from neutron.plugins.ml2.drivers import mech_agent
-from calico import common as calico_common
 import eventlet
 from eventlet.green import zmq
 import json
@@ -99,6 +99,12 @@ HEARTBEAT_RESPONSE_TIMEOUT = 2000
 #* Time between heartbeats, in seconds.                                      *#
 #*****************************************************************************#
 HEARTBEAT_SEND_INTERVAL_SECS = 10
+
+#*****************************************************************************#
+#* An OpenStack agent type name for Felix, the Calico agent component in the *#
+#* new architecture.                                                         *#
+#*****************************************************************************#
+AGENT_TYPE_FELIX = 'Felix (Calico agent)'
 
 
 class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
@@ -318,6 +324,12 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                 sock.setsockopt(zmq.LINGER, 0)
                 sock.connect("tcp://%s:%s" % (hostname, FELIX_ENDPOINT_PORT))
                 self.felix_peer_sockets[hostname] = sock
+                self.db.create_or_update_agent(self.db_context,
+                                               {'agent_type': AGENT_TYPE_FELIX,
+                                                'binary': '',
+                                                'host': hostname,
+                                                'topic': constants.L2_AGENT_TOPIC,
+                                                'start_flag': True})
                 eventlet.spawn_n(self.felix_heartbeat_thread, hostname)
             except:
                 LOG.exception("Peer is not actually available")
@@ -524,6 +536,15 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                 LOG.exception("Exception receiving heartbeat from Felix")
                 self._clear_socket_to_felix_peer(hostname)
                 return
+
+            #*****************************************************************#
+            #* Felix is still there, tell OpenStack.                         *#
+            #*****************************************************************#
+            self.db.create_or_update_agent(self.db_context,
+                                           {'agent_type': AGENT_TYPE_FELIX,
+                                            'binary': '',
+                                            'host': hostname,
+                                            'topic': constants.L2_AGENT_TOPIC})
 
     def acl_get_thread(self):
 
