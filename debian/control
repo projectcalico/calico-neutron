@@ -446,6 +446,7 @@ Depends:
  python-sqlalchemy (>= 0.8.2),
  python-stevedore (>= 0.10),
  python-webob,
+ python-zmq,
  ${misc:Depends},
  ${python:Depends}
 Provides: ${python:Provides}
