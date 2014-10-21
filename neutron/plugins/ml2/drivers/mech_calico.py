@@ -455,6 +455,10 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         if self._port_is_endpoint_port(port):
             LOG.info("Created port: %s" % port)
             self.send_endpoint(port['binding:host_id'], None, port, 'CREATED')
+            self._get_db_context()
+            self.db.update_port_status(self.db_context,
+                                       port['id'],
+                                       constants.PORT_STATUS_ACTIVE)
 
     def update_port_postcommit(self, context):
         LOG.info("UPDATE_PORT_POSTCOMMIT: %s" % context)
