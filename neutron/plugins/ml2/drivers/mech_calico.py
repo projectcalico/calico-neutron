@@ -27,11 +27,11 @@
 #* It is implemented as a Neutron/ML2 mechanism driver.                      *#
 #*****************************************************************************#
 
+from neutron.common import constants
 from neutron.extensions import portbindings
 from neutron.openstack.common import log
 from neutron.plugins.ml2 import driver_api as api
 from neutron.plugins.ml2.drivers import mech_agent
-from calico import common as calico_common
 import eventlet
 from eventlet.green import zmq
 import json
@@ -100,6 +100,12 @@ HEARTBEAT_RESPONSE_TIMEOUT = 2000
 #*****************************************************************************#
 HEARTBEAT_SEND_INTERVAL_SECS = 10
 
+#*****************************************************************************#
+#* An OpenStack agent type name for Felix, the Calico agent component in the *#
+#* new architecture.                                                         *#
+#*****************************************************************************#
+AGENT_TYPE_FELIX = 'Felix (Calico agent)'
+
 
 class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
     """Neutron/ML2 mechanism driver for Project Calico.
@@ -112,7 +118,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
 
     def __init__(self):
         super(CalicoMechanismDriver, self).__init__(
-            calico_common.AGENT_TYPE_CALICO,
+            constants.AGENT_TYPE_DHCP,
             portbindings.VIF_TYPE_ROUTED,
             {portbindings.CAP_PORT_FILTER: True})
 
@@ -150,20 +156,9 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                 self.db.notifier = CalicoNotifierProxy(self.db.notifier, self)
 
     def check_segment_for_agent(self, segment, agent):
-        mappings = agent['configurations'].get('interface_mappings', {})
-        tunnel_types = agent['configurations'].get('tunnel_types', [])
-        LOG.debug(_("Checking segment: %(segment)s "
-                    "for mappings: %(mappings)s "
-                    "with tunnel_types: %(tunnel_types)s"),
-                  {'segment': segment, 'mappings': mappings,
-                   'tunnel_types': tunnel_types})
-        network_type = segment[api.NETWORK_TYPE]
-        if network_type == 'local':
+        LOG.debug("Checking segment %s with agent %s" % (segment, agent))
+        if segment[api.NETWORK_TYPE] in ['local', 'flat']:
             return True
-        elif network_type in tunnel_types:
-            return True
-        elif network_type in ['flat', 'vlan']:
-            return segment[api.PHYSICAL_NETWORK] in mappings
         else:
             return False
 
@@ -318,6 +313,12 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                 sock.setsockopt(zmq.LINGER, 0)
                 sock.connect("tcp://%s:%s" % (hostname, FELIX_ENDPOINT_PORT))
                 self.felix_peer_sockets[hostname] = sock
+                self.db.create_or_update_agent(self.db_context,
+                                               {'agent_type': AGENT_TYPE_FELIX,
+                                                'binary': '',
+                                                'host': hostname,
+                                                'topic': constants.L2_AGENT_TOPIC,
+                                                'start_flag': True})
                 eventlet.spawn_n(self.felix_heartbeat_thread, hostname)
             except:
                 LOG.exception("Peer is not actually available")
@@ -455,6 +456,10 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         if self._port_is_endpoint_port(port):
             LOG.info("Created port: %s" % port)
             self.send_endpoint(port['binding:host_id'], None, port, 'CREATED')
+            self._get_db_context()
+            self.db.update_port_status(self.db_context,
+                                       port['id'],
+                                       constants.PORT_STATUS_ACTIVE)
 
     def update_port_postcommit(self, context):
         LOG.info("UPDATE_PORT_POSTCOMMIT: %s" % context)
@@ -520,6 +525,15 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                 LOG.exception("Exception receiving heartbeat from Felix")
                 self._clear_socket_to_felix_peer(hostname)
                 return
+
+            #*****************************************************************#
+            #* Felix is still there, tell OpenStack.                         *#
+            #*****************************************************************#
+            self.db.create_or_update_agent(self.db_context,
+                                           {'agent_type': AGENT_TYPE_FELIX,
+                                            'binary': '',
+                                            'host': hostname,
+                                            'topic': constants.L2_AGENT_TOPIC})
 
     def acl_get_thread(self):
 
