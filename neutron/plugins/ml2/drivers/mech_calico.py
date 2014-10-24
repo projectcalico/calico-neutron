@@ -337,16 +337,16 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
     def _port_is_endpoint_port(self, port):
 
         #*********************************************************************#
-        #* Return False if port isn't a VM port.                             *#
+        #* Return True if port is a VM port.                                 *#
         #*********************************************************************#
-        if port['device_owner'] != 'compute:nova':
-            LOG.info("Not a VM port: %s" % port)
-            return False
+        if port['device_owner'].startswith('compute:'):
+            return True
 
         #*********************************************************************#
-        #* Otherwise return True.                                            *#
+        #* Otherwise log and return False.                                   *#
         #*********************************************************************#
-        return True
+        LOG.debug("Not a VM port: %s" % port)
+        return False
 
     def send_endpoint(self, hostname, resync_id, port, op):
         LOG.info("Send ENDPOINT%s to %s for %s" % (op, hostname, port))
