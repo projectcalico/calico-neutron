@@ -1,7 +1,7 @@
 %global release_name icehouse
 
 Name:		openstack-neutron
-Version:	2014.1.1_calico0.4
+Version:	2014.1.1_calico0.5
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.3.b3
@@ -1101,6 +1101,9 @@ fi
 
 
 %changelog
+* Mon Oct 27 2014 Neil Jerram <nj@metaswitch.com> 2014.1.1_calico0.5-1
+- Add Calico mechanism driver
+
 * Tue Sep 16 2014 Neil Jerram <nj@metaswitch.com> 2014.1.1_calico0.4-1
 - DHCP agent enhancements for Calico/IPv6 networking
 
