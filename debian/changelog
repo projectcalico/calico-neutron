@@ -1,3 +1,9 @@
+neutron (1:2014.1-0ubuntu1-calico0.5) trusty; urgency=medium
+
+  * Add Calico mechanism driver.
+
+ -- Neil Jerram <nj@metaswitch.com>  Mon, 27 Oct 2014 16:34:45 +0000
+
 neutron (1:2014.1-0ubuntu1-calico0.4) trusty; urgency=medium
 
   * DHCP agent enhancements for Calico/IPv6 networking.
