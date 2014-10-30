@@ -479,12 +479,6 @@ IPSec.
 
 find neutron -name \*.py -exec sed -i '/\/usr\/bin\/env python/{d;q}' {} +
 
-# Ensure SOURCES.txt ends in a newline and if any patches have added files, append them to SOURCES.txt
-[ -n "$(tail -c 1 < neutron.egg-info/SOURCES.txt)" ] && echo >> neutron.egg-info/SOURCES.txt
-if ls %{_sourcedir}/*.patch >/dev/null 2>&1; then
-awk '/^new file/ {split(a,files," ");print substr(files[3],3)} {a = $0}' %{_sourcedir}/*.patch >> neutron.egg-info/SOURCES.txt
-fi
-
 sed -i 's/RPMVERSION/%{version}/; s/RPMRELEASE/%{release}/' neutron/version.py
 
 chmod 644 neutron/plugins/cisco/README
