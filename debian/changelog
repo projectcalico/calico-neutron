@@ -1,4 +1,4 @@
-neutron (1:2014.1-0ubuntu1-calico0.5) trusty; urgency=medium
+neutron (1:2014.1-0ubuntu1calico0.5) trusty; urgency=medium
 
   * Add Calico mechanism driver.
 
