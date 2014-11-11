@@ -1,0 +1,19 @@
+#!/bin/bash
+#------------------------
+# Testing plumgrid-plugin
+#------------------------
+set -e
+apt-get -y install neutron-plugin-plumgrid
+
+# update plugin path
+sed -i 's/NEUTRON_PLUGIN_CONFIG\=.*/NEUTRON_PLUGIN_CONFIG\=\"\/etc\/neutron\/plugins\/plumgrid\/plumgrid\.ini\"/g' /etc/default/neutron-server
+sed -i 's/core_plugin/core_plugin \= neutron\.plugins\.plumgrid\.plumgrid_plugin\.plumgrid_plugin\.NeutronPluginPLUMgridV2/g' /etc/neutron/neutron.conf
+service neutron-server restart  > /dev/null 2>&1
+if pidof -x neutron-server > /dev/null; then
+    apt-get -y remove --purge neutron-plugin-plumgrid
+    echo "OK"
+else
+    echo "ERROR: PLUMGRID PLUGIN IS NOT RUNNING"
+    apt-get -y remove --purge neutron-plugin-plumgrid
+    exit 1
+fi
