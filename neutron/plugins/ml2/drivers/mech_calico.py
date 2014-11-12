@@ -658,6 +658,16 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                         'protocol': rule['protocol']}
 
             #*****************************************************************#
+            #* OpenStack (sometimes) represents 'any IP address' by setting  *#
+            #* both 'remote_group_id' and 'remote_ip_prefix' to None.  For   *#
+            #* the Calico Network API we must represent that as an explicit  *#
+            #* 0.0.0.0/0 (for IPv4) or ::/0 (for IPv6).                      *#
+            #*****************************************************************#
+            if not (api_rule['group'] or api_rule['cidr']):
+                api_rule['cidr'] = {'IPv4': '0.0.0.0/0',
+                                    'IPv6': '::/0'}[rule['ethertype']]
+
+            #*****************************************************************#
             #* The 'port' field can be '*', or a single number, or a range.  *#
             #*****************************************************************#
             if rule['port_range_min'] == -1:
