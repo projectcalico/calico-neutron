@@ -1326,3 +1326,30 @@
  neutron.openstack.common.cache.backends = 
  	memory = neutron.openstack.common.cache._backends.memory:MemoryBackend
  
+--- a/neutron.egg-info/SOURCES.txt
++++ b/neutron.egg-info/SOURCES.txt
+@@ -753,6 +753,7 @@
+ neutron/plugins/ml2/drivers/README.odl
+ neutron/plugins/ml2/drivers/__init__.py
+ neutron/plugins/ml2/drivers/mech_agent.py
++neutron/plugins/ml2/drivers/mech_calico.py
+ neutron/plugins/ml2/drivers/mech_hyperv.py
+ neutron/plugins/ml2/drivers/mech_linuxbridge.py
+ neutron/plugins/ml2/drivers/mech_ofagent.py
+@@ -1456,4 +1457,4 @@
+ tools/i18n_cfg.py
+ tools/install_venv.py
+ tools/install_venv_common.py
+-tools/with_venv.sh
+\ No newline at end of file
++tools/with_venv.sh
+--- a/neutron.egg-info/entry_points.txt
++++ b/neutron.egg-info/entry_points.txt
+@@ -72,6 +72,7 @@
+ bigswitch = neutron.plugins.ml2.drivers.mech_bigswitch.driver:BigSwitchMechanismDriver
+ brocade = neutron.plugins.ml2.drivers.brocade.mechanism_brocade:BrocadeMechanism
+ bulkless = neutron.tests.unit.ml2.drivers.mechanism_bulkless:BulklessMechanismDriver
++calico = neutron.plugins.ml2.drivers.mech_calico:CalicoMechanismDriver
+ cisco_nexus = neutron.plugins.ml2.drivers.cisco.nexus.mech_cisco_nexus:CiscoNexusMechanismDriver
+ hyperv = neutron.plugins.ml2.drivers.mech_hyperv:HypervMechanismDriver
+ l2population = neutron.plugins.ml2.drivers.l2pop.mech_driver:L2populationMechanismDriver
