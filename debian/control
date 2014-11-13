@@ -1,7 +1,7 @@
 Source: neutron
 Section: net
 Priority: optional
-Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Maintainer: Project Calico Maintainers <maintainers@projectcalico.org>
 XSBC-Original-Maintainer: Chuck Short <zulcss@ubuntu.com>
 Build-Depends: debhelper (>= 8.0.0), python-all (>= 2.6)
 Build-Depends-Indep:
@@ -44,6 +44,7 @@ Build-Depends-Indep:
  python-testtools (>= 0.9.32),
  python-webob,
  python-webtest,
+ python-zmq,
  subunit,
  testrepository ( >= 0.0.17)
 XS-Python-Version: >= 2.6
@@ -446,6 +447,7 @@ Depends:
  python-sqlalchemy (>= 0.8.2),
  python-stevedore (>= 0.10),
  python-webob,
+ python-zmq,
  ${misc:Depends},
  ${python:Depends}
 Provides: ${python:Provides}
