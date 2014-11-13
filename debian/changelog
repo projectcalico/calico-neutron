@@ -1,4 +1,4 @@
-neutron (1:2014.1-0ubuntu1calico0.5.2) unstable; urgency=medium
+neutron (1:2014.1-0ubuntu1calico0.5.2) trusty; urgency=medium
 
   * Update Calico patch with the following change from
     https://github.com/Metaswitch/calico-neutron/tree/calico_2014.1.
@@ -6,7 +6,7 @@ neutron (1:2014.1-0ubuntu1calico0.5.2) unstable; urgency=medium
 
  -- Neil Jerram <Neil.Jerram@metaswitch.com>  Thu, 13 Nov 2014 16:44:11 +0000
 
-neutron (1:2014.1-0ubuntu1calico0.5.1) unstable; urgency=medium
+neutron (1:2014.1-0ubuntu1calico0.5.1) trusty; urgency=medium
 
   * Update Calico patch, so that Calico mechanism driver and ML2 entry
     point config is added to neutron.egg-info.
