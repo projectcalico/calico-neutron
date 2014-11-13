@@ -717,6 +717,7 @@ class DeviceManager(object):
         try:
             self.driver = importutils.import_object(
                 conf.interface_driver, conf)
+            self.driver_bridged = bool(self.driver.bridged())
         except Exception as e:
             msg = (_("Error importing interface driver '%(driver)s': "
                    "%(inner)s") % {'driver': conf.interface_driver,
@@ -725,7 +726,7 @@ class DeviceManager(object):
             raise SystemExit(msg)
 
     def bridged(self):
-        return self.driver.bridged()
+        return self.driver_bridged
 
     def get_interface_name(self, network, port):
         """Return interface(device) name for use by the DHCP process."""
@@ -798,7 +799,7 @@ class DeviceManager(object):
         for port in network.ports:
             port_device_id = getattr(port, 'device_id', None)
             if port_device_id == device_id:
-                if self.driver.bridged():
+                if self.driver_bridged:
                     port_fixed_ips = []
                     for fixed_ip in port.fixed_ips:
                         port_fixed_ips.append({'subnet_id': fixed_ip.subnet_id,
@@ -836,7 +837,7 @@ class DeviceManager(object):
             # bridged, we don't allocate a unique IP address for the
             # DHCP port.
             port_fixed_ips = []
-            if self.driver.bridged():
+            if self.driver_bridged:
                 port_fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids]
 
             port_dict = dict(
@@ -889,7 +890,7 @@ class DeviceManager(object):
             ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
             ip_cidrs.append(ip_cidr)
 
-        if not self.driver.bridged():
+        if not self.driver_bridged:
             # When the DHCP port and VM TAP interfaces are not
             # bridged, assign the subnet's gateway IP address to the
             # DHCP port.
@@ -908,7 +909,7 @@ class DeviceManager(object):
                     net = netaddr.IPNetwork(subnet.cidr)
                     ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
 
-        if (self.driver.bridged() and
+        if (self.driver_bridged and
             self.conf.enable_isolated_metadata and
             self.conf.use_namespaces):
             ip_cidrs.append(METADATA_DEFAULT_CIDR)
@@ -918,12 +919,12 @@ class DeviceManager(object):
                             namespace=network.namespace)
 
         # ensure that the dhcp interface is first in the list
-        if self.driver.bridged() and network.namespace is None:
+        if self.driver_bridged and network.namespace is None:
             device = ip_lib.IPDevice(interface_name,
                                      self.root_helper)
             device.route.pullup_route(interface_name)
 
-        if (self.driver.bridged() and
+        if (self.driver_bridged and
             self.conf.use_namespaces):
             self._set_default_route(network, port)
 
@@ -931,7 +932,7 @@ class DeviceManager(object):
 
     def update(self, network):
         """Update device settings for the network's DHCP on this host."""
-        if (self.driver.bridged() and
+        if (self.driver_bridged and
             self.conf.use_namespaces):
             device_id = self.get_device_id(network)
             port = self.plugin.get_dhcp_port(network.id, device_id)
