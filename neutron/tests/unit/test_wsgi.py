@@ -64,6 +64,7 @@ class TestWSGIServer(base.BaseTestCase):
         launcher.wait.assert_called_once_with()
 
     def test_start_random_port_with_ipv6(self):
+        self.skipTest('Skipped by Ubuntu')
         server = wsgi.Server("test_random_port")
         server.start(None, 0, host="::1")
         self.assertEqual("::1", server.host)
@@ -1096,6 +1097,7 @@ class TestWSGIServerWithSSL(base.BaseTestCase):
         server.stop()
 
     def test_app_using_ipv6_and_ssl(self):
+        self.skipTest('Skipped by Ubuntu')
         CONF.set_default('use_ssl', True)
         CONF.set_default("ssl_cert_file",
                          os.path.join(TEST_VAR_DIR, 'certificate.crt'))

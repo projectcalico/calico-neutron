@@ -129,7 +129,7 @@ function run_tests {
   # Just run the test suites in current environment
   set +e
   testrargs=`echo "$testrargs" | sed -e's/^\s*\(.*\)\s*$/\1/'`
-  TESTRTESTS="$TESTRTESTS --testr-args='--subunit $testropts $testrargs'"
+  TESTRTESTS="$TESTRTESTS --testr-args='--subunit --concurrency 4 $testropts $testrargs'"
   echo "Running \`${wrapper} $TESTRTESTS\`"
   bash -c "${wrapper} $TESTRTESTS | ${wrapper} subunit2pyunit"
   RESULT=$?
