@@ -45,14 +45,7 @@ class TestMetaBasicGet(test_plugin.TestBasicGet,
 
 class TestMetaV2HTTPResponse(test_plugin.TestV2HTTPResponse,
                              MetaPluginV2DBTestCase):
-    def test_list_with_fields_noadmin(self):
-        pass
-
-    def test_list_with_fields(self):
-        pass
-
-    def test_list_with_fields_noadmin_and_policy_field(self):
-        pass
+    pass
 
 
 class TestMetaPortsV2(test_plugin.TestPortsV2,
@@ -62,30 +55,7 @@ class TestMetaPortsV2(test_plugin.TestPortsV2,
 
 class TestMetaNetworksV2(test_plugin.TestNetworksV2,
                          MetaPluginV2DBTestCase):
-
-    def test_list_networks_without_pk_in_fields_pagination_emulated(self):
-        pass
-
-    def test_list_shared_networks_with_non_admin_user(self):
-        pass
-
-    def test_list_networks_with_pagination_emulated(self):
-        pass
-
-    def test_list_networks_with_sort_emulated(self):
-        pass
-
-    def test_list_networks_with_pagination_reverse_emulated(self):
-        pass
-
-    def test_list_networks_with_parameters(self):
-        pass
-
-    def test_list_networks_with_fields(self):
-        pass
-
-    def test_list_networks(self):
-        pass
+    pass
 
 
 class TestMetaSubnetsV2(test_plugin.TestSubnetsV2,

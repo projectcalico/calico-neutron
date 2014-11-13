@@ -128,20 +128,16 @@ class MetadataProxyHandler(object):
 
         if network_id:
             networks = [network_id]
-        elif router_id:
+        else:
             internal_ports = qclient.list_ports(
                 device_id=router_id,
                 device_owner=n_const.DEVICE_OWNER_ROUTER_INTF)['ports']
 
             networks = [p['network_id'] for p in internal_ports]
 
-        if network_id or router_id:
-            ports = qclient.list_ports(
-                network_id=networks,
-                fixed_ips=['ip_address=%s' % remote_address])['ports']
-        else:  # Flat networks should have unique IPs.
-            ports = qclient.list_ports(
-                fixed_ips=['ip_address=%s' % remote_address])['ports']
+        ports = qclient.list_ports(
+            network_id=networks,
+            fixed_ips=['ip_address=%s' % remote_address])['ports']
 
         self.auth_info = qclient.get_auth_info()
         if len(ports) == 1:
