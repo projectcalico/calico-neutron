@@ -79,7 +79,6 @@ class ParseServiceProviderConfigurationTestCase(base.BaseTestCase):
                                 'default': True}])
 
     def test_parse_service_provider_opt_not_allowed_raises(self):
-        self.skipTest('Skipped by Ubuntu')
         cfg.CONF.set_override('service_provider',
                               [constants.LOADBALANCER +
                                ':lbaas:driver_path',

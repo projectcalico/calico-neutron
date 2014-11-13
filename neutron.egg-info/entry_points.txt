@@ -72,7 +72,6 @@ arista = neutron.plugins.ml2.drivers.mech_arista.mechanism_arista:AristaDriver
 bigswitch = neutron.plugins.ml2.drivers.mech_bigswitch.driver:BigSwitchMechanismDriver
 brocade = neutron.plugins.ml2.drivers.brocade.mechanism_brocade:BrocadeMechanism
 bulkless = neutron.tests.unit.ml2.drivers.mechanism_bulkless:BulklessMechanismDriver
-calico = neutron.plugins.ml2.drivers.mech_calico:CalicoMechanismDriver
 cisco_nexus = neutron.plugins.ml2.drivers.cisco.nexus.mech_cisco_nexus:CiscoNexusMechanismDriver
 hyperv = neutron.plugins.ml2.drivers.mech_hyperv:HypervMechanismDriver
 l2population = neutron.plugins.ml2.drivers.l2pop.mech_driver:L2populationMechanismDriver
