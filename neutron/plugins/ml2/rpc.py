@@ -150,7 +150,11 @@ class RpcCallbacks(dhcp_rpc_base.DhcpRpcCallbackMixin,
                      'admin_state_up': port.admin_state_up,
                      'network_type': segment[api.NETWORK_TYPE],
                      'segmentation_id': segment[api.SEGMENTATION_ID],
-                     'physical_network': segment[api.PHYSICAL_NETWORK]}
+                     'physical_network': segment[api.PHYSICAL_NETWORK],
+                     'fixed_ips': [{'subnet_id': ip["subnet_id"],
+                                    'ip_address': ip["ip_address"]}
+                                   for ip in port["fixed_ips"]],
+                     'mac_address': port.mac_address}
             LOG.debug(_("Returning: %s"), entry)
             return entry
 
