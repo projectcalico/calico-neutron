@@ -55,14 +55,12 @@ class NetworkMetadataProxyHandler(object):
     accessible within the isolated tenant context.
     """
 
-    def __init__(self, network_id=None, router_id=None, flat=None):
+    def __init__(self, network_id=None, router_id=None):
         self.network_id = network_id
         self.router_id = router_id
-        self.flat = flat
 
-        if network_id is None and router_id is None and flat is None:
-            msg = _('network_id, router_id and flat are None. One must be '
-                    'provided.')
+        if network_id is None and router_id is None:
+            msg = _('network_id and router_id are None. One must be provided.')
             raise ValueError(msg)
 
     @webob.dec.wsgify(RequestClass=webob.Request)
@@ -88,7 +86,7 @@ class NetworkMetadataProxyHandler(object):
 
         if self.router_id:
             headers['X-Neutron-Router-ID'] = self.router_id
-        elif self.network_id:
+        else:
             headers['X-Neutron-Network-ID'] = self.network_id
 
         url = urlparse.urlunsplit((
@@ -129,20 +127,17 @@ class NetworkMetadataProxyHandler(object):
 
 
 class ProxyDaemon(daemon.Daemon):
-    def __init__(self, pidfile, port, network_id=None, router_id=None,
-                 flat=None):
-        this_uuid = network_id or router_id or flat
-        super(ProxyDaemon, self).__init__(pidfile, uuid=this_uuid)
+    def __init__(self, pidfile, port, network_id=None, router_id=None):
+        uuid = network_id or router_id
+        super(ProxyDaemon, self).__init__(pidfile, uuid=uuid)
         self.network_id = network_id
         self.router_id = router_id
-        self.flat = flat
         self.port = port
 
     def run(self):
         handler = NetworkMetadataProxyHandler(
             self.network_id,
-            self.router_id,
-            self.flat)
+            self.router_id)
         proxy = wsgi.Server('neutron-network-metadata-proxy')
         proxy.start(handler, self.port)
         proxy.wait()
@@ -157,10 +152,6 @@ def main():
         cfg.StrOpt('router_id',
                    help=_('Router that will have connected instances\' '
                           'metadata proxied.')),
-        cfg.StrOpt('flat',
-                   help=_('Flat networking is being used: neither the network '
-                          'nor the router ID is provided. This argument takes '
-                          'a UUID to identify the instance.')),
         cfg.StrOpt('pid_file',
                    help=_('Location of pid file of this process.')),
         cfg.BoolOpt('daemonize',
@@ -184,8 +175,7 @@ def main():
     proxy = ProxyDaemon(cfg.CONF.pid_file,
                         cfg.CONF.metadata_port,
                         network_id=cfg.CONF.network_id,
-                        router_id=cfg.CONF.router_id,
-                        flat=cfg.CONF.flat)
+                        router_id=cfg.CONF.router_id)
 
     if cfg.CONF.daemonize:
         proxy.start()
