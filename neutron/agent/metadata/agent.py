@@ -145,16 +145,12 @@ class MetadataProxyHandler(object):
 
         """
         qclient = self._get_neutron_client()
-        all_ports = qclient.list_ports(
-            fixed_ips=['ip_address=%s' % remote_address])['ports']
 
+        all_ports = qclient.list_ports(
+            network_id=networks,
+            fixed_ips=['ip_address=%s' % remote_address])['ports']
         self.auth_info = qclient.get_auth_info()
-        if networks:
-            networks = set(networks)
-            return [p for p in all_ports if p['network_id'] in networks]
-        else:
-            # Flat networks should have unique IPs.
-            return all_ports
+        return all_ports
 
     def _get_ports(self, remote_address, network_id=None, router_id=None):
         """Search for all ports that contain passed ip address and belongs to
@@ -169,7 +165,8 @@ class MetadataProxyHandler(object):
         elif router_id:
             networks = self._get_router_networks(router_id)
         else:
-            networks = None
+            raise TypeError(_("Either one of parameter network_id or router_id"
+                              " must be passed to _get_ports method."))
 
         return self._get_ports_for_remote_address(remote_address, networks)
 
