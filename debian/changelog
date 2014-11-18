@@ -1,0 +1,1022 @@
+neutron (1:2014.1.3-0ubuntu1.1) trusty-security; urgency=medium
+
+  * No change rebuild for security:
+    - [dd4b77f] Forbid regular users to reset admin-only attrs to default values
+      + CVE-2014-6414
+      + LP: #1357379
+
+ -- Marc Deslauriers <marc.deslauriers@ubuntu.com>  Tue, 21 Oct 2014 11:59:06 -0400
+
+neutron (1:2014.1.3-0ubuntu1) trusty; urgency=medium
+
+  [ Corey Bryant ]
+  * Resynchronize with stable/icehouse (4a0210e) (LP: #1377136):
+    - [3a30d19] Deletes floating ip related connection states
+    - [dd4b77f] Forbid regular users to reset admin-only attrs to default values
+    - [dc2c893] Add delete operations for the ODL MechanismDriver
+    - [b51e2c7] Add missing ml2 plugin to migration 1fcfc149aca4
+    - [a17a500] Don't convert numeric protocol values to int
+    - [3a85946] NSX: Optionally not enforce nat rule match length check
+    - [645f984] Don't spawn metadata-proxy for non-isolated nets
+    - [b464d89] Big Switch: Check for 'id' in port before lookup
+    - [3116ffa] use TRUE in SQL for boolean var
+    - [3520e66] call security_groups_member_updated in port_update
+    - [50e1534] Don't allow user to set firewall rule with port and no protocol
+    - [0061533] BSN: Add context to backend request for debugging
+    - [6de6d61] Improve ODL ML2 Exception Handling
+    - [2a4153d] Send network name and uuid to subnet create
+    - [b5e3c9a] BSN: Allow concurrent reads to consistency DB
+    - [b201432] Big Switch: Retry on 503 errors from backend
+    - [f6c47ee] NSX: log request body to NSX as debug
+    - [97d622a] Fix metadata agent's auth info caching
+    - [255df45] NSX: Correct allowed_address_pair return value on create_port
+    - [5bea041] Neutron should not use the neutronclient utils module for import_class
+    - [d5314e2] Cisco N1kv plugin to send subtype on network profile creation
+    - [f32d1ce] Pass object to policy when finding fields to strip
+    - [8b5f6be] Call policy.init() once per API request
+    - [9a6d811] Perform policy checks only once on list responses
+    - [c48db90] Datacenter moid should not be tuple
+    - [161d465] Allow unsharing a network used as gateway/floatingip
+    - [9574a2f] Add support for router scheduling in Cisco N1kv Plugin
+    - [6f54565] Fix func job hook script permission problems
+    - [ea43103] Add hook scripts for the functional infra job
+    - [8161cb7] Fixes Hyper-V agent issue on Hyper-V 2008 R2
+    - [8e99cfd] Fixes Hyper-V issue due to ML2 RPC versioning
+    - [69f9121] Ensure ip6tables are used only if ipv6 is enabled in kernel
+    - [399b809] Remove explicit dependency on amqplib
+    - [a872143] Clear entries in Cisco N1KV specific tables on rollback
+    - [ad82fad] Verify ML2 type driver exists before calling del
+    - [af2cc98] Big Switch: Only update hash header on success
+    - [b1e5eec] Ignore variable column widths in ovsdb functional tests
+    - [4a0210e] VMWare: don't notify on disassociate_floatingips()
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 06 Oct 2014 09:15:06 -0400
+
+neutron (1:2014.1.2-0ubuntu1) trusty; urgency=medium
+
+  [ Corey Bryant ]
+  * Resynchronize with stable/icehouse (5db494d) (LP: #1354159):
+    - [1d4a3e3] Add dsvm-functional tox env to fix functional job
+    - [c19633d] Fix deprecated opt in haproxy driver
+    - [2c762be] Add configurable http_timeout parameter for Cisco N1K
+    - [9c94d96] Avoid notifying while inside transaction opened in delete_port()
+    - [f9379ef] BSN: Remove db lock and add missing contexts
+    - [bea1e2d] Set python hash seed to 0 in tox.ini
+    - [f427754] Big Switch: Remove consistency hash on full sync
+    - [3ad288d] Add -s option for neutron metering rules
+    - [231010b] Do not mark device as processed if it wasn't
+    - [72edc13] Big Switch: Lock consistency table for REST calls
+    - [b65c036] NSX: fix router ports port_security_enabled=False
+    - [9dcc476] NSX: Remove unneed call to _ensure_default_security_group
+    - [2ce59ec] Added support for NOS version 4.1.0, 5.0.0 and greater
+    - [2c4828e] no quota for allowed address pair
+    - [46a37e2] NSX: neutron router-interface-add should clear security-groups
+    - [5d0d72b] Control update, delete for cisco-network-profile
+    - [0459a6a] NSX: return 400 if dscp set for trusted queue
+    - [d880134] Fix typo in ml2 configuration file
+    - [fb40f65] Register LBaaS resources to quotas engine
+    - [0cb4aaa] Make plugin deallocation check optional
+    - [478f487] Ensure core plugin deallocation after every test
+    - [ea5ecf9] OVS agent: Correct bridge setup ordering
+    - [98ef1bc] Fixed dhcp & gateway ip conflict in PLUMgrid plugin
+    - [38bf2be] Exit rpc_loop when SIGTERM is recieved in ovs-agent
+    - [67ef62d] NSX sync cache: add a flag to skip item deletion
+    - [d2c11e5] OFAgent: Avoid processing ports which are not yet ready
+    - [c02763a] OFAgent: Fixing lost vlan ids on interfaces
+    - [8d56f44] OFAgent: Improve handling of security group updates
+    - [63d3a54] OFAgent: Avoid re-wiring ports unnecessarily
+    - [8131a2e] Synced jsonutils from oslo-incubator
+    - [33992c8] Brocade mechanism driver depends on the brocade plugin templates
+    - [1da7abd] ofagent: Fix VLAN usage for TYPE_FLAT and TYPE_VLAN
+    - [2a79749] netaddr<=0.7.10 raises ValueError instead of AddrFormatError
+    - [45281bb] Brocade mechanism driver should be derived from ML2 plugin base class
+    - [3eeda2c] Add missing keyword raise to get_profile_binding function
+    - [e517da2] Big Switch: Remove unnecessary initialization code
+    - [2f65656] ovs-agent: Ensure integration bridge is created
+    - [0324965] remove token from notifier middleware
+    - [6d62c91] Big Switch: Add missing data to topology sync
+    - [fac71fe] Added missing core_plugins symbolic names
+    - [505f902] Big Switch: Catch exceptions in watchdog thread
+    - [ac90f9b] Segregate the VSM calls from database calls in N1kv plugin
+    - [86e4b80] Fix network profile subtype validation in N1kv plugin
+    - [24f2460] ofagent: Add a missing push_vlan action
+    - [50408e6] OFA agent: use hexadecimal IP address in tunnel port name
+    - [f0af041] Big Switch: Call correct method in watchdog
+    - [71097a0] Check DB scheme prior to migration to Ml2
+    - [db7f8a7] ofa_neutron_agent: Fix _phys_br_block_untranslated_traffic
+    - [d5d345b] Fix race condition with firewall deletion
+    - [ce712b2] Metadata agent caches networks for routers
+    - [cac3aa8] Ensure routing key is specified in the address for a direct producer
+    - [5e0ea72] Default to setting secure mode on the integration bridge
+    - [77d8da1] OVS and OF Agents: Create updated_ports attribute before setup_rpc
+    - [9268ea6] OFAgent: Process port_update notifications in the main agent loop
+    - [9124db5] Remove RPC to plugin when dhcp sets default route
+    - [6fd5a20] Improve iptables_manager _modify_rules() method
+    - [5285164] Big Switch: fix capabilities retrieval code
+    - [ca7ed8f] OVS Agent: limit veth names to 15 chars
+    - [7d76335] NSX: Fix request_id in api_client to increment
+    - [583db13] NSX: fix tenant_id passed as security_profile_id
+    - [066760e] LBaaS add missing rootwrap filter for route
+    - [cd7a622] Do not defer IPTables apply in firewall path
+    - [315319c] BSN: Set hash header to empty instead of False
+    - [5d9a034] Remove function replacement with mock patch
+    - [a4b467d] NSX: fix bug for flat provider network
+    - [96e580d] Wrong key router.interface reported by ceilometer
+    - [9ce5ef3] Common decorator for caching methods
+    - [f3fa89f] Fixes Hyper-V agent security groups disabling
+    - [6fe2596] Fixes Hyper-V agent security group ICMP rules
+    - [5db494d] Add support for multiple RPC workers under Metaplugin
+  * d/p/disable-failing-metaplugin-tests.patch: Dropped.
+  * d/p/skip-lb-test.patch: Dropped.
+
+  [ James Page ]
+  * d/watch: Point to tarballs.openstack.org for release artifacts.
+
+ -- Corey Bryant <corey.bryant@canonical.com>  Fri, 08 Aug 2014 08:30:52 -0400
+
+neutron (1:2014.1.1-0ubuntu2) trusty-proposed; urgency=medium
+
+  [ Corey Bryant ]
+  * Resynchronize with stable/icehouse (54ac82b) (LP: #1328134):
+    - [2b42dd3] Handle errors from run_ofctl() when dumping flows
+    - [d00446b] Reprogram flows when ovs-vswitchd restarts
+    - [8d3026b] Added missing plugin .ini files to setup.cfg
+    - [072bbc0] NEC plugin: Bump L3RPC callback version to 1.1
+    - [47a4954] Remove List events API from Cisco N1kv Neutron
+    - [28a26db] Install SNAT rules for ipv4 only
+    - [5bdea2d] Use os.uname() instead of calling uname in subprocess
+    - [48bc7db] Replace loopingcall in notifier with a delayed send
+    - [66eeda2] Explicitly import state_path opt in tests.base
+    - [f1b0607] NSX: allow net-migration only in combined mode
+    - [8abb05c] NSX: do not raise on missing router during migration step
+    - [4c945dd] NSX: fix error when creating VM ports on subnets without dhcp
+    - [efa4f28] OVS lib defer apply doesn't handle concurrency
+    - [bc30b52] NSX: ensure that no LSN is created on external networks
+    - [2bcc7bf] NSX: pass the right argument during metadata setup
+    - [26a591a] Big Switch: Check source_address attribute exists
+    - [74a9365] L3 RPC loop could delete a router on concurrent update
+    - [2a7164a] Optimize querying for security groups
+    - [bac4389] set api.extensions logging to ERROR in unit tests
+    - [d1ab56d] Make default nova_url use a version
+    - [2c56e14] NSX: fix API payloads for dhcp/metadata setup
+    - [f217479] NSX: fix migration for networks without a subnet
+    - [bf281cd] NSX: change api mapping for Service Cluster to Edge Cluster
+    - [7225e2b] NSX: add nsx switch lookup to dhcp and metadata operations
+    - [b922aa7] Fixed floating IP logic in PLUMgrid plugin
+    - [84650f8] IBM: set secret=True on passwd config field
+    - [c5040b4] Update ensure()/reconnect() to catch MessagingError
+    - [e0deffc] NSX: Fix fake_api_client to raise NotFound
+    - [42a8539] netaddr<=0.7.10 raises ValueError instead of AddrFormatError
+    - [68a24e5] Validate CIDR given as ip-prefix in security-group-rule-create
+    - [8991aa6] gw_port should be set as lazy='join'
+    - [54ac82b] NSX: ensure dhcp port is setup on metadata network
+
+  [ Jamie Strandboge ]
+  * SECURITY UPDATE: specify /etc/neutron/rootwrap.conf for use with
+    neutron-rootwrap
+    - CVE-2013-6433 (LP: #1185019)
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Wed, 18 Jun 2014 15:21:56 -0500
+
+neutron (1:2014.1-0ubuntu1) trusty; urgency=medium
+
+  [ Chuck Short ]
+  * New upstream release (LP: #1288245).
+
+ -- James Page <james.page@ubuntu.com>  Thu, 17 Apr 2014 13:04:17 +0100
+
+neutron (1:2014.1~rc2-0ubuntu4) trusty; urgency=medium
+
+  * d/neutron-vpn-agent.upstart: Wait for neutron-ovs-cleanup service to
+    start if installed to ensure that Open vSwitch state is cleaned up
+    on reboot (LP: #1307208). 
+
+ -- James Page <james.page@ubuntu.com>  Mon, 14 Apr 2014 11:07:44 +0100
+
+neutron (1:2014.1~rc2-0ubuntu3) trusty; urgency=medium
+
+  * Fix the Breaks/Replaces from the previous version, as they were 
+    accidentally added to the wrong package (and with the wrong versioning).
+
+ -- Steve Langasek <steve.langasek@ubuntu.com>  Thu, 10 Apr 2014 23:36:09 +0000
+
+neutron (1:2014.1~rc2-0ubuntu2) trusty; urgency=medium
+
+  * Ensure that VPN and L3 agents are not installed together (LP: #1303876):
+    - d/control: Add Conflicts on neutron-l3-agent to neutron-vpn-agent,
+      drop dependency from neutron-vpn-agent -> neutron-l3-agent.
+    - d/neutron-{common,vpn-agent,l3-agent}.install: Move configuration and
+      rootwrap filters to -common package for use by both agent types.
+    - d/control: Add appropriate Breaks/Replaces for config file moves.
+    - d/neutron-vpn-agent.upstart: Include fwaas_driver.ini on config file
+      path inline with l3-agent configuration.
+    - d/control: Align Depends of neutron-vpn-agent with neutron-l3-agent.
+
+ -- James Page <james.page@ubuntu.com>  Thu, 10 Apr 2014 14:34:18 +0100
+
+neutron (1:2014.1~rc2-0ubuntu1) trusty; urgency=medium
+
+  [ James Page ]
+  * d/neutron-plugin-oneconvergence-agent.upstart: Rename upstart
+    configuration to match package name (LP: #1301957).
+  * d/neutron-vpn-agent.install: Install missing vpnaas.filters for
+    rootwrap (LP: #1303876).
+
+  [ Chuck Short ]
+  * New upstream release candidate (LP: #1288245).
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 09 Apr 2014 08:51:40 -0400
+
+neutron (1:2014.1~rc1-0ubuntu1) trusty; urgency=medium
+
+  [ Chuck Short ]
+  * debian/rules: Run testr init before tests.
+  * debian/patches/disable-udev-tests.patch: Refresh.
+  * d/control,neutron-plugin-oneconvergence*: Add One Convergence plugin
+    and agent (LP: #1293632).
+
+  [ James Page ]
+  * New upstream release candidate (LP: #1288696, #1291535).
+  * d/control,neutron-mlnx-plugin{-agent}.install: Split out Mellanox
+    plugin configuration from agent package (LP: #1255420).
+  * d/control,neutron-{plugin-}{vpn|metering}-agent.*: Drop -plugin from
+    metering and vpn agents (they are not plugins) and deal with associated
+    change in name of upstart configurations.
+  * d/neutron-l3-agent.{install,upstart}: Install fwaas_driver.ini with
+    l3-agent and add to config-file path in upstart configuration
+    (LP: #1298676).
+  * d/neutron-vpn-agent.upstart,control: Include l3_agent.ini on upstart
+    config-file path, add dependency on neutron-l3-agent (LP: #1298675).
+
+ -- James Page <james.page@ubuntu.com>  Tue, 01 Apr 2014 16:22:54 +0100
+
+neutron (1:2014.1~b3-0ubuntu1) trusty; urgency=medium
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/rules: Re-enabled tests. 
+  * debian/patches/requirements.patch: Dropped no longer needed.
+  * debian/patches/sql-alchemy-0.8.3-compat.patch: Dropped no longer needed.
+  * debian/patches/bump-sqlalchemy-version.patch: Dropped no longer needed.
+  * debian/neutron-plugin-vmware.install: Install usr/bin/neutron-nsx-manage.
+  * debian/patches/use-concurrency.patch: Set default concurrency to 1.
+
+  [ James Page ]
+  * d/control,neutron-plugin-ibm*: Add plugin and agent packages for IBM
+    SDN-VE.
+  * d/control,neutron-openflow-*: Add agent package for OpenFlow ML2 agent.
+  * d/control,neutron-plugin-bigswitch-agent*: Add agent package for
+    BigSwitch.
+  * d/neutron-plugin-mlnx-agent.{upstart,logrotate}: Correct log path
+    and add logrotate configuration (LP: #1284144).
+
+  [ Corey Bryant ]
+  * Renamed Nicira NVP plugin to VMware NSX (LP: #1273877):
+    - debian/neutron-plugin-*.install: Update path and file for rename
+    - debian/tests/*-plugin: Replace nicira-plugin with vmware-plugin
+    - debian/control:
+      + Change neutron-plugin-nicira to transtional package
+      + Add neutron-plugin-vmware package which breaks/replaces
+        neutron-plugin-nicira package.
+
+ -- James Page <james.page@ubuntu.com>  Fri, 07 Mar 2014 09:38:32 +0000
+
+neutron (1:2014.1~b2-0ubuntu6) trusty; urgency=medium
+
+  * debian/rules: Temporarily disable testsuite due to upstream breakage. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 06 Feb 2014 08:33:08 -0500
+
+neutron (1:2014.1~b2-0ubuntu5) trusty; urgency=medium
+
+  * debian/patches/disable-udev-tests.patch: Skip more tests 
+    because of udev failures.
+  * debian/patches/skip-ipv6-tests.patch: Skip tests that fail 
+    on the buildds due to ipv6.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 03 Feb 2014 09:02:45 -0500
+
+neutron (1:2014.1~b2-0ubuntu4) trusty; urgency=medium
+
+  * debian/rules: Really run_tests.sh. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 30 Jan 2014 11:44:21 -0500
+
+neutron (1:2014.1~b2-0ubuntu3) trusty; urgency=medium
+
+  * debian/rules: Switch back to run_test.sh since locking
+    issues have been fixed.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 30 Jan 2014 10:49:22 -0500
+
+neutron (1:2014.1~b2-0ubuntu2) trusty; urgency=medium
+
+  * debian/patches/skip-lb-test.patch: Skipped lb configuration
+    test. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 27 Jan 2014 12:01:50 -0500
+
+neutron (1:2014.1~b2-0ubuntu1) trusty; urgency=low
+
+  [ James Page ]
+  * Switch to using Modular Layer 2 plugin by default:
+    - d/control,neutron-plugin-ml2.install: Add ML2 plugin package
+      (LP: #1243147).
+    - d/p/fix-quantum-configuration,d/control,d/neutron-server.default:
+      Switch to using the ML2 plugin by default.
+    - d/control,neutron-plugin-openvswitch-agent:
+      Use neutron-plugin-ml2 and configuration for openvswitch-agent.
+  * d/neutron-plugin-mlnx-agent.upstart: Reference correct configuration
+    file (LP: #1257732).
+  * Add neutron-ovs-cleanup upstart configuration for OVS plugin
+    (LP: #1249708):
+    - d/rules: Install new configuration in neutron-plugin-openvswitch-agent
+      package, don't restart on install/upgrade (only needed for reboots).
+    - d/neutron-plugin-openvswitch-agent.upstart: Ensure startup happens
+      after neutron-ovs-cleanup.
+    - d/neutron-{l3|dhcp}-agent.upstart: If neutron-ovs-cleanup job is
+      installed, wait for it to reach running state prior to starting
+      agents.
+  * d/control: Add versioned BD/Depends on python-psutil >= 0.6.1.
+  * d/p/requirements.patch: Drop upper version boundary for psutil for
+    compatibility with Trusty.
+  * d/p/requirements.patch: Lift upper boundary for WebOb to < 1.4.
+  * d/p/disable-failing-metaplugin-tests.patch: Disable metaplugin tests that
+    are currently failing.
+  * d/p/disable-ml2-notification-tests.patch: Dropped, tests now pass.
+  * d/rules: Fail package build on unit test failures.
+  * d/p/disable-failing-cisco-test.patch: Disable failing Cisco mechanism test.
+  * d/control,d/p/remove-jsonrpclib.patch: Add BD on python-jsonrpclib and drop
+    patch that excludes it from requirements.txt.
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/rules: Run testr directly
+  * debian/patches/sql-alchemy-0.8.3-compat.patch: Fix tests sqlalchemy 0.8.3
+    compat.
+  * debian/neturon-nicira.install: Add usr/bin/neutron-check-nsx-config.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 24 Jan 2014 09:17:12 -0500
+
+neutron (1:2014.1~b1-0ubuntu1) trusty; urgency=low
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/control: open icehouse release.
+
+  [ James Page ]
+  * debian/patches: Refresh patches against upstream master. 
+  * debian/control: Drop quantum-* transitional packages, no longer needed. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 05 Dec 2013 11:40:39 -0500
+
+neutron (1:2013.2-0ubuntu1) saucy; urgency=low
+
+  * New upstream release (LP: #1236462).
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 17 Oct 2013 10:52:39 -0400
+
+neutron (1:2013.2~rc3-0ubuntu1) saucy; urgency=low
+
+  * New upstream release candidate (LP: #1240665).
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 16 Oct 2013 15:37:02 -0400
+
+neutron (1:2013.2~rc2-0ubuntu1) saucy; urgency=low
+
+  * New upstream release candidate (LP: #1239156).
+
+ -- James Page <james.page@ubuntu.com>  Sat, 12 Oct 2013 16:51:28 +0100
+
+neutron (1:2013.2~rc1-0ubuntu2) saucy; urgency=low
+
+  * d/tests/control,neutron-server: Limit neutron-server tests to core
+    neutron daemons to avoid tests failures for plugin agents which don't
+    start correctly without additional configuration. 
+
+ -- James Page <james.page@ubuntu.com>  Thu, 03 Oct 2013 23:05:05 +0100
+
+neutron (1:2013.2~rc1-0ubuntu1) saucy; urgency=low
+
+  [ Yolanda Robla ]
+  * debian/tests: added testing agents
+
+  [ Chuck Short ]
+  * debian/patches/disable-udev-tests.patch: Refreshed.
+  * debian/patches/disable-ml2-notification-tests.patch: Refreshed.
+  * debian/control:
+    - Dropped python-setuptools-git python-netifaces, and python-nose from
+      build dependencies.
+    - Dropped python-configobj, python-gflags from binary dependencies.
+    - Added build python-requests python-six, and python-jinja2 build
+      dependencies.
+    - Added versioned dependencies for python-amqplib,
+      python-pbr, python-novaclient, python-cliff,
+      python-testtools, and python-eventlet.
+    - Bumped versioned depends for python-stevedore, pyhton-novaclient,
+      python-oslo.config, and testrepository
+
+  [ James Page ]
+  * New upstream release candidate:
+    - d/patches: Refreshed.
+  * d/rules: unpatch/patch neutron.conf around test execution to ensure that
+    as many tests as possible actually pass.
+
+ -- James Page <james.page@ubuntu.com>  Thu, 03 Oct 2013 15:18:04 +0100
+
+neutron (1:2013.2~b3-0ubuntu6) saucy; urgency=low
+
+  * debian/rules: Dont ftbfs the tests if they fail. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 20:37:18 -0400
+
+neutron (1:2013.2~b3-0ubuntu5) saucy; urgency=low
+
+  * debian/tests/neutron-daemons: Fix typo.
+  * debian/rules: FTBFS if testsuite fails. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 17:27:25 -0400
+
+neutron (1:2013.2~b3-0ubuntu4) saucy; urgency=low
+
+  * debian/patches/remove_jsonrpclib.patch: Remove jsonrpclib
+    its not needed other than the arista driver. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 15:19:22 -0400
+
+neutron (1:2013.2~b3-0ubuntu3) saucy; urgency=low
+
+  * debian/tests: Fixed autopkg tests. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 12:10:05 -0400
+
+neutron (1:2013.2~b3-0ubuntu2) saucy; urgency=low
+
+  * debian/control, debian/neutron-plugin-vpn-agent.install,
+    debian/neutron-plugin-vpn-agent.install: Add vpn agent.
+  * debian/control, debian/usr/bin/neutron-metering-agent.install,
+    debian/usr/bin/neutron-metering-agent.install: Add metering agent.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 09 Sep 2013 22:35:59 -0400
+
+neutron (1:2013.2~b3-0ubuntu1) saucy; urgency=low
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/patches/fix-quantum-configuration.patch: Refreshed.
+  * debian/patches/neutron-conf.patch: Dropped.
+  * debian/patches/ignore-quantum-binaries.patch: Dropped
+  * debian/control: Add python-babel as a build depends.
+  * debian/neutron-common.install: Add neutron-usage-audit binary.
+  * debian/rules: Pass the tests even if it fails, temporary measure 
+    until we figure out why the tests fail.
+
+  [ Adam Gandelman ]
+  * debian/rules: Limit testr concurrency to 1 CPU.
+  * debian/patches: Refresh.
+
+  [ James Page ]
+  * d/*.upstart: Added respawn stanza (LP: #1170393), tidied
+    descriptions and rationalized stop on stanzas to be consistent.
+  * d/neutron-dhcp-agent.install: Drop neutron-dhcp-agent-dnsmasq-lease-
+    update inline with upstream.
+  * d/rules: Ignore deprecated quantum binaries when checking for
+    missing files.
+  * d/control: Update/add versioned depends for upgrades:
+    - python-anyjson >= 0.3.3
+    - python-stevedore >= 0.9
+    - python-oslo.config >= 1:1.2.0
+    - python-keystoneclient >= 1:0.2.0
+  * d/*: Wrap and sort.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 09 Sep 2013 13:12:57 -0400
+
+neutron (1:2013.2~b2-0ubuntu3) saucy; urgency=low
+
+  * d/p/neutron-conf.patch: Cherry picked commit from upstream VCS which
+    fixes a number of 'quantum' references across all configuration files. 
+  * d/neutron_sudoers: Remove typo to re-enable passwordless sudo for neutron.
+  * d/p/fix-quantum-conf.patch: Enable use of neutron-rootwrap by default,
+    fixup problem with use of /var/lib/quantum for keystone signing_dir.
+
+ -- James Page <james.page@ubuntu.com>  Wed, 24 Jul 2013 16:09:08 +0100
+
+neutron (1:2013.2~b2-0ubuntu2) saucy; urgency=low
+
+  * d/neutron-server.upstart: Execute correct server binary, fixup
+    use of flags in /etc/default/neutron-server.
+  * d/p/bump-sqlalchemy-version.patch: Support SQLAlchemy >= 0.8 until
+    upstream catches up.
+  * Re-jig test disablement patches:
+    - d/p/disable-udev-tests.patch: Disable tests that use udev as it
+      is not always available.
+    - d/p/disable-ml2-notification-tests.patch: Disable failing ML2 plugin
+      tests pending further investigation.
+  * d/p/fix-quantum-configuration.patch: Remove rej and orig cruft, re-added
+    missing default core_plugin configuration.
+  * d/control: Drop pep8 from BD's, no longer required.
+
+ -- James Page <james.page@ubuntu.com>  Wed, 24 Jul 2013 11:41:56 +0100
+
+neutron (1:2013.2~b2-0ubuntu1) saucy; urgency=low
+
+  [ Chuck Short ]
+  * New upstream version.
+  * debian/patches/fix-quantum-configuration.patch: Refreshed 
+  * Renamed quantum -> neutron inline with upstream:
+    - debian/neutron*.install: Update paths and files for rename.
+    - debian/cron.d: Update for new neutron names.
+    - debian/control: 
+      + Add transtional packages.
+      + Add breaks/replaces with previous versions of quantum.
+  * debian/patches/fix-ubuntu-tests.patch: Refreshed
+  * debian/patches/ignore-quantum-binaries.patch: Don't install quantum
+    binaries.
+  * Add new mlnx agent package.
+
+  [ James Page ]
+  * d/control: Update VCS fields for new branch locations.
+  * d/NEWS: Let users know they need to migrate configuration manually as part
+    of the quantum->neutron rename.
+  * d/neutron-common.install: Include rootwrap for Xen dom0 installs.
+
+  [ Adam Gandelman ]
+  * debian/control: Set minimum python-kombu version >= 2.5.12.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 19 Jul 2013 12:11:18 -0400
+
+quantum (1:2013.2~b1-0ubuntu2) saucy; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/control:
+    - Add version requirement to python-stevedore (>= 0.8), also add to
+      python-quantum depends.
+    - Add version requirement to python-fixtures (>= 0.3.12).
+  * debian/patches/*: Refreshed.
+
+  [ Yolanda Robla ]
+  * debian/tests: added autopkg tests
+ 
+  [Chuck Short]
+  * debian/patches/fix-ubuntu-tests.patch: Rediff to skip tests
+    that were randomly failing in the PPAS or locally.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 19 Jun 2013 12:06:15 -0500
+
+quantum (1:2013.2~b1-0ubuntu1) saucy; urgency=low
+
+  * New upstream release.
+  * debian/patches/fix-quantum-configuration.patch: Refreshed
+  * debian/control: Add testrepository.
+  * debian/control: Add subunit.
+  * debian/control: Add python-d21o1 and python-pbr as build-depends.
+  * debian/control: Add python-stevedore.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 31 May 2013 09:37:25 -0500
+
+quantum (1:2013.1-0ubuntu2) raring; urgency=low
+
+  * Fix invalid multi-line cron jobs (LP: #1170312):
+    - d/cron.d/*: Consolidate jobs into a single command line, set syntax
+      highlighting to type 'crontab'. 
+
+ -- James Page <james.page@ubuntu.com>  Mon, 22 Apr 2013 15:58:12 +0100
+
+quantum (1:2013.1-0ubuntu1) raring; urgency=low
+
+  * New upstream release.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 04 Apr 2013 14:03:41 -0500
+
+quantum (1:2013.1~rc2-0ubuntu1) raring; urgency=low
+
+  * New upstream release. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 26 Mar 2013 08:33:56 -0500
+
+quantum (1:2013.1~rc1-0ubuntu1) raring; urgency=low
+
+  [ Chuck Short ]
+  * debian/patches/fix-quantum-configuration.patch: Refreshed
+  * debian/control: Add python-testtools and python-fixtures a build-dep.
+  * debian/control: Drop python-gflags no longer needed.
+  * debian/control: Drop python-unittest2 no longer needed.
+
+  [ James Page ]
+  * New upstream release candidate.
+  * d/watch: Update uversionmangle to deal with upstream versioning
+    changes, remove tarballs.openstack.org.
+  * d/rules: Disable PEP-8 tests until fixed upstream.
+  * d/control,quantum-plugin-midonet.install: Added plugin package for
+    Midonet. 
+  * d/control,quantum-lbaas-*: Added Load Balancing as-a Service agent
+    package. 
+  * d/control: Bumped Standards-Version, no changes.
+  * d/p/fix-quantum-configuration.patch: Added midonet sqlite path to
+    patch, fixed up linuxbridge path. 
+  * d/p/fix-ubuntu-tests.patch: Re-added skipTest for linuxbridge tests
+    that attempt to setup udev monitors.
+  * d/quantum-metadata-agent.*: Refactor metadata-agent into separate
+    package and add Depends from quantum-l3-agent and quantum-dhcp-agent.
+  * d/quantum-plugin-nicira.install: Add quantum-check-nvp-config binary.
+  * d/control: Add iputils-arping to quantum-l3-agent Depends (LP: #1153066).
+  * d/control: python-oslo-config -> python-oslo.config.
+  * d/control: Bump python-quantumclient >= 1:2.2.0 inline with upstream.
+
+ -- James Page <james.page@ubuntu.com>  Fri, 15 Mar 2013 09:37:28 +0000
+
+quantum (2013.1.g3-0ubuntu1) raring; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/patches/fix-quantum-configuration.patch: Refreshed and update to
+    reflect new global root_wrap configuration defined only in
+    /etc/quantum/quantum.conf.
+  * debian/patches/fix-ubuntu-tests.patch: Refreshed, added skipTests for
+    linuxbridge tests that attempt to setup udev monitors.
+  * debian/{control, quantum-server.install}: Drop quantum-ns-metadata-proxy,
+    quantum-metadata-agent, quantum-debug from quantum-server package and set a
+    Break/Replaces on the last quantum-server package that shipped them.
+    (LP: #1112203)
+  * debian/{control, quantum-plugin-nec.install}:  Drop rootwrap filters,
+    only install /w the agent.
+  * debian/control: Add Breaks/Replaces between quantum-plugin-nec and new
+    quantum-plugin-nec-agent.
+
+  [ Yolanda Robla ]
+  * debian/patches: refreshed patches
+
+  [ James Page ]
+  * d/p/fix-quantum-configuration.patch: Add root_wrap helper to AGENT
+    section of /etc/quantum/quantum.conf to support new global configuration.
+  * d/control,quantum-plugin-{bigswitch,brocade,plumgrid}.install: Add new
+    plugin packages for BigSwitch, Brocade, Hyper-V and PLUMgrid.
+  * d/p/fix-quantum-configuration.patch: Set sqlite location for new plugins.
+  * d/control,quantum-plugin-nec-agent.*: Add new plugin agent package for NEC.
+  * d/quantum-common.install: Added new binaries and common rootwrap.d config.
+  * d/control: Removed VCS fields, updated maintainer.
+  * Wrapped and sorted debian/*.
+  * d/control: Add BD on python-oslo-config.
+  * d/control: Add BD on python-netifaces to fix RYU unit tests.
+
+  [ Chuck Short ]
+  * New upstream release.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 22 Feb 2013 09:54:36 -0600
+
+quantum (2013.1~g2-0ubuntu1) raring; urgency=low
+
+  [ Chuck Short ]
+  * New upstream version. 
+  * debian/patches/fix-quantum-configuration.patch: Refreshed.
+
+  [ Yolanda Robla ]
+  * debian/quantum-l3-agent.quantum-metadata-agent.upstart: Add
+    upstart configuration for Metadata Agent.
+  * debian/quantum-l3-agent.install: Added quantum-ns-metadata-proxy,
+    quantum-metadata-agent and metadata_agent.ini.
+  * debian/patches/fix-quantum-configuration.patch: Update rootwrap
+    configuration in metadata_agent.ini file.
+  * debian/changelog: Updated package version
+  * d/p/fix-quantum-configuration.patch: refresh patches
+  * debian/patches/fix-ubuntu-tests.patch: Refreshed.
+  * debian/control: added python-novaclient dependency
+
+  [ James Page ]
+  * d/*.install: Install entry points from bin directory instead
+    of easy-install ones generated during the package build process
+    (LP: #1085038).
+  * d/control: Drop BD on python-dev-all; its not required.
+  * d/rules: Install multiple upstart configurations for quantum-l3-agent.
+  * d/control: Tidy package descriptions.
+  * d/*.postrm: Drop as debhelper will generate update-rc.d calls in
+    maintainer scripts if required.
+  * d/quantum-common.postinst: Tweak permissions setting so that /etc/quantum
+    is not owned/writable by the quantum user, ensure that /etc/quantum/rootwrap*
+    is owned by root:root.
+  * d/*agent*.postinst: Dropped as permissions now correctly set in
+    quantum-common.
+  * d/patches/fix-quantum-configuration.patch: Re-add dropped fixes rootwrap and
+    sqlite defaults for all plugins.
+  * d/control: Added new BD on alembic (>= 0.4.1~), version python-mock >= 1.0b1.
+
+  [ Maru Newby ]
+  * debian/control: Remove unnecessary openvswitch-vswitch dependency
+    from quantum-plugin-openvswitch (LP: #1076747).
+
+ -- Yolanda Robla <yolanda.robla@canonical.com>  Tue, 22 Jan 2013 11:40:00 +0100
+
+quantum (2013.1~g1-0ubuntu1) raring; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/patches/*: Refreshed for opening of Grizzly.
+
+  [ Chuck Short ]
+  * New upstream release.
+  * debian/rules: FTFBS if there is missing binaries.
+  * debian/quantum-server.install: Add quantum-debug.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 23 Nov 2012 09:43:14 -0600
+
+quantum (2012.2-0ubuntu1) quantal; urgency=low
+
+  [ Chuck Short ]
+  * New upstream release. 
+
+  [ Adam Gandelman ]
+  * debian/cron.d/quantum-{l3, dhcp]-agent-netns-cleanup: Schedule hourly
+    cleanups of leaked Quantum network namespsaces using the
+    quantum-netns-cleanup utility.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 27 Sep 2012 13:19:33 -0500
+
+quantum (2012.2~rc3-0ubuntu1) quantal; urgency=low
+
+  * New upstream release.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 26 Sep 2012 15:14:31 -0500
+
+quantum (2012.2~rc2-0ubuntu1) quantal; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/quantum-server.{default, upstart}: Use default file to specify
+    path to plugin config, which is passed to quantum-server as
+    '--config-file' during startup. (LP: #1009294)
+  * debian/control:
+    - Remove quantum-server's dependency on 'quantum-plugin'.
+    - Specify >= 1:0.1.0.1-0ubuntu1 requirement for python-quantumclient.
+    - Add dnsmasq dependencies to quantum-dhcp-agent Depends.
+
+  [ Chuck Short ]
+  * New upstream version.
+  * debian/patches/fix-ubuntu-tests.patch: Refreshed.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 21 Sep 2012 13:01:18 -0500
+
+quantum (2012.2~rc1-0ubuntu1) quantal; urgency=low
+
+  [ Adam Gandelman ]
+  * debain/*.postrm: Fix argument-less calls to update-rc.d, redirect
+    to /dev/null.  (LP: #1047560)
+  * debian/quantum-server.upstart: Invoke start-stop-daemon properly.
+    (LP: #1047404)
+  * debain/*.postrm, *.upstart: Ensure files are named for corresponding
+    agent package, not plugin package.
+  * debian/control:
+    - Group agents with plugins.
+    - Fix some copy/paste mistakes.
+    - Set dependencies between agents and corresponding plugins.
+    - Recommend quantum-plugin-openvswitch for quantum-server.
+    - Require the same version of quantum-common and python-quantum.
+    - Add quantum-netns-cleanup utility to quantum-common.
+  * debian/patches/fix-quantum-configuration.patch: Use correct database
+    for linuxbridge plugin, use OVS plugin by default, call quantum-rootwrap
+    correctly. (LP: #1048668)
+  * Fix all use of /usr/sbin, things should go in /usr/bin.
+  * Remove dhcp and l3 plugins, they are not actually plugins.
+  * Rename packages quantum-plugin-{l3, dhcp}-agent to
+    quantum-{l3, dhcp}-agent.
+  * debain/quantum-*-agent.upstart: Specify config files as a
+    parameter to --config-file, specify log files for all.
+  * debian/*.logrotate: Add logrotate configs for server and agents.
+  * Install quantum_sudoers with quantum-common, not quantum-server.
+  * Install rootwrap filters only with the packages that require them.
+  * debian/*-agent.upstart: Specify --config-file=/etc/quantum/quantum.conf
+    in addition to plugin-specific config.  Specify log files for all agents.
+  * Allow group 'adm' read access to /var/log/quantum.
+  * debian/quantum-server.postinst: Drop, all has been moved to quantum-common.
+  * Add packaging for quantum-plugin-nec.
+
+  [ Chuck Short ]
+  * New usptream release.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Wed, 12 Sep 2012 13:41:20 -0500
+
+quantum (2012.2~rc1~20120907.1154-0ubuntu1) quantal; urgency=low
+
+  [ Adam Gandelman ]
+  * debian/control: Add missing python-keystone dependency.
+  * wrap-and-sort.
+
+  [ Chuck Short ]
+  * debian/rules:
+    - Run testsuite on build.
+    - Use get-orig-source.
+    - Add python-amqplib, python-anyjson, python-httplib2, python-iso8601,
+      python-kombu, python-lxml, python-netadr, python-pyudev to build depends
+      and run time deps.
+    - Add python-mock, python-mox, and python-unitest2 to build deps.
+    - Add adduser as a dep to quantum-common.
+  * debian/control: Bump standards version to 3.9.3
+  * debian/quantum-common.install: Add missing configuration files.
+    (LP: #988999)
+  * debian/quantum-plugin-linuxbridge.install: Make isntallable.
+  * Add manpages: gratitously ripped from debian.
+  * Fix up lintian warnings. (LP: #1025203), (LP: #1021921)
+  * Add metaplugin plugin.
+  * debian/patches/fix-namespace.patch: Dropped it was causing
+    python namespace issues.
+    (LP: #1045064)
+  * debian/*.upstart:
+    - Specify configuration file and log directory.
+    - Start on the right transition.
+  * debian/rules:
+    - Allow to disable testsuite.
+    - Dont fail if the testsuite fails.
+  * debian/patches/fix-quantum-configuration.patch: Fix configuration files.
+  * Add packaging for quantum-plugin-l3 and quantum-plugin-l3-agent
+  * Add packaging for quantum-plugin-dhcp-agent and quantum-plugin-dchp-agent
+  * debian/patches/fix-ubuntu-tests.patch: Fix testsuite failures.
+
+  [ Soren Hansen ]
+  * Update debian/watch to account for symbolically named tarballs and
+    use newer URL.
+  * Add python-configobj as a build and run time dependency. Recently added
+    tests need it, and the Cisco plugin has needed it for a while.
+  * Fix Launchpad URLs in debian/watch.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 07 Sep 2012 18:50:09 -0500
+
+quantum (2012.2~f3-0ubuntu1~cloud0) precise-folsom; urgency=low
+
+  * New upstream release.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 17 Aug 2012 10:42:58 -0500
+
+quantum (2012.2~f2-0ubuntu1~cloud0) precise-folsom; urgency=low
+
+  [ Chuck Short ]
+  * New upstream release.
+
+  [ Adam Gandelman ]
+  * debian/control, pydist-overrides: Add python-setuptools-git as a
+    Build-Depends, override as necessary. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 06 Jul 2012 12:41:43 -0400
+
+quantum (2012.2~f1-0ubuntu1~cloud0) precise-folsom; urgency=low
+
+  [ Chuck Short ]
+  * New upstream release.
+  * Add missing upsart jobs for agents. 
+  * Add sudo wrapper for quantum-rootwrap. (LP: #999142)
+
+  [ Adam Gandelman ]
+  * debian/control: Fix spacing issues that cause mk-build-deps to fail.
+  * debian/quantum-server.install: Install new plugins config directory
+    instead of old .ini.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 22 Jun 2012 12:49:23 -0400
+
+quantum (2012.1-0ubuntu1) precise; urgency=low
+
+  [Adam Gandelman]
+  * Open precise-folsom-proposed.
+  * Merge with current precise-folsom-folsom-proposed.
+
+  [Chuck Short]
+  * New upstream release.
+  * Add missing upsart jobs for agents. 
+  * Add sudo wrapper for quantum-rootwrap. (LP: #999142)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 01 Jun 2012 10:26:49 -0400
+
+quantum (2012.1-0ubuntu4) precise; urgency=low
+
+  * debian/control: Add breaks replaces since files have moved around. 
+  * Fix typo in upstart job.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 23 Apr 2012 11:23:38 -0400
+
+quantum (2012.1-0ubuntu3) precise; urgency=low
+
+  * Split out agents into its own packages. (LP: #979192) 
+    Thanks to Ghe Rivero.
+  * Add upstart job. (LP: #979190)
+  * Fix installation issues. (LP: #979159)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 12 Apr 2012 13:39:06 -0400
+
+quantum (2012.1-0ubuntu2) precise; urgency=low
+
+  * Fix lintian warnings about empty packages. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 06 Apr 2012 22:14:42 -0400
+
+quantum (2012.1-0ubuntu1) precise; urgency=low
+
+  * New upstream release. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 05 Apr 2012 11:07:46 -0400
+
+quantum (2012.1~rc2-0ubuntu1) precise; urgency=low
+
+  *  New upstream release: 
+     - debian/quantum-plugin-{ryu,openvswitch}.install: 
+       Install agents.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 03 Apr 2012 20:29:11 -0400
+
+quantum (2012.1~rc1-0ubuntu5) precise; urgency=low
+
+  * Add missing files. (LP: #972019, LP: #971981, LP: #960731) 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 02 Apr 2012 20:29:29 -0400
+
+quantum (2012.1~rc1-0ubuntu4) precise; urgency=low
+
+  * Make quantum installable again (LP: #965551):
+    - debian/control: quantum-server depends on quantum-common.
+    - debian/control: Add python-quantumclient dependency.
+    - debian/upstart: Rename and update upstart job.
+    - Fix typos in debian/quantum-common.postinst.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 30 Mar 2012 14:14:42 -0400
+
+quantum (2012.1~rc1-0ubuntu3) precise; urgency=low
+
+  * debian/control: Fix spelling typos. (LP: #960713) 
+
+ -- Paolo Rotolo <paolorotolo@ubuntu-it.org>  Fri, 23 Mar 2012 21:35:54 +0100
+
+quantum (2012.1~rc1-0ubuntu2) precise; urgency=low
+
+  * debian/control: Fix spelling typos.
+  * debian/upstart: Fix typo in upstart job
+  * debian/control: Rename quantum to quantum-server again.
+  * debian/control: Fix empty plugins.
+  * debian/upstart: use start-stop-daemon in upstart job.
+  * debian/patches/fix-namespace.patch: Fix namespace patch
+  * debian/control: Update vcs info. (LP: #960690)
+
+ -- Chuck Short <zulcss@ubuntu.com>  Tue, 20 Mar 2012 13:58:24 -0400
+
+quantum (2012.1~rc1~20120316.764-0ubuntu1) precise; urgency=low
+
+  * New upstream release. 
+  * debian/watch: Watch correct URL
+
+ -- Adam Gandelman <adamg@canonical.com>  Fri, 16 Mar 2012 12:04:48 -0700
+
+quantum (2012.1~e4-0ubuntu1) precise; urgency=low
+
+  * New upstream release.
+  * debian/rules: Take in account the new build changes.
+  * debian/quantum-server.install: Install the right files due to 
+    build changes.
+  * Client no longer is a part of quantum.
+  * debian/control: Add python-lxml
+  * Add ryu and niciria plugins.
+  * debian/rules: Run right tests script.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 05 Mar 2012 09:47:22 -0500
+
+quantum (2012.1~e2+git20120112-0ubuntu1) precise; urgency=low
+
+  * New upstream release.
+  * debian/rules: 
+    - Fix git snapshot creation.
+    - Fix running test suite during the build.
+  * debian/control: Add adduser for quantum-server.
+  * debian/quantum-plugin-{cisco,openvswitch}.install: Install
+    everything needed for the plugins.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Thu, 12 Jan 2012 04:19:33 -0500
+
+quantum (2012.1~e2-0ubuntu2) precise; urgency=low
+
+  * debian/control: Build for architecture all. 
+
+ -- Chuck Short <zulcss@ubuntu.com>  Mon, 19 Dec 2011 10:28:16 -0500
+
+quantum (2012.1~e2-0ubuntu1) precise; urgency=low
+
+  * New upstream release. 
+  * debian/rules: Add alternate get-orig-source.
+  * debian/patches/fix-version.patch: Removed no longer needed.
+  * Fix lintian warnings.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 16 Dec 2011 15:26:41 -0500
+
+quantum (2012.1~e2~20111209.f8152-0ubuntu1) precise; urgency=low
+
+  * New upstream release.
+  * debian/rules, debian/README.Source: Add support fo generating
+    new tarballs from git since tarball snapshots are not available
+    from jenkins yet.
+  * debian/rules: Update for new build system.
+  * debian/rules: Clean up files when running clean.
+  * debian/quantum-server.install, debian/quantum-server.dirs, 
+    debian/quantum-plugins.*: Update for build system changes.
+  * debian/quantum-server.postinst: Fix user creation.
+  * debian/rules: Enable testsuite when building.
+  * Fix lintian errors (LP: #899352)
+  * debian/patches/fix-quantum-version.patch: Fix generating *.pyc
+    when trying to build.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 09 Dec 2011 15:31:35 -0500
+
+quantum (2012.1~e1-0ubuntu1) precise; urgency=low
+
+  * Initial release.
+
+ -- Chuck Short <zulcss@ubuntu.com>  Fri, 18 Nov 2011 15:29:53 -0500
