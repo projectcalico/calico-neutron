@@ -14,6 +14,7 @@ logger = neutron.tests.unit.ml2.drivers.mechanism_logger:LoggerMechanismDriver
 bigswitch = neutron.plugins.ml2.drivers.mech_bigswitch.driver:BigSwitchMechanismDriver
 opendaylight = neutron.plugins.ml2.drivers.mechanism_odl:OpenDaylightMechanismDriver
 bulkless = neutron.tests.unit.ml2.drivers.mechanism_bulkless:BulklessMechanismDriver
+calico = neutron.plugins.ml2.drivers.mech_calico:CalicoMechanismDriver
 
 [neutron.service_plugins]
 dummy = neutron.tests.unit.dummy_plugin:DummyServicePlugin
