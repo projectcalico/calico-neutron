@@ -145,16 +145,16 @@ class MetadataProxyHandler(object):
 
         """
         qclient = self._get_neutron_client()
-        all_ports = qclient.list_ports(
-            fixed_ips=['ip_address=%s' % remote_address])['ports']
 
-        self.auth_info = qclient.get_auth_info()
         if networks:
-            networks = set(networks)
-            return [p for p in all_ports if p['network_id'] in networks]
+            all_ports = qclient.list_ports(
+                network_id=networks,
+                fixed_ips=['ip_address=%s' % remote_address])['ports']
         else:
-            # Flat networks should have unique IPs.
-            return all_ports
+            all_ports = qclient.list_ports(
+                fixed_ips=['ip_address=%s' % remote_address])['ports']
+        self.auth_info = qclient.get_auth_info()
+        return all_ports
 
     def _get_ports(self, remote_address, network_id=None, router_id=None):
         """Search for all ports that contain passed ip address and belongs to
