@@ -377,26 +377,23 @@
              ip = self.netns.add(name)
 --- a/neutron/agent/metadata/agent.py
 +++ b/neutron/agent/metadata/agent.py
-@@ -145,12 +145,16 @@
- 
+@@ -146,9 +146,13 @@
          """
          qclient = self._get_neutron_client()
--
-         all_ports = qclient.list_ports(
--            network_id=networks,
-             fixed_ips=['ip_address=%s' % remote_address])['ports']
-+
-         self.auth_info = qclient.get_auth_info()
--        return all_ports
-+        if networks:
-+            networks = set(networks)
-+            return [p for p in all_ports if p['network_id'] in networks]
-+        else:
-+            # Flat networks should have unique IPs.
-+            return all_ports
  
-     def _get_ports(self, remote_address, network_id=None, router_id=None):
-         """Search for all ports that contain passed ip address and belongs to
+-        all_ports = qclient.list_ports(
+-            network_id=networks,
+-            fixed_ips=['ip_address=%s' % remote_address])['ports']
++        if networks:
++            all_ports = qclient.list_ports(
++                network_id=networks,
++                fixed_ips=['ip_address=%s' % remote_address])['ports']
++        else:
++            all_ports = qclient.list_ports(
++                fixed_ips=['ip_address=%s' % remote_address])['ports']
+         self.auth_info = qclient.get_auth_info()
+         return all_ports
+ 
 @@ -165,8 +169,7 @@
          elif router_id:
              networks = self._get_router_networks(router_id)
@@ -1368,3 +1365,22 @@
  cisco_nexus = neutron.plugins.ml2.drivers.cisco.nexus.mech_cisco_nexus:CiscoNexusMechanismDriver
  hyperv = neutron.plugins.ml2.drivers.mech_hyperv:HypervMechanismDriver
  l2population = neutron.plugins.ml2.drivers.l2pop.mech_driver:L2populationMechanismDriver
+--- a/neutron/tests/unit/test_metadata_agent.py
++++ b/neutron/tests/unit/test_metadata_agent.py
+@@ -198,7 +198,15 @@
+         self.assertEqual(expected, ports)
+ 
+     def test_get_ports_no_id(self):
+-        self.assertRaises(TypeError, self.handler._get_ports, 'remote_address')
++        remote_address = 'remote-address'
++        expected = ['port1']
++        with contextlib.nested(
++            mock.patch.object(self.handler, '_get_ports_for_remote_address'),
++        ) as (mock_get_ip_addr):
++            mock_get_ip_addr[0].return_value = expected
++            ports = self.handler._get_ports(remote_address)
++            mock_get_ip_addr[0].assert_called_once_with(remote_address, None)
++        self.assertEqual(expected, ports)
+ 
+     def _get_instance_and_tenant_id_helper(self, headers, list_ports_retval,
+                                            networks=None, router_id=None):
