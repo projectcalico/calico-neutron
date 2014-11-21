@@ -36,7 +36,7 @@ import eventlet
 from eventlet.green import zmq
 import json
 import time
-from neutron import context
+from neutron import context as ctx
 from neutron import manager
 
 LOG = log.getLogger(__name__)
@@ -133,17 +133,13 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         #* initialize these properly when we first need them.                *#
         #*********************************************************************#
         self.db = None
-        self.db_context = None
 
         #*********************************************************************#
         #* Open Felix- and ACL Manager-facing sockets.                       *#
         #*********************************************************************#
         self.open_sockets()
 
-    def _get_db_context(self):
-        if not self.db_context:
-            self.db_context = context.get_admin_context()
-            LOG.info("ctxt = %s" % self.db_context)
+    def _get_db(self):
         if not self.db:
             self.db = manager.NeutronManager.get_plugin()
             LOG.info("db = %s" % self.db)
@@ -200,6 +196,11 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
 
     def felix_router_thread(self):
 
+        #*********************************************************************#
+        #* Get a Neutron DB context for this thread.                         *#
+        #*********************************************************************#
+        db_context = ctx.get_admin_context()
+
         while True:
 
             LOG.info("Felix-ROUTER: wait to receive next message")
@@ -237,7 +238,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                     #* Set up access to the Neutron database, if we haven't  *#
                     #* already.                                              *#
                     #*********************************************************#
-                    self._get_db_context()
+                    self._get_db()
 
                     #*********************************************************#
                     #* Get a list of all ports on the Felix host.            *#
@@ -247,7 +248,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                     #*********************************************************#
                     LOG.info("Query Neutron DB...")
                     ports = []
-                    for port in self.db.get_ports(self.db_context):
+                    for port in self.db.get_ports(db_context):
                         if (port['binding:host_id'] == rq['hostname'] and
                             self._port_is_endpoint_port(port)):
                             ports.append(port)
@@ -270,7 +271,8 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                     #* If we don't already have a REQ socket to this Felix,  *#
                     #* create that now.                                      *#
                     #*********************************************************#
-                    self._ensure_socket_to_felix_peer(rq['hostname'])
+                    self._ensure_socket_to_felix_peer(rq['hostname'],
+                                                      db_context)
 
                     #*********************************************************#
                     #* Now also send an ENDPOINTCREATED request to the Felix *#
@@ -280,7 +282,8 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                         self.send_endpoint(rq['hostname'],
                                            rq['resync_id'],
                                            port,
-                                           'CREATED')
+                                           'CREATED',
+                                           db_context)
 
                 elif rq['type'] == 'HEARTBEAT':
                     #*********************************************************#
@@ -305,7 +308,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
             except:
                 LOG.exception("Exception in Felix-facing ROUTER socket thread")
 
-    def _ensure_socket_to_felix_peer(self, hostname):
+    def _ensure_socket_to_felix_peer(self, hostname, db_context):
         if not hostname in self.felix_peer_sockets:
             LOG.info("Create new socket for %s" % hostname)
             try:
@@ -313,7 +316,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                 sock.setsockopt(zmq.LINGER, 0)
                 sock.connect("tcp://%s:%s" % (hostname, FELIX_ENDPOINT_PORT))
                 self.felix_peer_sockets[hostname] = sock
-                self.db.create_or_update_agent(self.db_context,
+                self.db.create_or_update_agent(db_context,
                                                {'agent_type': AGENT_TYPE_FELIX,
                                                 'binary': '',
                                                 'host': hostname,
@@ -348,7 +351,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         LOG.debug("Not a VM port: %s" % port)
         return False
 
-    def send_endpoint(self, hostname, resync_id, port, op):
+    def send_endpoint(self, hostname, resync_id, port, op, db_context):
         LOG.info("Send ENDPOINT%s to %s for %s" % (op, hostname, port))
 
         #*********************************************************************#
@@ -374,7 +377,8 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         if op == 'CREATED' or op == 'UPDATED':
             rq.update(
                 {'addrs': [{'addr': ip['ip_address'],
-                            'gateway': self._get_subnet_gw(ip['subnet_id']),
+                            'gateway': self._get_subnet_gw(ip['subnet_id'],
+                                                           db_context),
                             'properties': {'gr': False}}
                            for ip in port['fixed_ips']],
                  'mac': port['mac_address'],
@@ -426,10 +430,9 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
             self._clear_socket_to_felix_peer(hostname)
             return
 
-    def _get_subnet_gw(self, subnet_id):
+    def _get_subnet_gw(self, subnet_id, db_context):
         assert self.db
-        assert self.db_context
-        subnet = self.db.get_subnet(self.db_context, subnet_id)
+        subnet = self.db.get_subnet(db_context, subnet_id)
         return subnet['gateway_ip']
 
     def create_network_postcommit(self, context):
@@ -455,9 +458,13 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         port = context._port
         if self._port_is_endpoint_port(port):
             LOG.info("Created port: %s" % port)
-            self.send_endpoint(port['binding:host_id'], None, port, 'CREATED')
-            self._get_db_context()
-            self.db.update_port_status(self.db_context,
+            self.send_endpoint(port['binding:host_id'],
+                               None,
+                               port,
+                               'CREATED',
+                               context._plugin_context)
+            self._get_db()
+            self.db.update_port_status(context._plugin_context,
                                        port['id'],
                                        constants.PORT_STATUS_ACTIVE)
 
@@ -466,7 +473,11 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         port = context._port
         if self._port_is_endpoint_port(port):
             LOG.info("Updated port: %s" % port)
-            self.send_endpoint(port['binding:host_id'], None, port, 'UPDATED')
+            self.send_endpoint(port['binding:host_id'],
+                               None,
+                               port,
+                               'UPDATED',
+                               context._plugin_context)
 
     def delete_port_postcommit(self, context):
         LOG.info("DELETE_PORT_POSTCOMMIT: %s" % context)
@@ -476,9 +487,15 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
             self.send_endpoint(port['binding:host_id'],
                                None,
                                port,
-                               'DESTROYED')
+                               'DESTROYED',
+                               context._plugin_context)
 
     def felix_heartbeat_thread(self, hostname):
+
+        #*********************************************************************#
+        #* Get a Neutron DB context for this thread.                         *#
+        #*********************************************************************#
+        db_context = ctx.get_admin_context()
 
         while True:
 
@@ -529,13 +546,18 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
             #*****************************************************************#
             #* Felix is still there, tell OpenStack.                         *#
             #*****************************************************************#
-            self.db.create_or_update_agent(self.db_context,
+            self.db.create_or_update_agent(db_context,
                                            {'agent_type': AGENT_TYPE_FELIX,
                                             'binary': '',
                                             'host': hostname,
                                             'topic': constants.L2_AGENT_TOPIC})
 
     def acl_get_thread(self):
+
+        #*********************************************************************#
+        #* Get a Neutron DB context for this thread.                         *#
+        #*********************************************************************#
+        db_context = ctx.get_admin_context()
 
         while True:
 
@@ -585,19 +607,19 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                     #* Set up access to the Neutron database, if we haven't  *#
                     #* already.                                              *#
                     #*********************************************************#
-                    self._get_db_context()
+                    self._get_db()
 
                     #*********************************************************#
                     #* Get a list of all security groups.                    *#
                     #*********************************************************#
                     LOG.info("Query Neutron DB...")
-                    sgs = self.db.get_security_groups(self.db_context)
+                    sgs = self.db.get_security_groups(db_context)
 
                     #*********************************************************#
                     #* Send a GROUPUPDATE message for each group.            *#
                     #*********************************************************#
                     for sg in sgs:
-                        self.send_group(sg)
+                        self.send_group(sg, db_context)
 
                 elif rq['type'] == 'HEARTBEAT':
                     #*********************************************************#
@@ -622,7 +644,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
             except:
                 LOG.exception("Exception in ACL Manager-facing ROUTER thread")
 
-    def send_group(self, sg):
+    def send_group(self, sg, db_context):
         LOG.info("Publish definition of security group %s" % sg)
 
         #*********************************************************************#
@@ -636,7 +658,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
                          'outbound': outbound,
                          'inbound_default': 'deny',
                          'outbound_default': 'deny'},
-               'members': self._get_members(sg),
+               'members': self._get_members(sg, db_context),
                'issued': time.time() * 1000}
         LOG.info("Sending GROUPUPDATE: %s" % pub)
 
@@ -691,22 +713,23 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
 
         return [inbound, outbound]
 
-    def _get_members(self, sg):
+    def _get_members(self, sg, db_context):
         filters = {'security_group_id': [sg['id']]}
-        bindings = self.db._get_port_security_group_bindings(self.db_context,
+        bindings = self.db._get_port_security_group_bindings(db_context,
                                                              filters)
         endpoints = {}
         for binding in bindings:
             port_id = binding['port_id']
-            port = self.db.get_port(self.db_context, port_id)
+            port = self.db.get_port(db_context, port_id)
             endpoints[port_id] = [ip['ip_address'] for ip in port['fixed_ips']]
 
         LOG.info("Endpoints for SG %s are %s" % (sg['id'], endpoints))
         return endpoints
 
-    def send_sg_updates(self, sgids):
+    def send_sg_updates(self, sgids, db_context):
         for sgid in sgids:
-            self.send_group(self.db.get_security_group(self.db_context, sgid))
+            self.send_group(self.db.get_security_group(db_context, sgid),
+                            db_context)
 
 
 class CalicoNotifierProxy(object):
@@ -723,10 +746,10 @@ class CalicoNotifierProxy(object):
 
     def security_groups_rule_updated(self, context, sgids):
         LOG.info("security_groups_rule_updated: %s %s" % (context, sgids))
-        self.calico_driver.send_sg_updates(sgids)
+        self.calico_driver.send_sg_updates(sgids, context)
         self.ml2_notifier.security_groups_rule_updated(context, sgids)
 
     def security_groups_member_updated(self, context, sgids):
         LOG.info("security_groups_member_updated: %s %s" % (context, sgids))
-        self.calico_driver.send_sg_updates(sgids)
+        self.calico_driver.send_sg_updates(sgids, context)
         self.ml2_notifier.security_groups_member_updated(context, sgids)
