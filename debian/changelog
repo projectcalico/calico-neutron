@@ -1,4 +1,30 @@
-neutron (1:2014.1.1-fuel5.1~mira18) precise; urgency=low
+neutron (1:2014.1.1-fuel5.1~mira18calico0.8) precise; urgency=low
+
+  [ Matt Dupre ]
+  * facebd1 Add VIF_TYPE constant for routed virtual interfaces
+  * 35c5c67 DHCP agent: support routed VM interfaces as well as bridged
+  * 9747f48 ML2 plugin get_device_details: also return fixed IPs
+  * 352814d DHCP agent: ignore 'use_namespaces' config when serving
+    routed VM interfaces
+  * 417ac09 Correctly apply non-/24 subnet masks to DHCP i/fs.
+  * c2bf024 Run Dnsmasq with --enable-ra, so that it generates IPv6
+    router advertisements
+  * e65978f Add IPv6 gateway address to DHCP port, as well as IPv4
+    address
+  * cd7d51d Specify off-link flag to Dnsmasq
+  * a0b8d46 Add Calico mechanism driver to Neutron
+  * f67ca88 Depend on DHCP agent, rather than on Calico
+  * 3032a58 Report port status
+  * ee05361 Simulate Felix agent state based on connections from Felix
+    instances
+  * 3b39c34 Simplify segment-network checking
+  * 22b6d3b Plugin: VM ports only have to start with 'compute:'
+  * 7f0c06e Fix neutron.tests.unit.test_dhcp_agent
+  * affd818 Fix representation of 'any IP address', in Network API
+    security group rules
+  * 7081cd0 Use a distinct Neutron DB context on each green thread
+  * 40c8e1c Add Calico mechanism driver and ML2 entry point config to
+    neutron.egg-info
 
   [ Oleg Bondarev ]
   * e2b50de Use RPC instead of neutron client in metadata agent
