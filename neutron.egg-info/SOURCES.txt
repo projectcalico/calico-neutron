@@ -755,7 +755,6 @@ neutron/plugins/ml2/common/exceptions.py
 neutron/plugins/ml2/drivers/README.odl
 neutron/plugins/ml2/drivers/__init__.py
 neutron/plugins/ml2/drivers/mech_agent.py
-neutron/plugins/ml2/drivers/mech_calico.py
 neutron/plugins/ml2/drivers/mech_hyperv.py
 neutron/plugins/ml2/drivers/mech_linuxbridge.py
 neutron/plugins/ml2/drivers/mech_ofagent.py
