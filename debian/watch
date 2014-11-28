@@ -1,0 +1,3 @@
+version=3
+opts="uversionmangle=s/\.([a-zA-Z])/~$1/;s/%7E/~/" \
+ https://launchpad.net/neutron/+download https://launchpad.net/neutron/.*/.*/.*/neutron-(.*)\.tar\.gz
