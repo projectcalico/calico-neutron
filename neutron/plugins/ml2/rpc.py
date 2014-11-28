@@ -14,6 +14,7 @@
 #    under the License.
 
 from neutron.agent import securitygroups_rpc as sg_rpc
+from neutron.api.rpc import metadata_rpc
 from neutron.common import constants as q_const
 from neutron.common import rpc as q_rpc
 from neutron.common import topics
@@ -39,12 +40,14 @@ TAP_DEVICE_PREFIX_LENGTH = 3
 
 class RpcCallbacks(dhcp_rpc_base.DhcpRpcCallbackMixin,
                    sg_db_rpc.SecurityGroupServerRpcCallbackMixin,
-                   type_tunnel.TunnelRpcCallbackMixin):
+                   type_tunnel.TunnelRpcCallbackMixin,
+                   metadata_rpc.MetadataRpcCallbackMixin):
 
-    RPC_API_VERSION = '1.1'
+    RPC_API_VERSION = '1.2'
     # history
     #   1.0 Initial version (from openvswitch/linuxbridge)
     #   1.1 Support Security Group RPC
+    #   1.2 Support Metadata RPC
 
     def __init__(self, notifier, type_manager):
         # REVISIT(kmestery): This depends on the first three super classes

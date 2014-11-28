@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import hashlib
 import signal
 import sys
 import time
@@ -193,8 +194,10 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
         self.int_br_device_count = 0
 
         self.int_br = ovs_lib.OVSBridge(integ_br, self.root_helper)
-        self.setup_rpc()
         self.setup_integration_br()
+        # Stores port update notifications for processing in main rpc loop
+        self.updated_ports = set()
+        self.setup_rpc()
         self.bridge_mappings = bridge_mappings
         self.setup_physical_bridges(self.bridge_mappings)
         self.local_vlan_map = {}
@@ -223,10 +226,9 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
         self.sg_agent = OVSSecurityGroupAgent(self.context,
                                               self.plugin_rpc,
                                               root_helper)
-        # Stores port update notifications for processing in main rpc loop
-        self.updated_ports = set()
         # Initialize iteration counter
         self.iter_num = 0
+        self.run_daemon_loop = True
 
     def _check_ovs_version(self):
         if p_const.TYPE_VXLAN in self.tunnel_types:
@@ -656,6 +658,13 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
         :param bridge_name: the name of the integration bridge.
         :returns: the integration bridge
         '''
+        # Ensure the integration bridge is created.
+        # ovs_lib.OVSBridge.create() will run
+        #   ovs-vsctl -- --may-exist add-br BRIDGE_NAME
+        # which does nothing if bridge already exists.
+        self.int_br.create()
+        self.int_br.set_secure_mode()
+
         self.int_br.delete_port(cfg.CONF.OVS.int_peer_patch_port)
         self.int_br.remove_all_flows()
         # switch all traffic using L2 learning
@@ -767,6 +776,28 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
                              priority=0,
                              actions="drop")
 
+    def get_veth_name(self, prefix, name):
+        """Construct a veth name based on the prefix and name that does not
+           exceed the maximum length allowed for a linux device. Longer names
+           are hashed to help ensure uniqueness.
+        """
+        if len(prefix + name) <= ip_lib.VETH_MAX_NAME_LENGTH:
+            return prefix + name
+        # We can't just truncate because bridges may be distinguished
+        # by an ident at the end. A hash over the name should be unique.
+        # Leave part of the bridge name on for easier identification
+        hashlen = 6
+        namelen = ip_lib.VETH_MAX_NAME_LENGTH - len(prefix) - hashlen
+        new_name = ('%(prefix)s%(truncated)s%(hash)s' %
+                    {'prefix': prefix, 'truncated': name[0:namelen],
+                     'hash': hashlib.sha1(name).hexdigest()[0:hashlen]})
+        LOG.warning(_("Creating an interface named %(name)s exceeds the "
+                      "%(limit)d character limitation. It was shortened to "
+                      "%(new_name)s to fit."),
+                    {'name': name, 'limit': ip_lib.VETH_MAX_NAME_LENGTH,
+                     'new_name': new_name})
+        return new_name
+
     def setup_physical_bridges(self, bridge_mappings):
         '''Setup the physical network bridges.
 
@@ -798,9 +829,11 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
             self.phys_brs[physical_network] = br
 
             # create veth to patch physical bridge with integration bridge
-            int_veth_name = constants.VETH_INTEGRATION_PREFIX + bridge
+            int_veth_name = self.get_veth_name(
+                constants.VETH_INTEGRATION_PREFIX, bridge)
             self.int_br.delete_port(int_veth_name)
-            phys_veth_name = constants.VETH_PHYSICAL_PREFIX + bridge
+            phys_veth_name = self.get_veth_name(
+                constants.VETH_PHYSICAL_PREFIX, bridge)
             br.delete_port(phys_veth_name)
             if ip_lib.device_exists(int_veth_name, self.root_helper):
                 ip_lib.IPDevice(int_veth_name, self.root_helper).link.delete()
@@ -1202,7 +1235,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
         ancillary_ports = set()
         tunnel_sync = True
         ovs_restarted = False
-        while True:
+        while self.run_daemon_loop:
             start = time.time()
             port_stats = {'regular': {'added': 0,
                                       'updated': 0,
@@ -1217,6 +1250,13 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
                 ancillary_ports.clear()
                 sync = False
                 polling_manager.force_polling()
+            ovs_restarted = self.check_ovs_restart()
+            if ovs_restarted:
+                self.setup_integration_br()
+                self.setup_physical_bridges(self.bridge_mappings)
+                if self.enable_tunneling:
+                    self.setup_tunnel_br()
+                    tunnel_sync = True
             # Notify the plugin of tunnel IP
             if self.enable_tunneling and tunnel_sync:
                 LOG.info(_("Agent tunnel out of sync with plugin!"))
@@ -1225,12 +1265,6 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
                 except Exception:
                     LOG.exception(_("Error while synchronizing tunnels"))
                     tunnel_sync = True
-            ovs_restarted = self.check_ovs_restart()
-            if ovs_restarted:
-                self.setup_integration_br()
-                self.setup_physical_bridges(self.bridge_mappings)
-                if self.enable_tunneling:
-                    self.setup_tunnel_br()
             if self._agent_has_updates(polling_manager) or ovs_restarted:
                 try:
                     LOG.debug(_("Agent rpc_loop - iteration:%(iter_num)d - "
@@ -1328,9 +1362,9 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
 
             self.rpc_loop(polling_manager=pm)
 
-
-def handle_sigterm(signum, frame):
-    sys.exit(1)
+    def _handle_sigterm(self, signum, frame):
+        LOG.debug("Agent caught SIGTERM, quitting daemon loop.")
+        self.run_daemon_loop = False
 
 
 def create_agent_config_map(config):
@@ -1394,12 +1428,11 @@ def main():
         cfg.CONF.set_default('ip_lib_force_root', True)
 
     agent = OVSNeutronAgent(**agent_config)
-    signal.signal(signal.SIGTERM, handle_sigterm)
+    signal.signal(signal.SIGTERM, agent._handle_sigterm)
 
     # Start everything.
     LOG.info(_("Agent initialized successfully, now running... "))
     agent.daemon_loop()
-    sys.exit(0)
 
 
 if __name__ == "__main__":

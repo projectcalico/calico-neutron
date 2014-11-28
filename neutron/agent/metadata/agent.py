@@ -35,13 +35,35 @@ from neutron.common import constants as n_const
 from neutron.common import topics
 from neutron.common import utils
 from neutron import context
+from neutron.openstack.common.cache import cache
 from neutron.openstack.common import excutils
 from neutron.openstack.common import log as logging
 from neutron.openstack.common import loopingcall
+from neutron.openstack.common.rpc import common as rpc_common
+from neutron.openstack.common.rpc import proxy
 from neutron.openstack.common import service
 from neutron import wsgi
 
 LOG = logging.getLogger(__name__)
+
+
+class MetadataPluginAPI(proxy.RpcProxy):
+    """Agent-side RPC (stub) for agent-to-plugin interaction.
+
+    API version history:
+        1.0 - Initial version.
+    """
+
+    BASE_RPC_API_VERSION = '1.0'
+
+    def __init__(self, topic):
+        super(MetadataPluginAPI, self).__init__(
+            topic=topic, default_version=self.BASE_RPC_API_VERSION)
+
+    def get_ports(self, context, filters):
+        return self.call(context,
+                         self.make_msg('get_ports',
+                                       filters=filters))
 
 
 class MetadataProxyHandler(object):
@@ -79,12 +101,61 @@ class MetadataProxyHandler(object):
         cfg.StrOpt('metadata_proxy_shared_secret',
                    default='',
                    help=_('Shared secret to sign instance-id request'),
-                   secret=True)
+                   secret=True),
+        cfg.BoolOpt('use_rpc',
+                    default=True,
+                    help=_("Use RPC instead of neutron client to fetch ports "
+                           "from neutron server.")),
     ]
 
     def __init__(self, conf):
         self.conf = conf
         self.auth_info = {}
+        if self.conf.cache_url:
+            self._cache = cache.get_cache(self.conf.cache_url)
+        else:
+            self._cache = False
+
+        self.use_rpc = self.conf.use_rpc
+        if self.use_rpc:
+            self.plugin_rpc = MetadataPluginAPI(topics.PLUGIN)
+            self.context = context.get_admin_context_without_session()
+
+    def _get_ports_from_server(self, router_id=None, networks=None,
+                               ip_address=None):
+        if self.use_rpc:
+            filters = {}
+            if router_id:
+                filters['device_id'] = [router_id]
+                filters['device_owner'] = [n_const.DEVICE_OWNER_ROUTER_INTF]
+            if networks:
+                filters['network_id'] = networks
+            if ip_address:
+                filters['fixed_ips'] = {'ip_address': [ip_address]}
+            try:
+                return self.plugin_rpc.get_ports(self.context, filters)
+            except rpc_common.RPCException:
+                # server does not support metadata RPC
+                self.use_rpc = False
+
+        # fallback to using neutron client
+        filters = {}
+        if router_id:
+            filters['device_id'] = router_id
+            filters['device_owner'] = n_const.DEVICE_OWNER_ROUTER_INTF
+        if networks:
+            filters['network_id'] = networks
+        if ip_address:
+            filters['fixed_ips'] = ['ip_address=%s' % ip_address]
+        return self._get_ports_using_client(filters)
+
+    def _get_ports_using_client(self, params):
+        n_client = self._get_neutron_client()
+        ports = n_client.list_ports(**params)
+
+        self.auth_info = n_client.get_auth_info()
+
+        return ports['ports']
 
     def _get_neutron_client(self):
         qclient = client.Client(
@@ -119,27 +190,48 @@ class MetadataProxyHandler(object):
                     'Please try your request again.')
             return webob.exc.HTTPInternalServerError(explanation=unicode(msg))
 
-    def _get_instance_and_tenant_id(self, req):
-        qclient = self._get_neutron_client()
+    @utils.cache_method_results
+    def _get_router_networks(self, router_id):
+        """Find all networks connected to given router."""
+        internal_ports = self._get_ports_from_server(router_id=router_id)
+        return tuple(p['network_id'] for p in internal_ports)
 
+    @utils.cache_method_results
+    def _get_ports_for_remote_address(self, remote_address, networks):
+        """Get list of ports that has given ip address and are part of
+        given networks.
+
+        :param networks: list of networks in which the ip address will be
+                         searched for
+
+        """
+        return self._get_ports_from_server(networks=networks,
+                                           ip_address=remote_address)
+
+    def _get_ports(self, remote_address, network_id=None, router_id=None):
+        """Search for all ports that contain passed ip address and belongs to
+        given network.
+
+        If no network is passed ports are searched on all networks connected to
+        given router. Either one of network_id or router_id must be passed.
+
+        """
+        if network_id:
+            networks = (network_id,)
+        elif router_id:
+            networks = self._get_router_networks(router_id)
+        else:
+            raise TypeError(_("Either one of parameter network_id or router_id"
+                              " must be passed to _get_ports method."))
+
+        return self._get_ports_for_remote_address(remote_address, networks)
+
+    def _get_instance_and_tenant_id(self, req):
         remote_address = req.headers.get('X-Forwarded-For')
         network_id = req.headers.get('X-Neutron-Network-ID')
         router_id = req.headers.get('X-Neutron-Router-ID')
 
-        if network_id:
-            networks = [network_id]
-        else:
-            internal_ports = qclient.list_ports(
-                device_id=router_id,
-                device_owner=n_const.DEVICE_OWNER_ROUTER_INTF)['ports']
-
-            networks = [p['network_id'] for p in internal_ports]
-
-        ports = qclient.list_ports(
-            network_id=networks,
-            fixed_ips=['ip_address=%s' % remote_address])['ports']
-
-        self.auth_info = qclient.get_auth_info()
+        ports = self._get_ports(remote_address, network_id, router_id)
         if len(ports) == 1:
             return ports[0]['device_id'], ports[0]['tenant_id']
         return None, None
@@ -324,6 +416,8 @@ def main():
     eventlet.monkey_patch()
     cfg.CONF.register_opts(UnixDomainMetadataProxy.OPTS)
     cfg.CONF.register_opts(MetadataProxyHandler.OPTS)
+    cache.register_oslo_configs(cfg.CONF)
+    cfg.CONF.set_default(name='cache_url', default='')
     agent_conf.register_agent_state_opts_helper(cfg.CONF)
     cfg.CONF(project='neutron')
     config.setup_logging(cfg.CONF)

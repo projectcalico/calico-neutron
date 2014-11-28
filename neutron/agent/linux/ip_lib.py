@@ -28,6 +28,7 @@ OPTS = [
 ]
 
 
+VETH_MAX_NAME_LENGTH = 15
 LOOPBACK_DEVNAME = 'lo'
 # NOTE(ethuleau): depend of the version of iproute2, the vlan
 # interface details vary.
@@ -466,7 +467,8 @@ class IpNetnsCommand(IpCommandBase):
             check_exit_code=check_exit_code)
 
     def exists(self, name):
-        output = self._parent._execute('o', 'netns', ['list'])
+        output = self._parent._execute('o', 'netns', ['list'],
+            root_helper=self._parent.root_helper)
 
         for line in output.split('\n'):
             if name == line.strip():

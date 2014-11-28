@@ -110,11 +110,11 @@ class ServerProxy(object):
 
     def get_capabilities(self):
         try:
-            body = self.rest_call('GET', CAPABILITIES_PATH)[3]
+            body = self.rest_call('GET', CAPABILITIES_PATH)[2]
             self.capabilities = json.loads(body)
         except Exception:
-            LOG.error(_("Couldn't retrieve capabilities. "
-                        "Newer API calls won't be supported."))
+            LOG.exception(_("Couldn't retrieve capabilities. "
+                            "Newer API calls won't be supported."))
         LOG.info(_("The following capabilities were received "
                    "for %(server)s: %(cap)s"), {'server': self.server,
                                                 'cap': self.capabilities})
@@ -131,7 +131,7 @@ class ServerProxy(object):
         headers['NeutronProxy-Agent'] = self.name
         headers['Instance-ID'] = self.neutron_id
         headers['Orchestration-Service-ID'] = ORCHESTRATION_SERVICE_ID
-        headers[HASH_MATCH_HEADER] = self.mypool.consistency_hash
+        headers[HASH_MATCH_HEADER] = self.mypool.consistency_hash or ''
         if 'keep-alive' in self.capabilities:
             headers['Connection'] = 'keep-alive'
         else:
@@ -554,9 +554,13 @@ class ServerPool(object):
             # If consistency is supported, all we have to do is make any
             # rest call and the consistency header will be added. If it
             # doesn't match, the backend will return a synchronization error
-            # that will be handled by the rest_call.
+            # that will be handled by the rest_action.
             eventlet.sleep(polling_interval)
-            self.rest_call('GET', HEALTH_PATH)
+            try:
+                self.rest_action('GET', HEALTH_PATH)
+            except Exception:
+                LOG.exception(_("Encountered an error checking controller "
+                                "health."))
 
 
 class HTTPSConnectionWithValidation(httplib.HTTPSConnection):

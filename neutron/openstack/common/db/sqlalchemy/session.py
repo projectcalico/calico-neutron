@@ -306,7 +306,7 @@ from sqlalchemy.pool import NullPool, StaticPool
 from sqlalchemy.sql.expression import literal_column
 
 from neutron.openstack.common.db import exception
-from neutron.openstack.common.gettextutils import _
+from neutron.openstack.common.gettextutils import _, _LW
 from neutron.openstack.common import timeutils
 
 sqlite_db_opts = [
@@ -684,8 +684,16 @@ def _ping_listener(engine, dbapi_conn, connection_rec, connection_proxy):
         cursor.execute(ping_sql)
     except Exception as ex:
         if engine.dialect.is_disconnect(ex, dbapi_conn, cursor):
-            msg = _('Database server has gone away: %s') % ex
+            msg = _LW('Database server has gone away: %s') % ex
             LOG.warning(msg)
+
+            # if the database server has gone away, all connections in the pool
+            # have become invalid and we can safely close all of them here,
+            # rather than waste time on checking of every single connection
+            engine.dispose()
+
+            # this will be handled by SQLAlchemy and will force it to create
+            # a new connection and retry the original action
             raise sqla_exc.DisconnectionError(msg)
         else:
             raise
@@ -707,7 +715,7 @@ def _is_db_connection_error(args):
     # NOTE(adam_g): This is currently MySQL specific and needs to be extended
     #               to support Postgres and others.
     # For the db2, the error code is -30081 since the db2 is still not ready
-    conn_err_codes = ('2002', '2003', '2006', '2013', '-30081')
+    conn_err_codes = ('2002', '2003', '2006', '2013', '-30081', '1047')
     for err_code in conn_err_codes:
         if args.find(err_code) != -1:
             return True

@@ -167,22 +167,17 @@ class NeutronRestProxyV2Base(db_base_plugin_v2.NeutronDbPluginV2,
     supported_extension_aliases = ["binding"]
     servers = None
 
-    def __init__(self, server_timeout=None):
-        super(NeutronRestProxyV2Base, self).__init__()
-        # This base class is not intended to be instantiated directly.
-        # Extending class should set ServerPool.
-        if not self.servers:
-            LOG.warning(_("ServerPool not set!"))
-
     def _get_all_data(self, get_ports=True, get_floating_ips=True,
                       get_routers=True):
         admin_context = qcontext.get_admin_context()
         networks = []
-
-        all_networks = self.get_networks(admin_context) or []
+        # this method is used by the ML2 driver so it can't directly invoke
+        # the self.get_(ports|networks) methods
+        plugin = manager.NeutronManager.get_plugin()
+        all_networks = plugin.get_networks(admin_context) or []
         for net in all_networks:
             mapped_network = self._get_mapped_network_with_subnets(net)
-            flips_n_ports = {}
+            flips_n_ports = mapped_network
             if get_floating_ips:
                 flips_n_ports = self._get_network_with_floatingips(
                     mapped_network)
@@ -190,8 +185,8 @@ class NeutronRestProxyV2Base(db_base_plugin_v2.NeutronDbPluginV2,
             if get_ports:
                 ports = []
                 net_filter = {'network_id': [net.get('id')]}
-                net_ports = self.get_ports(admin_context,
-                                           filters=net_filter) or []
+                net_ports = plugin.get_ports(admin_context,
+                                             filters=net_filter) or []
                 for port in net_ports:
                     mapped_port = self._map_state_and_status(port)
                     mapped_port['attachment'] = {
@@ -471,7 +466,7 @@ class NeutronRestProxyV2(NeutronRestProxyV2Base,
             self._aliases = aliases
         return self._aliases
 
-    def __init__(self, server_timeout=None):
+    def __init__(self):
         super(NeutronRestProxyV2, self).__init__()
         LOG.info(_('NeutronRestProxy: Starting plugin. Version=%s'),
                  version_string_with_vcs())
@@ -484,7 +479,7 @@ class NeutronRestProxyV2(NeutronRestProxyV2Base,
         self.add_meta_server_route = cfg.CONF.RESTPROXY.add_meta_server_route
 
         # init network ctrl connections
-        self.servers = servermanager.ServerPool(server_timeout)
+        self.servers = servermanager.ServerPool()
         self.servers.get_topo_function = self._get_all_data
         self.servers.get_topo_function_args = {'get_ports': True,
                                                'get_floating_ips': True,
