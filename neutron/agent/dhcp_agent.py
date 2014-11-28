@@ -73,9 +73,24 @@ class DhcpAgent(manager.Manager):
         self.cache = NetworkCache()
         self.root_helper = config.get_root_helper(self.conf)
         self.dhcp_driver_cls = importutils.import_class(self.conf.dhcp_driver)
+
+        # Work out if DHCP serving for bridged or routed VM interfaces.
+        try:
+            interface_driver = importutils.import_object(
+                self.conf.interface_driver, self.conf)
+            self.bridged = interface_driver.bridged()
+        except Exception as e:
+            msg = (_("Error importing interface driver '%(driver)s': "
+                   "%(inner)s") % {'driver': self.conf.interface_driver,
+                                   'inner': e})
+            LOG.error(msg)
+            raise SystemExit(msg)
+
         ctx = context.get_admin_context_without_session()
         self.plugin_rpc = DhcpPluginApi(topics.PLUGIN,
-                                        ctx, self.conf.use_namespaces)
+                                        ctx,
+                                        self.bridged and
+                                        self.conf.use_namespaces)
         # create dhcp dir to store dhcp info
         dhcp_dir = os.path.dirname("/%s/dhcp/" % self.conf.state_path)
         if not os.path.isdir(dhcp_dir):
@@ -91,7 +106,8 @@ class DhcpAgent(manager.Manager):
                 self.root_helper
             )
             for net_id in existing_networks:
-                net = dhcp.NetModel(self.conf.use_namespaces,
+                net = dhcp.NetModel(self.bridged and
+                                    self.conf.use_namespaces,
                                     {"id": net_id,
                                      "subnets": [],
                                      "ports": []})
@@ -214,7 +230,8 @@ class DhcpAgent(manager.Manager):
         for subnet in network.subnets:
             if subnet.enable_dhcp:
                 if self.call_driver('enable', network):
-                    if (self.conf.use_namespaces and
+                    if (self.bridged and
+                        self.conf.use_namespaces and
                         self.conf.enable_isolated_metadata):
                         self.enable_isolated_metadata_proxy(network)
                     self.cache.put(network)
@@ -224,7 +241,8 @@ class DhcpAgent(manager.Manager):
         """Disable DHCP for a network known to the agent."""
         network = self.cache.get_network_by_id(network_id)
         if network:
-            if (self.conf.use_namespaces and
+            if (self.bridged and
+                self.conf.use_namespaces and
                 self.conf.enable_isolated_metadata):
                 self.disable_isolated_metadata_proxy(network)
             if self.call_driver('disable', network):
