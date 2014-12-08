@@ -134,11 +134,6 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         #*********************************************************************#
         self.db = None
 
-        #*********************************************************************#
-        #* Open Felix- and ACL Manager-facing sockets.                       *#
-        #*********************************************************************#
-        self.open_sockets()
-
     def _get_db(self):
         if not self.db:
             self.db = manager.NeutronManager.get_plugin()
@@ -158,7 +153,7 @@ class CalicoMechanismDriver(mech_agent.SimpleAgentMechanismDriverBase):
         else:
             return False
 
-    def open_sockets(self):
+    def initialize(self):
         self.zmq_context = zmq.Context()
         LOG.warn("pyzmq version is %s" % zmq.pyzmq_version())
 
