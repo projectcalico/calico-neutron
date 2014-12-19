@@ -1,0 +1,70 @@
+#!/bin/bash
+#
+# neutron-netns-cleanup  OpenStack Neutron netns cleanup utility
+#
+# chkconfig:   - 97 02
+# description: OpenStack Neutron netns cleanup utility
+#
+# This is a one-shot init.d script with the next properties:
+#
+# * It accepts 3 verbs: start, stop, status
+# * It cleans unused resources during start (system or agents startup)
+# * It cleans everything on stop (agents migration to other hosts)
+# * Once started, it will respond with status = OK
+# * Once stopped, it will respond with status = DEAD
+#
+### END INIT INFO
+
+. /etc/rc.d/init.d/functions
+
+proj=neutron
+prog=$proj-netns-cleanup
+exec="/usr/bin/$prog"
+configs=(
+    "/usr/share/$proj/$proj-dist.conf" \
+    "/etc/$proj/$proj.conf" \
+    "/etc/$proj/dhcp_agent.ini"
+)
+configs_str=${configs[@]/#/--config-file }
+
+[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+
+lockfile=/var/lock/subsys/$prog
+
+clean() {
+    cleanopts="$@"
+    [ -x $exec ] || exit 5
+    for config in ${configs[@]}; do
+        [ -f $config ] || exit 6
+    done
+    runuser -s /bin/bash neutron -c "$exec $cleanopts --log-file /var/log/$proj/netns-cleanup.log $configs_str &>/dev/null"
+    if [ "x$1" == "x--force" ]; then
+	 killall neutron-ns-metadata-proxy 2>/dev/null  || all_dead=1
+    fi
+    return $?
+}
+
+retval=0
+
+case "$1" in
+    start)
+        clean
+        retval=$?
+        [ $retval -eq 0 ] && touch $lockfile
+        ;;
+    stop)
+        clean --force
+        retval=$?
+        [ $retval -eq 0 ] && rm -f $lockfile
+        ;;
+    status)
+        [ ! -f $lockfile ] && retval=3
+        ;;
+    restart|reload|force-reload|status|condrestart|try-restart)
+        # Do nothing
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        exit 2
+esac
+exit $retval
