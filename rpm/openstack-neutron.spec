@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.1
+Version:	2014.2.1calico0.9
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -974,6 +974,9 @@ exit 0
 
 
 %changelog
+* Fri Dec 19 2014 Matt Dupre <matthew.dupre@metaswitch.com> 2014.2.1calico0.9-1
+- DHCP agent enhancements for Calico networking
+
 * Fri Dec 05 2014 Ihar Hrachyshka <ihrachys@redhat.com> 2014.2.1-1
 - Update to upstream 2014.2.1
 
@@ -1202,7 +1205,7 @@ exit 0
 - Forcing python-six version to be at least >= 1.4.1
 
 * Tue Mar 11 2014 Miguel Ángel Ajo <majopela@redhat.com> - 2014.1-0.8.b3
-- Updated to Icehouse milestone 3 
+- Updated to Icehouse milestone 3
 - Added neutron-dhcp-agent dependency bz#1019487
 - Add openstack-neutron-ibm plugin
 - Add openstack-neutron-ofagent plugin from ryu project
