@@ -1,0 +1,7 @@
+fix-quantum-configuration.patch
+disable-udev-tests.patch
+disable-failing-metaplugin-tests.patch
+skip-lb-test.patch
+skip-ipv6-tests.patch
+use-concurrency.patch
+calico.patch
