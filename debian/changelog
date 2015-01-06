@@ -1,3 +1,10 @@
+neutron (1:2014.1.1-fuel5.1~mira18calico0.9) precise; urgency=medium
+
+  * CalicoMechanismDriver: Introduce initialize method, and move socket opening there
+  * Move CalicoMechanismDriver out of Neutron tree
+
+ -- Neil Jerram <Neil.Jerram@metaswitch.com>  Tue, 06 Jan 2015 15:34:23 +0000
+
 neutron (1:2014.1.1-fuel5.1~mira18calico0.8) precise; urgency=low
 
   [ Matt Dupre ]
