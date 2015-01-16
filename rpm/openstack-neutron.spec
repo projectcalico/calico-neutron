@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.1calico0.9
+Version:	2014.2.1calico0.10
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -974,6 +974,9 @@ exit 0
 
 
 %changelog
+* Fri Jan 16 2015 Matt Dupre <matthew.dupre@metaswitch.com> 2014.2.1calico0.10-1
+- Fix NameError in RoutedInterfaceDriver.unplug() caused by typo
+
 * Fri Dec 19 2014 Matt Dupre <matthew.dupre@metaswitch.com> 2014.2.1calico0.9-1
 - DHCP agent enhancements for Calico networking
 
