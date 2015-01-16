@@ -482,8 +482,7 @@ class RoutedInterfaceDriver(LinuxInterfaceDriver):
     def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
         """Unplug the interface."""
         LOG.warning("BridgeInterfaceDriver::unplug(%s, %s, %s, %s)" %
-                    (device_name, mac_address,
-                     bridge, namespace, prefix));
+                    (device_name, bridge, namespace, prefix));
         device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
         try:
             device.link.delete()
