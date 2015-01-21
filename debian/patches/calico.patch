@@ -382,23 +382,6 @@
      def ensure_namespace(self, name):
          if not self.netns.exists(name):
              ip = self.netns.add(name)
---- a/neutron/extensions/portbindings.py
-+++ b/neutron/extensions/portbindings.py
-@@ -60,11 +60,13 @@
- VIF_TYPE_MIDONET = 'midonet'
- VIF_TYPE_MLNX_DIRECT = 'mlnx_direct'
- VIF_TYPE_MLNX_HOSTDEV = 'hostdev'
-+VIF_TYPE_ROUTED = 'routed'
- VIF_TYPE_OTHER = 'other'
- VIF_TYPES = [VIF_TYPE_UNBOUND, VIF_TYPE_BINDING_FAILED, VIF_TYPE_OVS,
-              VIF_TYPE_IVS, VIF_TYPE_BRIDGE, VIF_TYPE_802_QBG,
-              VIF_TYPE_802_QBH, VIF_TYPE_HYPERV, VIF_TYPE_MIDONET,
--             VIF_TYPE_MLNX_DIRECT, VIF_TYPE_MLNX_HOSTDEV, VIF_TYPE_OTHER]
-+             VIF_TYPE_MLNX_DIRECT, VIF_TYPE_MLNX_HOSTDEV, VIF_TYPE_ROUTED,
-+             VIF_TYPE_OTHER]
- 
- VNIC_NORMAL = 'normal'
- VNIC_DIRECT = 'direct'
 --- a/neutron/plugins/ml2/rpc.py
 +++ b/neutron/plugins/ml2/rpc.py
 @@ -153,7 +153,11 @@
