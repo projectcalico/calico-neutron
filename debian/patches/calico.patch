@@ -1,7 +1,7 @@
 Index: calico-neutron/neutron/agent/dhcp_agent.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/dhcp_agent.py	2015-02-11 11:01:11.682637032 +0000
-+++ calico-neutron/neutron/agent/dhcp_agent.py	2015-02-11 11:02:21.289788066 +0000
+--- calico-neutron.orig/neutron/agent/dhcp_agent.py	2015-02-11 15:51:09.156885944 +0000
++++ calico-neutron/neutron/agent/dhcp_agent.py	2015-02-11 15:51:09.128884658 +0000
 @@ -73,9 +73,24 @@
          self.cache = NetworkCache()
          self.root_helper = config.get_root_helper(self.conf)
@@ -59,8 +59,8 @@ Index: calico-neutron/neutron/agent/dhcp_agent.py
                  # the subnets and ports are deleted before this function is
 Index: calico-neutron/neutron/agent/linux/dhcp.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-02-11 11:01:11.682637032 +0000
-+++ calico-neutron/neutron/agent/linux/dhcp.py	2015-02-11 11:02:21.293788346 +0000
+--- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-02-11 15:51:09.156885944 +0000
++++ calico-neutron/neutron/agent/linux/dhcp.py	2015-02-11 15:52:41.997145173 +0000
 @@ -352,21 +352,49 @@
              self.NEUTRON_NETWORK_ID_KEY: self.network.id,
          }
@@ -148,17 +148,25 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
  
              cidr = netaddr.IPNetwork(subnet.cidr)
  
-@@ -795,6 +829,9 @@
+@@ -788,6 +822,7 @@
+         try:
+             self.driver = importutils.import_object(
+                 conf.interface_driver, conf)
++            self.driver_bridged = bool(self.driver.bridged())
+         except Exception as e:
+             msg = (_("Error importing interface driver '%(driver)s': "
+                    "%(inner)s") % {'driver': conf.interface_driver,
+@@ -795,6 +830,9 @@
              LOG.error(msg)
              raise SystemExit(1)
  
 +    def bridged(self):
-+        return self.driver.bridged()
++        return self.driver_bridged
 +
      def get_interface_name(self, network, port):
          """Return interface(device) name for use by the DHCP process."""
          return self.driver.get_device_name(port)
-@@ -859,24 +896,31 @@
+@@ -859,24 +897,31 @@
          for port in network.ports:
              port_device_id = getattr(port, 'device_id', None)
              if port_device_id == device_id:
@@ -179,7 +187,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
 -                                           'fixed_ips': port_fixed_ips}})
 -                    if not dhcp_port:
 -                        raise exceptions.Conflict()
-+                if self.driver.bridged():
++                if self.driver_bridged:
 +                    port_fixed_ips = []
 +                    for fixed_ip in port.fixed_ips:
 +                        port_fixed_ips.append({'subnet_id': fixed_ip.subnet_id,
@@ -207,7 +215,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
                      dhcp_port = port
                  # break since we found port that matches device_id
                  break
-@@ -900,13 +944,21 @@
+@@ -900,13 +945,21 @@
              LOG.debug(_('DHCP port %(device_id)s on network %(network_id)s'
                          ' does not yet exist.'), {'device_id': device_id,
                                                    'network_id': network.id})
@@ -216,7 +224,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
 +            # bridged, we don't allocate a unique IP address for the
 +            # DHCP port.
 +            port_fixed_ips = []
-+            if self.driver.bridged():
++            if self.driver_bridged:
 +                port_fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids]
 +
              port_dict = dict(
@@ -230,12 +238,12 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
              dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
  
          if not dhcp_port:
-@@ -946,27 +998,50 @@
+@@ -946,27 +999,50 @@
              ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
              ip_cidrs.append(ip_cidr)
  
 -        if (self.conf.enable_isolated_metadata and
-+        if not self.driver.bridged():
++        if not self.driver_bridged:
 +            # When the DHCP port and VM TAP interfaces are not
 +            # bridged, assign the subnet's gateway IP address to the
 +            # DHCP port.
@@ -254,7 +262,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
 +                    net = netaddr.IPNetwork(subnet.cidr)
 +                    ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
 +
-+        if (self.driver.bridged() and
++        if (self.driver_bridged and
 +            self.conf.enable_isolated_metadata and
              self.conf.use_namespaces):
              ip_cidrs.append(METADATA_DEFAULT_CIDR)
@@ -265,13 +273,13 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
  
          # ensure that the dhcp interface is first in the list
 -        if network.namespace is None:
-+        if self.driver.bridged() and network.namespace is None:
++        if self.driver_bridged and network.namespace is None:
              device = ip_lib.IPDevice(interface_name,
                                       self.root_helper)
              device.route.pullup_route(interface_name)
  
 -        if self.conf.use_namespaces:
-+        if (self.driver.bridged() and
++        if (self.driver_bridged and
 +            self.conf.use_namespaces):
              self._set_default_route(network, interface_name)
  
@@ -280,15 +288,15 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
      def update(self, network, device_name):
          """Update device settings for the network's DHCP on this host."""
 -        if self.conf.use_namespaces:
-+        if (self.driver.bridged() and
++        if (self.driver_bridged and
 +            self.conf.use_namespaces):
              self._set_default_route(network, device_name)
  
      def destroy(self, network, device_name):
 Index: calico-neutron/neutron/agent/linux/interface.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/interface.py	2015-02-11 11:01:11.682637032 +0000
-+++ calico-neutron/neutron/agent/linux/interface.py	2015-02-11 11:02:21.293788346 +0000
+--- calico-neutron.orig/neutron/agent/linux/interface.py	2015-02-11 15:51:09.156885944 +0000
++++ calico-neutron/neutron/agent/linux/interface.py	2015-02-11 15:51:09.140885209 +0000
 @@ -163,6 +163,13 @@
              LOG.exception(_LE("Failed deleting egress connection state of"
                                " floatingip %s"), ip_str)
@@ -357,8 +365,8 @@ Index: calico-neutron/neutron/agent/linux/interface.py
              LOG.error(_("Failed unplugging interface '%s'"),
 Index: calico-neutron/neutron/agent/linux/ip_lib.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-02-11 11:01:11.682637032 +0000
-+++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-02-11 11:02:21.293788346 +0000
+--- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-02-11 15:51:09.156885944 +0000
++++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-02-11 15:51:09.156885944 +0000
 @@ -143,6 +143,19 @@
          """Delete a virtual interface between two namespaces."""
          self._as_root('', 'link', ('del', name))
@@ -379,3 +387,66 @@ Index: calico-neutron/neutron/agent/linux/ip_lib.py
      def ensure_namespace(self, name):
          if not self.netns.exists(name):
              ip = self.netns.add(name)
+Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
+===================================================================
+--- calico-neutron.orig/neutron/tests/unit/test_dhcp_agent.py	2015-02-11 15:52:13.519838738 +0000
++++ calico-neutron/neutron/tests/unit/test_dhcp_agent.py	2015-02-11 15:52:41.997145173 +0000
+@@ -234,11 +234,11 @@
+         network.id = '1'
+         dhcp = dhcp_agent.DhcpAgent(cfg.CONF)
+         self.assertTrue(dhcp.call_driver('foo', network))
+-        self.driver.assert_called_once_with(cfg.CONF,
+-                                            mock.ANY,
+-                                            'sudo',
+-                                            mock.ANY,
+-                                            mock.ANY)
++        self.driver.assert_has_calls([mock.call(cfg.CONF,
++                                                mock.ANY,
++                                                'sudo',
++                                                mock.ANY,
++                                                mock.ANY)])
+ 
+     def _test_call_driver_failure(self, exc=None,
+                                   trace_level='exception', expected_sync=True):
+@@ -250,11 +250,11 @@
+             with mock.patch.object(dhcp,
+                                    'schedule_resync') as schedule_resync:
+                 self.assertIsNone(dhcp.call_driver('foo', network))
+-                self.driver.assert_called_once_with(cfg.CONF,
+-                                                    mock.ANY,
+-                                                    'sudo',
+-                                                    mock.ANY,
+-                                                    mock.ANY)
++                self.driver.assert_has_calls([mock.call(cfg.CONF,
++                                                        mock.ANY,
++                                                        'sudo',
++                                                        mock.ANY,
++                                                        mock.ANY)])
+                 self.assertEqual(log.call_count, 1)
+                 self.assertEqual(expected_sync, schedule_resync.called)
+ 
+@@ -1187,6 +1187,7 @@
+         self.mock_iproute = mock.MagicMock()
+         driver_cls.return_value = self.mock_driver
+         iproute_cls.return_value = self.mock_iproute
++        self.mock_driver.bridged.return_value = True
+ 
+     def _test_setup_helper(self, device_is_ready, net=None, port=None):
+         net = net or fake_network
+@@ -1213,6 +1214,7 @@
+ 
+         expected_ips = ['172.9.9.9/24', '169.254.169.254/16']
+         expected = [
++            mock.call.bridged(),
+             mock.call.get_device_name(port),
+             mock.call.init_l3(
+                 'tap12345678-12',
+@@ -1220,7 +1222,7 @@
+                 namespace=net.namespace)]
+ 
+         if not device_is_ready:
+-            expected.insert(1,
++            expected.insert(2,
+                             mock.call.plug(net.id,
+                                            port.id,
+                                            'tap12345678-12',
