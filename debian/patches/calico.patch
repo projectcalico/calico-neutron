@@ -1,0 +1,381 @@
+Index: calico-neutron/neutron/agent/dhcp_agent.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/dhcp_agent.py	2015-02-11 11:01:11.682637032 +0000
++++ calico-neutron/neutron/agent/dhcp_agent.py	2015-02-11 11:02:21.289788066 +0000
+@@ -73,9 +73,24 @@
+         self.cache = NetworkCache()
+         self.root_helper = config.get_root_helper(self.conf)
+         self.dhcp_driver_cls = importutils.import_class(self.conf.dhcp_driver)
++
++        # Work out if DHCP serving for bridged or routed VM interfaces.
++        try:
++            interface_driver = importutils.import_object(
++                self.conf.interface_driver, self.conf)
++            self.bridged = interface_driver.bridged()
++        except Exception as e:
++            msg = (_("Error importing interface driver '%(driver)s': "
++                   "%(inner)s") % {'driver': self.conf.interface_driver,
++                                   'inner': e})
++            LOG.error(msg)
++            raise SystemExit(msg)
++
+         ctx = context.get_admin_context_without_session()
+         self.plugin_rpc = DhcpPluginApi(topics.PLUGIN,
+-                                        ctx, self.conf.use_namespaces)
++                                        ctx,
++                                        self.bridged and
++                                        self.conf.use_namespaces)
+         # create dhcp dir to store dhcp info
+         dhcp_dir = os.path.dirname("/%s/dhcp/" % self.conf.state_path)
+         if not os.path.isdir(dhcp_dir):
+@@ -91,7 +106,8 @@
+                 self.root_helper
+             )
+             for net_id in existing_networks:
+-                net = dhcp.NetModel(self.conf.use_namespaces,
++                net = dhcp.NetModel(self.bridged and
++                                    self.conf.use_namespaces,
+                                     {"id": net_id,
+                                      "subnets": [],
+                                      "ports": []})
+@@ -234,7 +250,7 @@
+                     self.cache.put(network)
+                 break
+ 
+-        if enable_metadata and dhcp_network_enabled:
++        if self.bridged and enable_metadata and dhcp_network_enabled:
+             for subnet in network.subnets:
+                 if subnet.ip_version == 4 and subnet.enable_dhcp:
+                     self.enable_isolated_metadata_proxy(network)
+@@ -244,7 +260,8 @@
+         """Disable DHCP for a network known to the agent."""
+         network = self.cache.get_network_by_id(network_id)
+         if network:
+-            if (self.conf.use_namespaces and
++            if (self.bridged and
++                self.conf.use_namespaces and
+                 self.conf.enable_isolated_metadata):
+                 # NOTE(jschwarz): In the case where a network is deleted, all
+                 # the subnets and ports are deleted before this function is
+Index: calico-neutron/neutron/agent/linux/dhcp.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-02-11 11:01:11.682637032 +0000
++++ calico-neutron/neutron/agent/linux/dhcp.py	2015-02-11 11:02:21.293788346 +0000
+@@ -352,21 +352,49 @@
+             self.NEUTRON_NETWORK_ID_KEY: self.network.id,
+         }
+ 
+-        cmd = [
+-            'dnsmasq',
+-            '--no-hosts',
+-            '--no-resolv',
+-            '--strict-order',
+-            '--bind-interfaces',
+-            '--interface=%s' % self.interface_name,
+-            '--except-interface=lo',
+-            '--pid-file=%s' % self.get_conf_file_name(
+-                'pid', ensure_conf_dir=True),
+-            '--dhcp-hostsfile=%s' % self._output_hosts_file(),
+-            '--addn-hosts=%s' % self._output_addn_hosts_file(),
+-            '--dhcp-optsfile=%s' % self._output_opts_file(),
+-            '--leasefile-ro',
+-        ]
++        if self.device_manager.bridged():
++            cmd = [
++                'dnsmasq',
++                '--no-hosts',
++                '--no-resolv',
++                '--strict-order',
++                '--bind-interfaces',
++                '--interface=%s' % self.interface_name,
++                '--except-interface=lo',
++                '--pid-file=%s' % self.get_conf_file_name(
++                 'pid', ensure_conf_dir=True),
++                '--dhcp-hostsfile=%s' % self._output_hosts_file(),
++                '--addn-hosts=%s' % self._output_addn_hosts_file(),
++                '--dhcp-optsfile=%s' % self._output_opts_file(),
++                '--leasefile-ro',
++                ]
++        else:
++            # When the DHCP port and VM TAP interfaces are not
++            # bridged, we change the dnsmasq invocation as follows.
++            #   --interface=tap* # to listen on all TAP interfaces
++            #   --bind-dynamic instead of --bind-interfaces, to
++            #     automatically start listening on new TAP
++            #     interfaces as they appear
++            #   --bridge-interface=%s,tap* # to treat all TAP
++            #     interfaces as aliases of the DHCP port.
++            cmd = [
++                'dnsmasq',
++                '--no-hosts',
++                '--no-resolv',
++                '--strict-order',
++                '--bind-dynamic',
++                '--interface=%s' % self.interface_name,
++                '--interface=tap*',
++                '--bridge-interface=%s,tap*' % self.interface_name,
++                '--except-interface=lo',
++                '--pid-file=%s' % self.get_conf_file_name(
++                    'pid', ensure_conf_dir=True),
++                '--dhcp-hostsfile=%s' % self._output_hosts_file(),
++                '--addn-hosts=%s' % self._output_addn_hosts_file(),
++                '--dhcp-optsfile=%s' % self._output_opts_file(),
++                '--leasefile-ro',
++                '--enable-ra',
++                ]
+ 
+         possible_leases = 0
+         for i, subnet in enumerate(self.network.subnets):
+@@ -376,7 +404,7 @@
+                 continue
+             if subnet.ip_version == 4:
+                 mode = 'static'
+-            else:
++            elif self.device_manager.bridged():
+                 # Note(scollins) If the IPv6 attributes are not set, set it as
+                 # static to preserve previous behavior
+                 addr_mode = getattr(subnet, 'ipv6_address_mode', None)
+@@ -385,6 +413,12 @@
+                                   constants.DHCPV6_STATELESS] or
+                         not addr_mode and not ra_mode):
+                     mode = 'static'
++            else:
++                # For routed IPv6 networking specify 'off-link' flag
++                # to Dnsmasq.  This results in VM adding a default
++                # route to the link-local address of the TAP interface
++                # on the compute host.
++                mode = 'static,off-link'
+ 
+             cidr = netaddr.IPNetwork(subnet.cidr)
+ 
+@@ -795,6 +829,9 @@
+             LOG.error(msg)
+             raise SystemExit(1)
+ 
++    def bridged(self):
++        return self.driver.bridged()
++
+     def get_interface_name(self, network, port):
+         """Return interface(device) name for use by the DHCP process."""
+         return self.driver.get_device_name(port)
+@@ -859,24 +896,31 @@
+         for port in network.ports:
+             port_device_id = getattr(port, 'device_id', None)
+             if port_device_id == device_id:
+-                port_fixed_ips = []
+-                for fixed_ip in port.fixed_ips:
+-                    port_fixed_ips.append({'subnet_id': fixed_ip.subnet_id,
+-                                           'ip_address': fixed_ip.ip_address})
+-                    if fixed_ip.subnet_id in dhcp_enabled_subnet_ids:
+-                        dhcp_enabled_subnet_ids.remove(fixed_ip.subnet_id)
+-
+-                # If there are dhcp_enabled_subnet_ids here that means that
+-                # we need to add those to the port and call update.
+-                if dhcp_enabled_subnet_ids:
+-                    port_fixed_ips.extend(
+-                        [dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
+-                    dhcp_port = self.plugin.update_dhcp_port(
+-                        port.id, {'port': {'network_id': network.id,
+-                                           'fixed_ips': port_fixed_ips}})
+-                    if not dhcp_port:
+-                        raise exceptions.Conflict()
++                if self.driver.bridged():
++                    port_fixed_ips = []
++                    for fixed_ip in port.fixed_ips:
++                        port_fixed_ips.append({'subnet_id': fixed_ip.subnet_id,
++                                               'ip_address': fixed_ip.ip_address})
++                        if fixed_ip.subnet_id in dhcp_enabled_subnet_ids:
++                            dhcp_enabled_subnet_ids.remove(fixed_ip.subnet_id)
++
++                    # If there are dhcp_enabled_subnet_ids here that means that
++                    # we need to add those to the port and call update.
++                    if dhcp_enabled_subnet_ids:
++                        port_fixed_ips.extend(
++                            [dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
++                        dhcp_port = self.plugin.update_dhcp_port(
++                            port.id, {'port': {'network_id': network.id,
++                                               'fixed_ips': port_fixed_ips}})
++                        if not dhcp_port:
++                            raise exceptions.Conflict()
++                    else:
++                        dhcp_port = port
+                 else:
++                    # When the DHCP port and VM TAP interfaces are not
++                    # bridged, we don't allocate a unique IP address
++                    # for the DHCP port.
++                    LOG.debug("port.fixed_ips = %s" % port.fixed_ips)
+                     dhcp_port = port
+                 # break since we found port that matches device_id
+                 break
+@@ -900,13 +944,21 @@
+             LOG.debug(_('DHCP port %(device_id)s on network %(network_id)s'
+                         ' does not yet exist.'), {'device_id': device_id,
+                                                   'network_id': network.id})
++
++            # When the DHCP port and VM TAP interfaces are not
++            # bridged, we don't allocate a unique IP address for the
++            # DHCP port.
++            port_fixed_ips = []
++            if self.driver.bridged():
++                port_fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids]
++
+             port_dict = dict(
+                 name='',
+                 admin_state_up=True,
+                 device_id=device_id,
+                 network_id=network.id,
+                 tenant_id=network.tenant_id,
+-                fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
++                fixed_ips=port_fixed_ips)
+             dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
+ 
+         if not dhcp_port:
+@@ -946,27 +998,50 @@
+             ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
+             ip_cidrs.append(ip_cidr)
+ 
+-        if (self.conf.enable_isolated_metadata and
++        if not self.driver.bridged():
++            # When the DHCP port and VM TAP interfaces are not
++            # bridged, assign the subnet's gateway IP address to the
++            # DHCP port.
++            LOG.debug("ip_cidrs = %s" % ip_cidrs)
++
++            for i, subnet in enumerate(network.subnets):
++                if not subnet.enable_dhcp:
++                    continue
++
++                gateway = subnet.gateway_ip
++                for hr in subnet.host_routes:
++                    if hr.destination == "0.0.0.0/0":
++                        gateway = hr.nexthop
++
++                if gateway:
++                    net = netaddr.IPNetwork(subnet.cidr)
++                    ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
++
++        if (self.driver.bridged() and
++            self.conf.enable_isolated_metadata and
+             self.conf.use_namespaces):
+             ip_cidrs.append(METADATA_DEFAULT_CIDR)
+ 
++        LOG.debug("ip_cidrs = %s" % ip_cidrs)
+         self.driver.init_l3(interface_name, ip_cidrs,
+                             namespace=network.namespace)
+ 
+         # ensure that the dhcp interface is first in the list
+-        if network.namespace is None:
++        if self.driver.bridged() and network.namespace is None:
+             device = ip_lib.IPDevice(interface_name,
+                                      self.root_helper)
+             device.route.pullup_route(interface_name)
+ 
+-        if self.conf.use_namespaces:
++        if (self.driver.bridged() and
++            self.conf.use_namespaces):
+             self._set_default_route(network, interface_name)
+ 
+         return interface_name
+ 
+     def update(self, network, device_name):
+         """Update device settings for the network's DHCP on this host."""
+-        if self.conf.use_namespaces:
++        if (self.driver.bridged() and
++            self.conf.use_namespaces):
+             self._set_default_route(network, device_name)
+ 
+     def destroy(self, network, device_name):
+Index: calico-neutron/neutron/agent/linux/interface.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/linux/interface.py	2015-02-11 11:01:11.682637032 +0000
++++ calico-neutron/neutron/agent/linux/interface.py	2015-02-11 11:02:21.293788346 +0000
+@@ -163,6 +163,13 @@
+             LOG.exception(_LE("Failed deleting egress connection state of"
+                               " floatingip %s"), ip_str)
+ 
++    def bridged(self):
++        # Interfaces are normally plugged into some kind of bridge;
++        # the only exception is RoutedInterfaceDriver.  Hence return
++        # True by default here and override that in
++        # RoutedInterfaceDriver.
++        return True
++
+     def check_bridge_exists(self, bridge):
+         if not ip_lib.device_exists(bridge):
+             raise exceptions.BridgeDoesNotExist(bridge=bridge)
+@@ -434,6 +441,51 @@
+         device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
+         try:
+             device.link.delete()
++            LOG.debug(_("Unplugged interface '%s'"), device_name)
++        except RuntimeError:
++            LOG.error(_("Failed unplugging interface '%s'"),
++                      device_name)
++
++
++class RoutedInterfaceDriver(LinuxInterfaceDriver):
++    """Driver for DHCP service for routed virtual interfaces."""
++
++    DEV_NAME_PREFIX = 'ns-'
++
++    def bridged(self):
++        # Routed interfaces are not plugged into an L2 bridge.
++        return False
++
++    def plug(self, network_id, port_id, device_name, mac_address,
++             bridge=None, namespace=None, prefix=None):
++        """Plugin the interface."""
++        LOG.warning("RoutedInterfaceDriver::plug(%s, %s, %s, %s, %s, %s, %s)" %
++                    (network_id, port_id, device_name, mac_address,
++                     bridge, namespace, prefix));
++        if not ip_lib.device_exists(device_name,
++                                    self.root_helper,
++                                    namespace=namespace):
++            ip = ip_lib.IPWrapper(self.root_helper)
++
++            # Create ns_veth in a namespace if one is configured.
++            ns_veth = ip.add_dummy(device_name, namespace2=namespace)
++            ns_veth.link.set_address(mac_address)
++
++            if self.conf.network_device_mtu:
++                ns_veth.link.set_mtu(self.conf.network_device_mtu)
++
++            ns_veth.link.set_up()
++
++        else:
++            LOG.info(_("Device %s already exists"), device_name)
++
++    def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
++        """Unplug the interface."""
++        LOG.warning("BridgeInterfaceDriver::unplug(%s, %s, %s, %s)" %
++                    (device_name, bridge, namespace, prefix));
++        device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
++        try:
++            device.link.delete()
+             LOG.debug(_("Unplugged interface '%s'"), device_name)
+         except RuntimeError:
+             LOG.error(_("Failed unplugging interface '%s'"),
+Index: calico-neutron/neutron/agent/linux/ip_lib.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-02-11 11:01:11.682637032 +0000
++++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-02-11 11:02:21.293788346 +0000
+@@ -143,6 +143,19 @@
+         """Delete a virtual interface between two namespaces."""
+         self._as_root('', 'link', ('del', name))
+ 
++    def add_dummy(self, name1, namespace2=None):
++        args = ['add', name1, 'type', 'dummy']
++
++        if namespace2 is None:
++            namespace2 = self.namespace
++        else:
++            self.ensure_namespace(namespace2)
++            args += ['netns', namespace2]
++
++        self._as_root('', 'link', tuple(args))
++
++        return IPDevice(name1, self.root_helper, self.namespace)
++
+     def ensure_namespace(self, name):
+         if not self.netns.exists(name):
+             ip = self.netns.add(name)
