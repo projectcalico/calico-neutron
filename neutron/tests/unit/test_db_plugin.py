@@ -930,7 +930,6 @@ class TestPortsV2(NeutronDbPluginV2TestCase):
             self._test_list_resources('port', ports)
 
     def test_list_ports_filtered_by_fixed_ip(self):
-        self.skipTest('Skipped by Ubuntu')
         # for this test we need to enable overlapping ips
         cfg.CONF.set_default('allow_overlapping_ips', True)
         with contextlib.nested(self.port(), self.port()) as (port1, port2):
@@ -2019,7 +2018,6 @@ class TestNetworksV2(NeutronDbPluginV2TestCase):
         self.assertEqual(res.status_int, webob.exc.HTTPCreated.code)
 
     def test_create_networks_bulk_tenants_and_quotas_fail(self):
-        self.skipTest('Skipped by Ubuntu')
         if self._skip_native_bulk:
             self.skipTest("Plugin does not support native bulk network create")
         quota = 2
