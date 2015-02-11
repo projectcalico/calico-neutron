@@ -1,0 +1,7 @@
+/var/log/neutron/sriov-agent.log {
+    daily
+    missingok
+    compress
+    delaycompress
+    notifempty
+}

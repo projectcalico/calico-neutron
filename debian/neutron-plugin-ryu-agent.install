@@ -1,0 +1,2 @@
+etc/neutron/rootwrap.d/ryu-plugin.filters etc/neutron/rootwrap.d
+usr/bin/neutron-ryu-agent usr/bin
