@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.1calico0.11
+Version:	2014.2.1calico0.12.1
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -974,6 +974,9 @@ exit 0
 
 
 %changelog
+* Fri Feb 13 2015 Matt Dupre <matthew.dupre@metaswitch.com> 2014.2.1calico0.12.1-1
+- Fix unit tests
+
 * Fri Jan 30 2015 Matt Dupre <matthew.dupre@metaswitch.com> 2014.2.1calico0.11-1
 - Move VIF_TYPE_ROUTED into nova
 
