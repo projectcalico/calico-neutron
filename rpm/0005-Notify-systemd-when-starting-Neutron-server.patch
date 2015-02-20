@@ -1,0 +1,41 @@
+From 2f20872cf1a9c010f82290f8192a068432f7183a Mon Sep 17 00:00:00 2001
+From: Jakub Libosvar <libosvar@redhat.com>
+Date: Tue, 17 Jun 2014 17:20:25 +0200
+Subject: [PATCH] Notify systemd when starting Neutron server
+
+systemd is notified only when Neutron is started with multiple api
+workers. This patch adds systemd.notify_once() call when starting
+Neutron server with api_workers=0
+
+Closes-Bug: #1330532
+
+Conflicts:
+	neutron/wsgi.py
+
+Change-Id: I95581dc5dffde6168c68d9f04cf8bdfcdb773ba8
+(cherry picked from commit 09856a0cf63052045b3d9f4c8d2a5aa920c7c935)
+(cherry picked from commit e83202ba54c47dc4754a38a2911331e34e298c3c)
+---
+ neutron/wsgi.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/neutron/wsgi.py b/neutron/wsgi.py
+index 5cd6fab..1c3ae7f 100644
+--- a/neutron/wsgi.py
++++ b/neutron/wsgi.py
+@@ -45,6 +45,7 @@ from neutron.openstack.common import gettextutils
+ from neutron.openstack.common import jsonutils
+ from neutron.openstack.common import log as logging
+ from neutron.openstack.common.service import ProcessLauncher
++from neutron.openstack.common import systemd
+ 
+ socket_opts = [
+     cfg.IntOpt('backlog',
+@@ -211,6 +212,7 @@ class Server(object):
+             # For the case where only one process is required.
+             self._server = self.pool.spawn(self._run, application,
+                                            self._socket)
++            systemd.notify_once()
+         else:
+             # Minimize the cost of checking for child exit by extending the
+             # wait interval past the default of 0.01s.

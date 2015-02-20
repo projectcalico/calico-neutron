@@ -1,0 +1,9 @@
+description "OpenStack Neutron Layer 3 Agent"
+description "OpenStack Neutron Metadata Agent"
+
+start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [S016]
+
+respawn
+
+exec su -s /bin/sh -c "exec /usr/bin/neutron-metadata-agent --config-file /usr/share/neutron/neutron-dist.conf --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/metadata_agent.ini --log-file /var/log/neutron/metadata-agent.log" neutron

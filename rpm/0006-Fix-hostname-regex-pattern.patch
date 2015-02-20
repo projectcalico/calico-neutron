@@ -1,0 +1,44 @@
+From 56f9b19f558cde58b63c9b8387039347cb0865d8 Mon Sep 17 00:00:00 2001
+From: John Perkins <john.perkins@rackspace.com>
+Date: Mon, 6 Oct 2014 16:24:57 -0500
+Subject: [PATCH] Fix hostname regex pattern
+
+Current hostname_pattern regex complexity grows exponentially
+when given a string of just digits, which can be exploited to
+cause neutron-server to freeze.
+
+Change-Id: I886c6d883a9cb0acd9908495eec50bf0411d8ba8
+Closes-bug: #1378450
+(cherry picked from commit ab7ea069de5cecf1c26af50996a26e1a7f86def4)
+---
+ neutron/api/v2/attributes.py          | 4 ++--
+ neutron/tests/unit/test_attributes.py | 1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/neutron/api/v2/attributes.py b/neutron/api/v2/attributes.py
+index 0487589..8eb2c3a 100644
+--- a/neutron/api/v2/attributes.py
++++ b/neutron/api/v2/attributes.py
+@@ -537,8 +537,8 @@ def convert_to_list(data):
+         return [data]
+ 
+ 
+-HOSTNAME_PATTERN = ("(?=^.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]"
+-                    "{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,})$)")
++HOSTNAME_PATTERN = ("(?=^.{1,254}$)(^(?:(?!\d+.|-)[a-zA-Z0-9_\-]{1,62}"
++                    "[a-zA-Z0-9]\.?)+(?:[a-zA-Z]{2,})$)")
+ 
+ HEX_ELEM = '[0-9A-Fa-f]'
+ UUID_PATTERN = '-'.join([HEX_ELEM + '{8}', HEX_ELEM + '{4}',
+diff --git a/neutron/tests/unit/test_attributes.py b/neutron/tests/unit/test_attributes.py
+index 0282cdc..61ff20d 100644
+--- a/neutron/tests/unit/test_attributes.py
++++ b/neutron/tests/unit/test_attributes.py
+@@ -283,6 +283,7 @@ class TestAttributes(base.BaseTestCase):
+                     ['www.hostname.com', 'www.hostname.com'],
+                     ['77.hostname.com'],
+                     ['1000.0.0.1'],
++                    ['111111111111111111111111111111111111111111111111111111111111'],  # noqa
+                     None]
+ 
+         for ns in ns_pools:
