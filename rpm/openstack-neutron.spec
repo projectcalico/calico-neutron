@@ -1,8 +1,8 @@
 %global release_name icehouse
 
 Name:		openstack-neutron
-Version:	2014.1.3
-Release:	5%{?dist}
+Version:	2014.1.3calico0.13
+Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
 Summary:	OpenStack Networking Service
@@ -1229,6 +1229,9 @@ fi
 
 
 %changelog
+* Fri Feb 20 2015 Neil Jerram <Neil.Jerram@metaswitch.com> - 2014.1.3calico0.13-1
+- Release Project Calico's modified Neutron for RHEL 6.5
+
 * Tue Nov 25 2014 Ihar Hrachyshka <ihrachys@redhat.com> 2014.1.3-5
 - CVE-2014-7821: Fix hostname regex pattern, rhbz#1165886, rhbz#1165887
 
