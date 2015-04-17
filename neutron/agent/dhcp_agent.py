@@ -81,6 +81,13 @@ class DhcpAgent(manager.Manager):
             os.makedirs(dhcp_dir, 0o755)
         self.dhcp_version = self.dhcp_driver_cls.check_version()
         self._populate_networks_cache()
+        self._init_local_report_driver()
+
+    def _init_local_report_driver(self):
+        self.lr_driver = importutils.import_object(
+            self.conf.AGENT.local_report_driver,
+            self.conf,
+            'dhcp_agent_report.log')
 
     def _populate_networks_cache(self):
         """Populate the networks cache when the DHCP-agent starts."""
@@ -106,6 +113,7 @@ class DhcpAgent(manager.Manager):
     def after_start(self):
         self.run()
         LOG.info(_("DHCP agent started"))
+        self.lr_driver.log_event('STARTUP', {'Status': 'success'})
 
     def run(self):
         """Activate the DHCP agent."""
@@ -170,10 +178,12 @@ class DhcpAgent(manager.Manager):
                 pool.spawn(self.safe_configure_dhcp_for_network, network)
             pool.waitall()
             LOG.info(_('Synchronizing state complete'))
+            self.lr_driver.log_event('SYNC_STATE', {'Status': 'success'})
 
         except Exception as e:
             self.schedule_resync(e)
             LOG.exception(_('Unable to sync network state.'))
+            self.lr_driver.log_event('SYNC_STATE', {'Status': 'failure'})
 
     @utils.exception_logger()
     def _periodic_resync_helper(self):
@@ -580,6 +590,7 @@ class DhcpAgentWithStateReport(DhcpAgent):
             ctx = context.get_admin_context_without_session()
             self.state_rpc.report_state(ctx, self.agent_state, self.use_call)
             self.use_call = False
+            self.lr_driver.log_event('RPC_STATE_REPORT', {'Status': 'success'})
         except AttributeError:
             # This means the server does not support report_state
             LOG.warn(_("Neutron server does not support state report."
@@ -589,6 +600,7 @@ class DhcpAgentWithStateReport(DhcpAgent):
             return
         except Exception:
             LOG.exception(_("Failed reporting state!"))
+            self.lr_driver.log_event('RPC_STATE_REPORT', {'Status': 'failure'})
             return
         if self.agent_state.pop('start_flag', None):
             self.run()
@@ -601,6 +613,7 @@ class DhcpAgentWithStateReport(DhcpAgent):
 
     def after_start(self):
         LOG.info(_("DHCP agent started"))
+        self.lr_driver.log_event('STARTUP', {'Status': 'success'})
 
 
 def register_options():

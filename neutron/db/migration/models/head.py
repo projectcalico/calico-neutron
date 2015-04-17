@@ -21,6 +21,28 @@ Based on this comparison database can be healed with healing migration.
 
 """
 
+import __builtin__
+import types
+
+
+class DummyModule(types.ModuleType):
+    def __getattr__(self, key):
+        return None
+    __all__ = []
+
+
+def tryimport(name, globals={}, locals={}, fromlist=[], level=-1,
+              realimport=__builtin__.__import__, builtin=__builtin__):
+    builtin.__import__ = realimport
+    try:
+        return realimport(name, globals, locals, fromlist, level)
+    except ImportError:
+        return DummyModule(name)
+    finally:
+        builtin.__import__ = tryimport
+
+realimport, __builtin__.__import__ = __builtin__.__import__, tryimport
+
 from neutron.db import agents_db  # noqa
 from neutron.db import agentschedulers_db  # noqa
 from neutron.db import allowedaddresspairs_db  # noqa
@@ -84,6 +106,8 @@ from neutron.services.loadbalancer import agent_scheduler  # noqa
 from neutron.services.loadbalancer.drivers.embrane import (  # noqa
     models as embrane_models)
 from neutron.services.vpn.service_drivers import cisco_csr_db  # noqa
+
+__builtin__.__import__ = realimport
 
 
 def get_metadata():

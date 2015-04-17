@@ -34,6 +34,12 @@ AGENT_STATE_OPTS = [
                  help=_('Seconds between nodes reporting state to server; '
                         'should be less than agent_down_time, best if it '
                         'is half or less than agent_down_time.')),
+    cfg.StrOpt('local_report_driver',
+               default='neutron.agent.common.local_report_driver.NoopDriver',
+               help=_('Driver to provide local reports of agent operations')),
+    cfg.StrOpt('local_report_path',
+               default='$state_path/',
+               help=_('Path to provide local reports of agent operations')),
 ]
 
 INTERFACE_DRIVER_OPTS = [

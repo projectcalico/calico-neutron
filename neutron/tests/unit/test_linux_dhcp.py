@@ -780,7 +780,8 @@ class TestDnsmasq(TestBase):
             '--dhcp-hostsfile=/dhcp/%s/host' % network.id,
             '--addn-hosts=/dhcp/%s/addn_hosts' % network.id,
             '--dhcp-optsfile=/dhcp/%s/opts' % network.id,
-            '--leasefile-ro']
+            '--leasefile-ro',
+            '--dhcp-authoritative']
 
         seconds = ''
         if lease_duration == -1:
@@ -1203,8 +1204,10 @@ tag:tag0,option:router""".lstrip()
             mock.patch.object(dhcp.Dnsmasq, 'pid'),
             mock.patch.object(dhcp.Dnsmasq, 'interface_name'),
             mock.patch.object(dhcp.Dnsmasq, '_make_subnet_interface_ip_map'),
-            mock.patch.object(dm, 'device_manager')
-        ) as (isdir, active, pid, interface_name, ip_map, device_manager):
+            mock.patch.object(dm, 'device_manager'),
+            mock.patch.object(dm, 'spawn_process')
+        ) as (is_dir, active, pid, interface_name, ip_map,
+              device_manager, spawn):
             active.__get__ = mock.Mock(return_value=True)
             pid.__get__ = mock.Mock(return_value=5)
             interface_name.__get__ = mock.Mock(return_value='tap12345678-12')
@@ -1217,37 +1220,21 @@ tag:tag0,option:router""".lstrip()
                                     mock.call(exp_opt_name, exp_opt_data)])
         self.execute.assert_called_once_with(exp_args, 'sudo')
         device_manager.update.assert_called_with(fake_net, 'tap12345678-12')
+        self.assertFalse(spawn.called)
 
     def test_reload_allocations_stale_pid(self):
-        (exp_host_name, exp_host_data,
-         exp_addn_name, exp_addn_data,
-         exp_opt_name, exp_opt_data,) = self._test_reload_allocation_data
-
-        with mock.patch('__builtin__.open') as mock_open:
-            mock_open.return_value.__enter__ = lambda s: s
-            mock_open.return_value.__exit__ = mock.Mock()
-            mock_open.return_value.readline.return_value = None
-
-            with mock.patch('os.path.isdir') as isdir:
-                isdir.return_value = True
-                with mock.patch.object(dhcp.Dnsmasq, 'pid') as pid:
-                    pid.__get__ = mock.Mock(return_value=5)
-                    dm = dhcp.Dnsmasq(self.conf, FakeDualNetwork(),
-                                      version=dhcp.Dnsmasq.MINIMUM_VERSION)
-
-                    method_name = '_make_subnet_interface_ip_map'
-                    with mock.patch.object(dhcp.Dnsmasq, method_name) as ipmap:
-                        ipmap.return_value = {}
-                        with mock.patch.object(dhcp.Dnsmasq, 'interface_name'):
-                            dm.reload_allocations()
-                            self.assertTrue(ipmap.called)
-
-            self.safe.assert_has_calls([
-                mock.call(exp_host_name, exp_host_data),
-                mock.call(exp_addn_name, exp_addn_data),
-                mock.call(exp_opt_name, exp_opt_data),
-            ])
-            mock_open.assert_called_once_with('/proc/5/cmdline', 'r')
+        dm = dhcp.Dnsmasq(self.conf, FakeDualNetwork(),
+                          version=dhcp.Dnsmasq.MINIMUM_VERSION)
+        with contextlib.nested(
+            mock.patch.object(dhcp.Dnsmasq, 'pid'),
+            mock.patch.object(dhcp.Dnsmasq, 'active'),
+            mock.patch.object(dm, '_release_unused_leases'),
+            mock.patch.object(dm, 'spawn_process'),
+        ) as (pid, active, rel_leases, spawn):
+            active.__get__ = mock.Mock(return_value=False)
+            pid.__get__ = mock.Mock(return_value=5)
+            dm.reload_allocations()
+            spawn.assert_called_once_with()
 
     def test_release_unused_leases(self):
         dnsmasq = dhcp.Dnsmasq(self.conf, FakeDualNetwork())

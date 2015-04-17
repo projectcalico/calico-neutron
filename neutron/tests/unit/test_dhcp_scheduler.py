@@ -19,7 +19,7 @@ from neutron.common import constants
 from neutron.common import topics
 from neutron import context
 from neutron.db import agents_db
-from neutron.db import agentschedulers_db
+from neutron.db import agentschedulers_db as sched_db
 from neutron.db import models_v2
 from neutron.openstack.common import timeutils
 from neutron.scheduler import dhcp_agent_scheduler
@@ -61,9 +61,9 @@ class DhcpSchedulerTestCase(testlib_api.SqlTestCase):
     def _test_schedule_bind_network(self, agents, network_id):
         scheduler = dhcp_agent_scheduler.ChanceScheduler()
         scheduler._schedule_bind_network(self.ctx, agents, network_id)
-        results = (
-            self.ctx.session.query(agentschedulers_db.NetworkDhcpAgentBinding).
-            filter_by(network_id=network_id).all())
+        results = self.ctx.session.query(
+            sched_db.NetworkDhcpAgentBinding).filter_by(
+            network_id=network_id).all()
         self.assertEqual(len(agents), len(results))
         for result in results:
             self.assertEqual(network_id, result.network_id)
@@ -104,7 +104,7 @@ class DhcpSchedulerTestCase(testlib_api.SqlTestCase):
         self.assertTrue(scheduler.auto_schedule_networks(plugin,
                                                          self.ctx, "host-a"))
         results = (
-            self.ctx.session.query(agentschedulers_db.NetworkDhcpAgentBinding)
+            self.ctx.session.query(sched_db.NetworkDhcpAgentBinding)
             .all())
         self.assertEqual(1, len(results))
 
@@ -119,6 +119,6 @@ class DhcpSchedulerTestCase(testlib_api.SqlTestCase):
         self.assertTrue(scheduler.auto_schedule_networks(plugin,
                                                          self.ctx, "host-a"))
         results = (
-            self.ctx.session.query(agentschedulers_db.NetworkDhcpAgentBinding)
+            self.ctx.session.query(sched_db.NetworkDhcpAgentBinding)
             .all())
         self.assertEqual(1, len(results))

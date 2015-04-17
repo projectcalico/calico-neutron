@@ -18,6 +18,7 @@
 
 """Implements iptables rules using linux utilities."""
 
+import bisect
 import inspect
 import os
 import re
@@ -528,16 +529,35 @@ class IptablesManager(object):
 
             our_chains += [chain_str]
 
+        def _strip_packets_bytes(line):
+            # strip any [packet:byte] counts at start or end of lines
+            if line.startswith(':'):
+                # it's a chain, for example, ":neutron-billing - [0:0]"
+                line = line.split(':')[1]
+                line = line.split(' - [', 1)[0]
+            elif line.startswith('['):
+                # it's a rule, for example, "[0:0] -A neutron-billing..."
+                line = line.split('] ', 1)[1]
+            line = line.strip()
+            return line
+
         # Iterate through all the rules, trying to find an existing
         # match.
         our_rules = []
         bot_rules = []
+        old_filter_sorted = [(_strip_packets_bytes(s), s) for s in old_filter]
+        old_filter_sorted.sort(key=lambda r: r[0])
+        keys = [r[0] for r in old_filter_sorted]
         for rule in rules:
             rule_str = str(rule).strip()
             # Further down, we weed out duplicates from the bottom of the
             # list, so here we remove the dupes ahead of time.
 
-            old = self._find_last_entry(old_filter, rule_str)
+            p = bisect.bisect_right(keys, rule_str)
+            if p > 0 and keys[p - 1] == rule_str:
+                old = old_filter_sorted[p - 1][1]
+            else:
+                old = None
             if not old:
                 dup = self._find_last_entry(new_filter, rule_str)
             new_filter = [s for s in new_filter if rule_str not in s.strip()]
@@ -562,18 +582,6 @@ class IptablesManager(object):
 
         new_filter[rules_index:rules_index] = our_rules
         new_filter[rules_index:rules_index] = our_chains
-
-        def _strip_packets_bytes(line):
-            # strip any [packet:byte] counts at start or end of lines
-            if line.startswith(':'):
-                # it's a chain, for example, ":neutron-billing - [0:0]"
-                line = line.split(':')[1]
-                line = line.split(' - [', 1)[0]
-            elif line.startswith('['):
-                # it's a rule, for example, "[0:0] -A neutron-billing..."
-                line = line.split('] ', 1)[1]
-            line = line.strip()
-            return line
 
         seen_chains = set()
 

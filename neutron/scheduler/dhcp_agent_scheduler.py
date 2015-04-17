@@ -37,10 +37,13 @@ class ChanceScheduler(object):
     def _schedule_bind_network(self, context, agents, network_id):
         for agent in agents:
             context.session.begin(subtransactions=True)
+            # saving agent_id to use it after rollback to avoid
+            # DetachedInstanceError
+            agent_id = agent.id
+            binding = agentschedulers_db.NetworkDhcpAgentBinding()
+            binding.dhcp_agent_id = agent_id
+            binding.network_id = network_id
             try:
-                binding = agentschedulers_db.NetworkDhcpAgentBinding()
-                binding.dhcp_agent = agent
-                binding.network_id = network_id
                 context.session.add(binding)
                 # try to actually write the changes and catch integrity
                 # DBDuplicateEntry
@@ -48,11 +51,11 @@ class ChanceScheduler(object):
             except db_exc.DBDuplicateEntry:
                 # it's totally ok, someone just did our job!
                 context.session.rollback()
-                LOG.info(_('Agent %s already present'), agent)
+                LOG.info(_('Agent %s already present'), agent_id)
             LOG.debug(_('Network %(network_id)s is scheduled to be '
                         'hosted by DHCP agent %(agent_id)s'),
                       {'network_id': network_id,
-                       'agent_id': agent})
+                       'agent_id': agent_id})
 
     def schedule(self, plugin, context, network):
         """Schedule the network to active DHCP agent(s).
@@ -80,9 +83,8 @@ class ChanceScheduler(object):
                 return
             active_dhcp_agents = [
                 agent for agent in set(enabled_dhcp_agents)
-                if not agents_db.AgentDbMixin.is_agent_down(
-                    agent['heartbeat_timestamp'])
-                and agent not in dhcp_agents
+                if agent not in dhcp_agents and plugin.is_eligible_agent(
+                    context, True, agent)
             ]
             if not active_dhcp_agents:
                 LOG.warn(_('No more DHCP agents'))

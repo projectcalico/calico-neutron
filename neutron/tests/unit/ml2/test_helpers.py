@@ -18,8 +18,8 @@ import logging as std_logging
 import mock
 from sqlalchemy.orm import query
 
-from neutron.common import exceptions as exc
 import neutron.db.api as db
+from neutron.db import api as db_api
 from neutron.plugins.ml2.drivers import helpers
 from neutron.plugins.ml2.drivers import type_vlan
 from neutron.tests import base
@@ -134,15 +134,10 @@ class HelpersTest(testlib_api.SqlTestCase):
     def test_allocate_partial_segment_first_attempt_fails(self):
         expected = dict(physical_network=TENANT_NET)
         with mock.patch.object(query.Query, 'update', side_effect=[0, 1]):
+            self.assertRaises(
+                db_api.RetryRequest,
+                self.driver.allocate_partially_specified_segment,
+                self.session, **expected)
             observed = self.driver.allocate_partially_specified_segment(
                 self.session, **expected)
             self.check_raw_segment(expected, observed)
-
-    def test_allocate_partial_segment_all_attempts_fail(self):
-        with mock.patch.object(query.Query, 'update', return_value=0):
-            with mock.patch.object(helpers.LOG, 'warning') as log_warning:
-                self.assertRaises(
-                    exc.NoNetworkFoundInMaximumAllowedAttempts,
-                    self.driver.allocate_partially_specified_segment,
-                    self.session)
-                log_warning.assert_called_once_with(mock.ANY, mock.ANY)

@@ -213,9 +213,9 @@ def router_append_interface(router, count=1, ip_version=4, ra_mode=None,
         cidr_pool = '35.4.%i.0/24'
         gw_pool = '35.4.%i.1'
     elif ip_version == 6:
-        ip_pool = 'fd01:%x::6'
-        cidr_pool = 'fd01:%x::/64'
-        gw_pool = 'fd01:%x::1'
+        ip_pool = 'fd01:%x:1::6'
+        cidr_pool = 'fd01:%x:1::/64'
+        gw_pool = 'fd01:%x:1::1'
     else:
         raise ValueError("Invalid ip_version: %s" % ip_version)
 
@@ -224,6 +224,8 @@ def router_append_interface(router, count=1, ip_version=4, ra_mode=None,
         [netaddr.IPNetwork(p['subnet']['cidr']).version == ip_version
          for p in interfaces])
 
+    mac_address = netaddr.EUI('ca:fe:de:ad:be:ef')
+    mac_address.dialect = netaddr.mac_unix
     for i in range(current, current + count):
         interfaces.append(
             {'id': _uuid(),
@@ -231,11 +233,12 @@ def router_append_interface(router, count=1, ip_version=4, ra_mode=None,
              'admin_state_up': True,
              'fixed_ips': [{'ip_address': ip_pool % i,
                             'subnet_id': _uuid()}],
-             'mac_address': 'ca:fe:de:ad:be:ef',
+             'mac_address': str(mac_address),
              'subnet': {'cidr': cidr_pool % i,
                         'gateway_ip': gw_pool % i,
                         'ipv6_ra_mode': ra_mode,
                         'ipv6_address_mode': addr_mode}})
+        mac_address.value += 1
 
 
 def prepare_router_data(ip_version=4, enable_snat=None, num_internal_ports=1,
@@ -253,7 +256,7 @@ def prepare_router_data(ip_version=4, enable_snat=None, num_internal_ports=1,
 
     router_id = _uuid()
     ex_gw_port = {'id': _uuid(),
-                  'mac_address': 'ca:fe:de:ad:be:ef',
+                  'mac_address': 'ca:fe:de:ad:be:ee',
                   'network_id': _uuid(),
                   'fixed_ips': [{'ip_address': ip_addr,
                                  'subnet_id': _uuid()}],
@@ -321,6 +324,7 @@ class TestBasicRouterOperations(base.BaseTestCase):
         agent_config.register_interface_driver_opts_helper(self.conf)
         agent_config.register_use_namespaces_opts_helper(self.conf)
         agent_config.register_root_helper(self.conf)
+        agent_config.register_agent_state_opts_helper(self.conf)
         self.conf.register_opts(interface.OPTS)
         self.conf.set_override('router_id', 'fake_id')
         self.conf.set_override('interface_driver',
@@ -2128,6 +2132,7 @@ class TestBasicRouterOperations(base.BaseTestCase):
         fip_ns_name = agent.get_fip_ns_name(str(fip['floating_network_id']))
 
         with mock.patch.object(l3_agent.LinkLocalAllocator, '_write'):
+            self.device_exists.return_value = False
             agent.create_rtr_2_fip_link(ri, fip['floating_network_id'])
         self.mock_ip.add_veth.assert_called_with(rtr_2_fip_name,
                                                  fip_2_rtr_name, fip_ns_name)
@@ -2136,6 +2141,18 @@ class TestBasicRouterOperations(base.BaseTestCase):
             '169.254.31.29', table=16)
 
     # TODO(mrsmith): test _create_agent_gateway_port
+
+    def test_create_rtr_2_fip_link_already_exists(self):
+        agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
+        router = prepare_router_data()
+
+        ri = l3_agent.RouterInfo(router['id'], self.conf.root_helper,
+                                 self.conf.use_namespaces,
+                                 router=router)
+        self.device_exists.return_value = True
+        with mock.patch.object(l3_agent.LinkLocalAllocator, '_write'):
+            agent.create_rtr_2_fip_link(ri, {})
+        self.assertFalse(self.mock_ip.add_veth.called)
 
     def test_floating_ip_added_dist(self):
         agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)

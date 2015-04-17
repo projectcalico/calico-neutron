@@ -207,6 +207,20 @@ class ServiceWrapper(object):
         self.forktimes = []
 
 
+def heartbeat_hack():
+    LOG.debug("trying to restart heartbeat thread")
+    try:
+        import oslo.messaging._drivers.impl_rabbit as rabbit
+        # NOTE(enikanorov):
+        # at this point the driver instance we're trying to access is already
+        # initialized.
+        # It's not a singleton, so the only guarantee we have is current
+        # code structure.
+        rabbit.rabbit_driver.restart_heartbeat_thread()
+    except Exception:
+        LOG.exception(_LE("Failed to restart heartbeat thread"))
+
+
 class ProcessLauncher(object):
     def __init__(self, wait_interval=0.01):
         """Constructor.
@@ -287,6 +301,9 @@ class ProcessLauncher(object):
         # Reopen the eventlet hub to make sure we don't share an epoll
         # fd with parent and/or siblings, which would be bad
         eventlet.hubs.use_hub()
+
+        # reinitialize rabbitmq heartbeat thread after eventlet has been reset
+        heartbeat_hack()
 
         # Close write to ensure only parent has it open
         os.close(self.writepipe)

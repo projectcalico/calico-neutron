@@ -304,7 +304,7 @@ class OpenSwanProcess(BaseSwanProcess):
         self.config_file = os.path.join(
             self.etc_dir, 'ipsec.conf')
         self.pid_path = os.path.join(
-            self.config_dir, 'var', 'run', 'pluto')
+            self.config_dir, 'var', 'run', 'pluto') + os.sep
 
     def _execute(self, cmd, check_exit_code=True):
         """Execute command on namespace."""

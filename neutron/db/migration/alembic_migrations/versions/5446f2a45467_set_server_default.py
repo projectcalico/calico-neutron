@@ -30,7 +30,6 @@ import sqlalchemy as sa
 import sqlalchemy.sql
 
 from neutron.db import migration
-from neutron.plugins.cisco.common import cisco_constants
 
 # This migration will be executed only if then Neutron db contains tables for
 # selected plugins and agents.
@@ -87,7 +86,7 @@ def set_default_mlnx(default):
 
 
 def set_default_cisco(default):
-    profile_binding_default = (cisco_constants.TENANT_ID_NOT_SET
+    profile_binding_default = ('TENANT_ID_NOT_SET'
                                if default else None)
     profile_default = '0' if default else None
     if default:

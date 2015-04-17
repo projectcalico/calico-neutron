@@ -39,6 +39,7 @@ class TestBasicRouterOperations(base.BaseTestCase):
         super(TestBasicRouterOperations, self).setUp()
         self.conf = agent_config.setup_conf()
         self.conf.register_opts(base_config.core_opts)
+        self.conf.register_opts(agent_config.AGENT_STATE_OPTS, 'AGENT')
         self.conf.register_opts(varmour_router.vArmourL3NATAgent.OPTS)
         self.conf.register_opts(l3_ha_agent.OPTS)
         agent_config.register_interface_driver_opts_helper(self.conf)

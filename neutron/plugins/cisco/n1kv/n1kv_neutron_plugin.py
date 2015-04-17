@@ -18,6 +18,7 @@ from oslo.config import cfg as q_conf
 
 from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
+from neutron.api.rpc.handlers import metadata_rpc
 from neutron.api.v2 import attributes
 from neutron.common import constants
 from neutron.common import exceptions as n_exc
@@ -100,13 +101,15 @@ class N1kvNeutronPluginV2(db_base_plugin_v2.NeutronDbPluginV2,
         self.network_scheduler = importutils.import_object(
             q_conf.CONF.network_scheduler_driver
         )
+        self.start_periodic_dhcp_agent_status_check()
 
     def _setup_rpc(self):
         # RPC support
         self.service_topics = {svc_constants.CORE: topics.PLUGIN}
         self.conn = n_rpc.create_connection(new=True)
         self.endpoints = [dhcp_rpc.DhcpRpcCallback(),
-                          agents_db.AgentExtRpcCallback()]
+                          agents_db.AgentExtRpcCallback(),
+                          metadata_rpc.MetadataRpcCallback()]
         for svc_topic in self.service_topics.values():
             self.conn.create_consumer(svc_topic, self.endpoints, fanout=False)
         self.dhcp_agent_notifier = dhcp_rpc_agent_api.DhcpAgentNotifyAPI()

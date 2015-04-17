@@ -12,10 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import datetime
-import random
-import time
-
 from oslo.config import cfg
 from oslo.db import exception as db_exc
 import sqlalchemy as sa
@@ -26,6 +22,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import sql
 
 from neutron.common import constants
+from neutron.common import rpc as n_rpc
 from neutron.common import utils as n_utils
 from neutron import context as n_ctx
 from neutron.db import agents_db
@@ -34,10 +31,8 @@ from neutron.db import l3_attrs_db
 from neutron.db import model_base
 from neutron.extensions import l3agentscheduler
 from neutron import manager
-from neutron.openstack.common.gettextutils import _LI, _LW
+from neutron.openstack.common.gettextutils import _LE, _LI, _LW
 from neutron.openstack.common import log as logging
-from neutron.openstack.common import loopingcall
-from neutron.openstack.common import timeutils
 
 
 LOG = logging.getLogger(__name__)
@@ -77,41 +72,22 @@ class L3AgentSchedulerDbMixin(l3agentscheduler.L3AgentSchedulerPluginBase,
 
     router_scheduler = None
 
-    def start_periodic_agent_status_check(self):
+    def start_periodic_l3_agent_status_check(self):
         if not cfg.CONF.allow_automatic_l3agent_failover:
             LOG.info(_LI("Skipping period L3 agent status check because "
                          "automatic router rescheduling is disabled."))
             return
 
-        self.periodic_agent_loop = loopingcall.FixedIntervalLoopingCall(
+        self.setup_agent_status_check(
             self.reschedule_routers_from_down_agents)
-        interval = max(cfg.CONF.agent_down_time / 2, 1)
-        # add random initial delay to allow agents to check in after the
-        # neutron server first starts. random to offset multiple servers
-        self.periodic_agent_loop.start(interval=interval,
-            initial_delay=random.randint(interval, interval * 2))
 
     def reschedule_routers_from_down_agents(self):
         """Reschedule routers from down l3 agents if admin state is up."""
-
-        # give agents extra time to handle transient failures
-        agent_dead_limit = cfg.CONF.agent_down_time * 2
-
-        # check for an abrupt clock change since last check. if a change is
-        # detected, sleep for a while to let the agents check in.
-        tdelta = timeutils.utcnow() - getattr(self, '_clock_jump_canary',
-                                              timeutils.utcnow())
-        if timeutils.total_seconds(tdelta) > cfg.CONF.agent_down_time:
-            LOG.warn(_LW("Time since last L3 agent reschedule check has "
-                         "exceeded the interval between checks. Waiting "
-                         "before check to allow agents to send a heartbeat "
-                         "in case there was a clock adjustment."))
-            time.sleep(agent_dead_limit)
-        self._clock_jump_canary = timeutils.utcnow()
+        agent_dead_limit = self.agent_dead_limit_seconds()
+        self.wait_down_agents('L3', agent_dead_limit)
+        cutoff = self.get_cutoff_time(agent_dead_limit)
 
         context = n_ctx.get_admin_context()
-        cutoff = timeutils.utcnow() - datetime.timedelta(
-            seconds=agent_dead_limit)
         down_bindings = (
             context.session.query(RouterL3AgentBinding).
             join(agents_db.Agent).
@@ -122,15 +98,28 @@ class L3AgentSchedulerDbMixin(l3agentscheduler.L3AgentSchedulerPluginBase,
                       RouterL3AgentBinding.router_id).
             filter(sa.or_(l3_attrs_db.RouterExtraAttributes.ha == sql.false(),
                           l3_attrs_db.RouterExtraAttributes.ha == sql.null())))
-
-        for binding in down_bindings:
-            LOG.warn(_LW("Rescheduling router %(router)s from agent %(agent)s "
-                         "because the agent did not report to the server in "
-                         "the last %(dead_time)s seconds."),
-                     {'router': binding.router_id,
-                      'agent': binding.l3_agent_id,
-                      'dead_time': agent_dead_limit})
-            self.reschedule_router(context, binding.router_id)
+        try:
+            for binding in down_bindings:
+                LOG.warn(_LW(
+                    "Rescheduling router %(router)s from agent %(agent)s "
+                    "because the agent did not report to the server in "
+                    "the last %(dead_time)s seconds."),
+                    {'router': binding.router_id,
+                     'agent': binding.l3_agent_id,
+                     'dead_time': agent_dead_limit})
+                try:
+                    self.reschedule_router(context, binding.router_id)
+                except (l3agentscheduler.RouterReschedulingFailed,
+                        n_rpc.RemoteError):
+                    # Catch individual router rescheduling errors here
+                    # so one broken one doesn't stop the iteration.
+                    LOG.exception(_LE("Failed to reschedule router %s"),
+                                  binding.router_id)
+        except db_exc.DBError:
+            # Catch DB errors here so a transient DB connectivity issue
+            # doesn't stop the loopingcall.
+            LOG.exception(_LE("Exception encountered during router "
+                              "rescheduling."))
 
     def validate_agent_router_combination(self, context, agent, router):
         """Validate if the router can be correctly assigned to the agent.

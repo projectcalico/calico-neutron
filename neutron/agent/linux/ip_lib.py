@@ -550,7 +550,8 @@ class IpNetnsCommand(IpCommandBase):
             check_exit_code=check_exit_code, extra_ok_codes=extra_ok_codes)
 
     def exists(self, name):
-        output = self._parent._execute('o', 'netns', ['list'])
+        output = self._parent._execute('o', 'netns', ['list'],
+            root_helper=self._parent.root_helper)
 
         for line in output.split('\n'):
             if name == line.strip():

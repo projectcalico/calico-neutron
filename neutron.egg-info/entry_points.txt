@@ -1,0 +1,99 @@
+[neutron.ml2.mechanism_drivers]
+hyperv = neutron.plugins.ml2.drivers.mech_hyperv:HypervMechanismDriver
+l2population = neutron.plugins.ml2.drivers.l2pop.mech_driver:L2populationMechanismDriver
+cisco_apic = neutron.plugins.ml2.drivers.cisco.apic.mechanism_apic:APICMechanismDriver
+sriovnicswitch = neutron.plugins.ml2.drivers.mech_sriov.mech_driver:SriovNicSwitchMechanismDriver
+ofagent = neutron.plugins.ml2.drivers.mech_ofagent:OfagentMechanismDriver
+ncs = neutron.plugins.ml2.drivers.mechanism_ncs:NCSMechanismDriver
+cisco_nexus = neutron.plugins.ml2.drivers.cisco.nexus.mech_cisco_nexus:CiscoNexusMechanismDriver
+openvswitch = neutron.plugins.ml2.drivers.mech_openvswitch:OpenvswitchMechanismDriver
+linuxbridge = neutron.plugins.ml2.drivers.mech_linuxbridge:LinuxbridgeMechanismDriver
+mlnx = neutron.plugins.ml2.drivers.mlnx.mech_mlnx:MlnxMechanismDriver
+fslsdn = neutron.plugins.ml2.drivers.freescale.mechanism_fslsdn:FslsdnMechanismDriver
+arista = neutron.plugins.ml2.drivers.arista.mechanism_arista:AristaDriver
+nuage = neutron.plugins.ml2.drivers.mech_nuage.driver:NuageMechanismDriver
+test = neutron.tests.unit.ml2.drivers.mechanism_test:TestMechanismDriver
+brocade = neutron.plugins.ml2.drivers.brocade.mechanism_brocade:BrocadeMechanism
+logger = neutron.tests.unit.ml2.drivers.mechanism_logger:LoggerMechanismDriver
+bigswitch = neutron.plugins.ml2.drivers.mech_bigswitch.driver:BigSwitchMechanismDriver
+opendaylight = neutron.plugins.ml2.drivers.mechanism_odl:OpenDaylightMechanismDriver
+bulkless = neutron.tests.unit.ml2.drivers.mechanism_bulkless:BulklessMechanismDriver
+
+[neutron.service_plugins]
+dummy = neutron.tests.unit.dummy_plugin:DummyServicePlugin
+firewall = neutron.services.firewall.fwaas_plugin:FirewallPlugin
+metering = neutron.services.metering.metering_plugin:MeteringPlugin
+router = neutron.services.l3_router.l3_router_plugin:L3RouterPlugin
+bigswitch_l3 = neutron.plugins.bigswitch.l3_router_plugin:L3RestProxy
+vpnaas = neutron.services.vpn.plugin:VPNDriverPlugin
+lbaas = neutron.services.loadbalancer.plugin:LoadBalancerPlugin
+
+[neutron.core_plugins]
+midonet = neutron.plugins.midonet.plugin:MidonetPluginV2
+hyperv = neutron.plugins.hyperv.hyperv_neutron_plugin:HyperVNeutronPlugin
+metaplugin = neutron.plugins.metaplugin.meta_neutron_plugin:MetaPluginV2
+cisco = neutron.plugins.cisco.network_plugin:PluginV2
+ibm = neutron.plugins.ibm.sdnve_neutron_plugin:SdnvePluginV2
+oneconvergence = neutron.plugins.oneconvergence.plugin:OneConvergencePluginV2
+nec = neutron.plugins.nec.nec_plugin:NECPluginV2
+plumgrid = neutron.plugins.plumgrid.plumgrid_plugin.plumgrid_plugin:NeutronPluginPLUMgridV2
+ml2 = neutron.plugins.ml2.plugin:Ml2Plugin
+mlnx = neutron.plugins.mlnx.mlnx_plugin:MellanoxEswitchPlugin
+nuage = neutron.plugins.nuage.plugin:NuagePlugin
+brocade = neutron.plugins.brocade.NeutronPlugin:BrocadePluginV2
+bigswitch = neutron.plugins.bigswitch.plugin:NeutronRestProxyV2
+ryu = neutron.plugins.ryu.ryu_neutron_plugin:RyuNeutronPluginV2
+vmware = neutron.plugins.vmware.plugin:NsxPlugin
+embrane = neutron.plugins.embrane.plugins.embrane_ml2_plugin:EmbraneMl2Plugin
+
+[oslo.messaging.notify.drivers]
+neutron.openstack.common.notifier.test_notifier = oslo.messaging.notify._impl_test:TestDriver
+neutron.openstack.common.notifier.log_notifier = oslo.messaging.notify._impl_log:LogDriver
+neutron.openstack.common.notifier.no_op_notifier = oslo.messaging.notify._impl_noop:NoOpDriver
+neutron.openstack.common.notifier.rpc_notifier2 = oslo.messaging.notify._impl_messaging:MessagingV2Driver
+neutron.openstack.common.notifier.rpc_notifier = oslo.messaging.notify._impl_messaging:MessagingDriver
+
+[console_scripts]
+neutron-debug = neutron.debug.shell:main
+neutron-openvswitch-agent = neutron.plugins.openvswitch.agent.ovs_neutron_agent:main
+neutron-check-nsx-config = neutron.plugins.vmware.check_nsx_config:main
+neutron-sriov-nic-agent = neutron.plugins.sriovnicagent.sriov_nic_agent:main
+neutron-nec-agent = neutron.plugins.nec.agent.nec_neutron_agent:main
+neutron-rootwrap = oslo.rootwrap.cmd:main
+neutron-ovs-cleanup = neutron.agent.ovs_cleanup_util:main
+neutron-ns-metadata-proxy = neutron.agent.metadata.namespace_proxy:main
+neutron-lbaas-agent = neutron.services.loadbalancer.agent.agent:main
+neutron-cisco-cfg-agent = neutron.plugins.cisco.cfg_agent.cfg_agent:main
+neutron-ibm-agent = neutron.plugins.ibm.agent.sdnve_neutron_agent:main
+neutron-linuxbridge-agent = neutron.plugins.linuxbridge.agent.linuxbridge_neutron_agent:main
+neutron-usage-audit = neutron.cmd.usage_audit:main
+neutron-nsx-manage = neutron.plugins.vmware.shell:main
+neutron-dhcp-agent = neutron.agent.dhcp_agent:main
+neutron-mlnx-agent = neutron.plugins.mlnx.agent.eswitch_neutron_agent:main
+neutron-sanity-check = neutron.cmd.sanity_check:main
+neutron-nvsd-agent = neutron.plugins.oneconvergence.agent.nvsd_neutron_agent:main
+neutron-ryu-agent = neutron.plugins.ryu.agent.ryu_neutron_agent:main
+neutron-metering-agent = neutron.services.metering.agents.metering_agent:main
+neutron-server = neutron.server:main
+neutron-l3-agent = neutron.agent.l3_agent:main
+neutron-restproxy-agent = neutron.plugins.bigswitch.agent.restproxy_agent:main
+neutron-db-manage = neutron.db.migration.cli:main
+neutron-netns-cleanup = neutron.agent.netns_cleanup_util:main
+neutron-metadata-agent = neutron.agent.metadata.agent:main
+neutron-ofagent-agent = neutron.plugins.ofagent.agent.main:main
+neutron-vpn-agent = neutron.services.vpn.agent:main
+neutron-hyperv-agent = neutron.plugins.hyperv.agent.hyperv_neutron_agent:main
+
+[neutron.ml2.extension_drivers]
+test = neutron.tests.unit.ml2.test_extension_driver_api:TestExtensionDriver
+
+[neutron.ml2.type_drivers]
+flat = neutron.plugins.ml2.drivers.type_flat:FlatTypeDriver
+vlan = neutron.plugins.ml2.drivers.type_vlan:VlanTypeDriver
+local = neutron.plugins.ml2.drivers.type_local:LocalTypeDriver
+gre = neutron.plugins.ml2.drivers.type_gre:GreTypeDriver
+vxlan = neutron.plugins.ml2.drivers.type_vxlan:VxlanTypeDriver
+
+[neutron.openstack.common.cache.backends]
+memory = neutron.openstack.common.cache._backends.memory:MemoryBackend
+

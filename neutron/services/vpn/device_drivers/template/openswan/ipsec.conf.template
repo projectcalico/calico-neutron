@@ -29,8 +29,7 @@ conn %default
     # rightsubnet=networkA/netmaskA, networkB/netmaskB (IKEv2 only)
     rightnexthop=%defaultroute
     # [mtu]
-    # Note It looks like not supported in the strongswan driver
-    # ignore it now
+    overridemtu={{ipsec_site_connection.mtu}}
     # [dpd_action]
     dpdaction={{ipsec_site_connection.dpd_action}}
     # [dpd_interval]
@@ -54,8 +53,13 @@ conn %default
     ##########################
     # [transform_protocol]
     auth={{ipsec_site_connection.ipsecpolicy.transform_protocol}}
+    {% if ipsec_site_connection.ipsecpolicy.transform_protocol == "ah" %}
+    # [auth_algorithm]-[pfs]
+    phase2alg={{ipsec_site_connection.ipsecpolicy.auth_algorithm}};{{ipsec_site_connection.ipsecpolicy.pfs}}
+    {% else %}
     # [encryption_algorithm]-[auth_algorithm]-[pfs]
     phase2alg={{ipsec_site_connection.ipsecpolicy.encryption_algorithm}}-{{ipsec_site_connection.ipsecpolicy.auth_algorithm}};{{ipsec_site_connection.ipsecpolicy.pfs}}
+    {% endif %}
     # [encapsulation_mode]
     type={{ipsec_site_connection.ipsecpolicy.encapsulation_mode}}
     # [lifetime_value]

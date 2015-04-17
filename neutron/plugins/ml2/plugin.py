@@ -25,6 +25,7 @@ from neutron.agent import securitygroups_rpc as sg_rpc
 from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
 from neutron.api.rpc.handlers import dvr_rpc
+from neutron.api.rpc.handlers import metadata_rpc
 from neutron.api.rpc.handlers import securitygroups_rpc
 from neutron.api.v2 import attributes
 from neutron.common import constants as const
@@ -134,6 +135,7 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
             cfg.CONF.network_scheduler_driver
         )
 
+        self.start_periodic_dhcp_agent_status_check()
         LOG.info(_("Modular L2 Plugin initialization complete"))
 
     def _setup_rpc(self):
@@ -147,7 +149,8 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                           securitygroups_rpc.SecurityGroupServerRpcCallback(),
                           dvr_rpc.DVRServerRpcCallback(),
                           dhcp_rpc.DhcpRpcCallback(),
-                          agents_db.AgentExtRpcCallback()]
+                          agents_db.AgentExtRpcCallback(),
+                          metadata_rpc.MetadataRpcCallback()]
         self.topic = topics.PLUGIN
         self.conn = n_rpc.create_connection(new=True)
         self.conn.create_consumer(self.topic, self.endpoints,
@@ -245,7 +248,8 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
             # First, determine whether it is necessary and possible to
             # bind the port.
             binding = context._binding
-            if (binding.vif_type != portbindings.VIF_TYPE_UNBOUND
+            if (binding.vif_type not in [portbindings.VIF_TYPE_UNBOUND,
+                                         portbindings.VIF_TYPE_BINDING_FAILED]
                 or not binding.host):
                 # We either don't need to bind the port, or can't, so
                 # notify if needed and return.
@@ -283,12 +287,15 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                 LOG.debug("Port %s has been deleted concurrently",
                           port_id)
                 return context
+
+            context = new_context
+
+            if (context._binding.vif_type ==
+                    portbindings.VIF_TYPE_BINDING_FAILED):
+                return context
             # Need to notify if we succeed and our results were
             # committed.
-            if did_commit and (new_context._binding.vif_type !=
-                               portbindings.VIF_TYPE_BINDING_FAILED):
-                need_notify = True
-            context = new_context
+            need_notify |= did_commit
 
     def _bind_port(self, orig_context):
         # Construct a new PortContext from the one from the previous
@@ -484,7 +491,8 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     # TODO(apech): Need to override bulk operations
 
-    def create_network(self, context, network):
+    @db_api.db_retry_on_request
+    def _create_network_db(self, context, network):
         net_data = network['network']
         tenant_id = self._get_tenant_id_for_create(context, net_data)
         session = context.session
@@ -501,6 +509,10 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
             mech_context = driver_context.NetworkContext(self, context,
                                                          result)
             self.mechanism_manager.create_network_precommit(mech_context)
+        return result, mech_context
+
+    def create_network(self, context, network):
+        result, mech_context = self._create_network_db(context, network)
 
         try:
             self.mechanism_manager.create_network_postcommit(mech_context)
@@ -561,6 +573,31 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
 
         return [self._fields(net, fields) for net in nets]
 
+    def _delete_ports(self, context, ports):
+        for port in ports:
+            try:
+                self.delete_port(context, port.id)
+            except exc.PortNotFound:
+                # concurrent port deletion can be performed by
+                # release_dhcp_port caused by concurrent subnet_delete
+                LOG.info(_("Port %s was deleted concurrently"), port.id)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.exception(_("Exception auto-deleting port %s"),
+                                  port.id)
+
+    def _delete_subnets(self, context, subnets):
+        for subnet in subnets:
+            try:
+                self.delete_subnet(context, subnet.id)
+            except exc.SubnetNotFound:
+                LOG.info(_("Subnet %s was deleted concurrently"),
+                         subnet.id)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    LOG.exception(_("Exception auto-deleting subnet %s"),
+                                  subnet.id)
+
     def delete_network(self, context, id):
         # REVISIT(rkukura) The super(Ml2Plugin, self).delete_network()
         # function is not used because it auto-deletes ports and
@@ -573,11 +610,6 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
         session = context.session
         while True:
             try:
-                # REVISIT(rkukura): Its not clear that
-                # with_lockmode('update') is really needed in this
-                # transaction, and if not, the semaphore can also be
-                # removed.
-                #
                 # REVISIT: Serialize this operation with a semaphore
                 # to prevent deadlock waiting to acquire a DB lock
                 # held by another thread in the same process, leading
@@ -589,14 +621,15 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                 # Additionally, a rollback may not be enough to undo the
                 # deletion of a floating IP with certain L3 backends.
                 self._process_l3_delete(context, id)
+                # Using query().with_lockmode isn't necessary. Foreign-key
+                # constraints prevent deletion if concurrent creation happens.
                 with contextlib.nested(lockutils.lock('db-access'),
                                        session.begin(subtransactions=True)):
                     # Get ports to auto-delete.
                     ports = (session.query(models_v2.Port).
                              enable_eagerloads(False).
-                             filter_by(network_id=id).
-                             with_lockmode('update').all())
-                    LOG.debug(_("Ports to auto-delete: %s"), ports)
+                             filter_by(network_id=id).all())
+                    LOG.debug("Ports to auto-delete: %s", ports)
                     only_auto_del = all(p.device_owner
                                         in db_base_plugin_v2.
                                         AUTO_DELETE_PORT_OWNERS
@@ -608,9 +641,8 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                     # Get subnets to auto-delete.
                     subnets = (session.query(models_v2.Subnet).
                                enable_eagerloads(False).
-                               filter_by(network_id=id).
-                               with_lockmode('update').all())
-                    LOG.debug(_("Subnets to auto-delete: %s"), subnets)
+                               filter_by(network_id=id).all())
+                    LOG.debug("Subnets to auto-delete: %s", subnets)
 
                     if not (ports or subnets):
                         network = self.get_network(context, id)
@@ -636,22 +668,8 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                         msg = _("A concurrent port creation has occurred")
                         LOG.warning(msg)
                         continue
-
-            for port in ports:
-                try:
-                    self.delete_port(context, port.id)
-                except Exception:
-                    with excutils.save_and_reraise_exception():
-                        LOG.exception(_("Exception auto-deleting port %s"),
-                                      port.id)
-
-            for subnet in subnets:
-                try:
-                    self.delete_subnet(context, subnet.id)
-                except Exception:
-                    with excutils.save_and_reraise_exception():
-                        LOG.exception(_("Exception auto-deleting subnet %s"),
-                                      subnet.id)
+            self._delete_ports(context, ports)
+            self._delete_subnets(context, subnets)
 
         try:
             self.mechanism_manager.delete_network_postcommit(mech_context)
@@ -718,22 +736,32 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                                    session.begin(subtransactions=True)):
                 record = self._get_subnet(context, id)
                 subnet = self._make_subnet_dict(record, None)
-                # Get ports to auto-deallocate
-                allocated = (session.query(models_v2.IPAllocation).
-                             filter_by(subnet_id=id).
-                             join(models_v2.Port).
-                             filter_by(network_id=subnet['network_id']).
-                             with_lockmode('update').all())
-                LOG.debug(_("Ports to auto-deallocate: %s"), allocated)
-                only_auto_del = (
-                    ipv6_utils.is_auto_address_subnet(subnet) or
-                    all(not a.port_id or
-                        a.ports.device_owner in db_base_plugin_v2.
-                        AUTO_DELETE_PORT_OWNERS for a in allocated))
-                if not only_auto_del:
-                    LOG.debug(_("Tenant-owned ports exist"))
+                qry_allocated = (session.query(models_v2.IPAllocation).
+                                 filter_by(subnet_id=id).
+                                 join(models_v2.Port))
+                # Remove network owned ports, and delete IP allocations
+                # for IPv6 addresses which were automatically generated
+                # via SLAAC
+                if not ipv6_utils.is_auto_address_subnet(subnet):
+                    qry_allocated = (
+                        qry_allocated.filter(models_v2.Port.device_owner.
+                        in_(db_base_plugin_v2.AUTO_DELETE_PORT_OWNERS)))
+                allocated = qry_allocated.all()
+                # Delete all the IPAllocation that can be auto-deleted
+                if allocated:
+                    map(session.delete, allocated)
+                LOG.debug("Ports to auto-deallocate: %s", allocated)
+                # Check if there are tenant owned ports
+                tenant_port = (session.query(models_v2.IPAllocation).
+                               filter_by(subnet_id=id).
+                               join(models_v2.Port).
+                               first())
+                if tenant_port:
+                    LOG.debug("Tenant-owned ports exist")
                     raise exc.SubnetInUse(subnet_id=id)
 
+                # If allocated is None, then all the IPAllocation were
+                # correctly deleted during the previous pass.
                 if not allocated:
                     mech_context = driver_context.SubnetContext(self, context,
                                                                 subnet)
@@ -759,9 +787,8 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                         self.update_port(context, a.port_id, data)
                     except Exception:
                         with excutils.save_and_reraise_exception():
-                            LOG.exception(_("Exception deleting fixed_ip from "
-                                            "port %s"), a.port_id)
-                session.delete(a)
+                            LOG.exception(_("Exception deleting fixed_ip "
+                                            "from port %s"), a.port_id)
 
         try:
             self.mechanism_manager.delete_subnet_postcommit(mech_context)
@@ -985,8 +1012,6 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                                session.begin(subtransactions=True)):
             port_db, binding = db.get_locked_port_and_binding(session, id)
             if not port_db:
-                # the port existed when l3plugin.prevent_l3_port_deletion
-                # was called but now is already gone
                 LOG.debug(_("The port '%s' was deleted"), id)
                 return
             port = self._make_port_dict(port_db)
@@ -1056,7 +1081,7 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                            one())
             except sa_exc.NoResultFound:
                 return
-            except exc.MultipleResultsFound:
+            except sa_exc.MultipleResultsFound:
                 LOG.error(_("Multiple ports have port_id starting with %s"),
                           port_id)
                 return

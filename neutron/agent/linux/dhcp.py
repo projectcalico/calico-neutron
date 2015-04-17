@@ -374,6 +374,7 @@ class Dnsmasq(DhcpLocalProcess):
             '--addn-hosts=%s' % self._output_addn_hosts_file(),
             '--dhcp-optsfile=%s' % self._output_opts_file(),
             '--leasefile-ro',
+            '--dhcp-authoritative',
         ]
 
         possible_leases = 0
@@ -450,14 +451,15 @@ class Dnsmasq(DhcpLocalProcess):
             return
 
         self._release_unused_leases()
-        self._output_hosts_file()
-        self._output_addn_hosts_file()
-        self._output_opts_file()
         if self.active:
+            self._output_hosts_file()
+            self._output_addn_hosts_file()
+            self._output_opts_file()
             cmd = ['kill', '-HUP', self.pid]
             utils.execute(cmd, self.root_helper)
         else:
             LOG.debug(_('Pid %d is stale, relaunching dnsmasq'), self.pid)
+            self.spawn_process()
         LOG.debug(_('Reloading allocations for network: %s'), self.network.id)
         self.device_manager.update(self.network, self.interface_name)
 

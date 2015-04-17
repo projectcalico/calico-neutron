@@ -53,6 +53,7 @@ from neutron.agent import securitygroups_rpc as sg_rpc
 from neutron.api import extensions as neutron_extensions
 from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
+from neutron.api.rpc.handlers import metadata_rpc
 from neutron.api.rpc.handlers import securitygroups_rpc
 from neutron.common import constants as const
 from neutron.common import exceptions
@@ -501,6 +502,7 @@ class NeutronRestProxyV2(NeutronRestProxyV2Base,
         if cfg.CONF.RESTPROXY.sync_data:
             self._send_all_data()
 
+        self.start_periodic_dhcp_agent_status_check()
         LOG.debug(_("NeutronRestProxyV2: initialization done"))
 
     def _setup_rpc(self):
@@ -514,7 +516,8 @@ class NeutronRestProxyV2(NeutronRestProxyV2Base,
         )
         self.endpoints = [securitygroups_rpc.SecurityGroupServerRpcCallback(),
                           dhcp_rpc.DhcpRpcCallback(),
-                          agents_db.AgentExtRpcCallback()]
+                          agents_db.AgentExtRpcCallback(),
+                          metadata_rpc.MetadataRpcCallback()]
         self.conn.create_consumer(self.topic, self.endpoints,
                                   fanout=False)
         # Consume from all consumers in threads

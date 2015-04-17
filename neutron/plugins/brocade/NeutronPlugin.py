@@ -26,6 +26,7 @@ from neutron.api.rpc.agentnotifiers import dhcp_rpc_agent_api
 from neutron.api.rpc.agentnotifiers import l3_rpc_agent_api
 from neutron.api.rpc.handlers import dhcp_rpc
 from neutron.api.rpc.handlers import l3_rpc
+from neutron.api.rpc.handlers import metadata_rpc
 from neutron.api.rpc.handlers import securitygroups_rpc
 from neutron.common import constants as q_const
 from neutron.common import rpc as n_rpc
@@ -243,6 +244,7 @@ class BrocadePluginV2(db_base_plugin_v2.NeutronDbPluginV2,
             cfg.CONF.router_scheduler_driver
         )
         self.brocade_init()
+        self.start_periodic_dhcp_agent_status_check()
 
     def brocade_init(self):
         """Brocade specific initialization."""
@@ -264,7 +266,8 @@ class BrocadePluginV2(db_base_plugin_v2.NeutronDbPluginV2,
                           securitygroups_rpc.SecurityGroupServerRpcCallback(),
                           dhcp_rpc.DhcpRpcCallback(),
                           l3_rpc.L3RpcCallback(),
-                          agents_db.AgentExtRpcCallback()]
+                          agents_db.AgentExtRpcCallback(),
+                          metadata_rpc.MetadataRpcCallback()]
         for svc_topic in self.service_topics.values():
             self.conn.create_consumer(svc_topic, self.endpoints, fanout=False)
         # Consume from all consumers in threads

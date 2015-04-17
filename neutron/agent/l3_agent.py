@@ -571,6 +571,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
 
         self.target_ex_net_id = None
         self.use_ipv6 = ipv6_utils.is_enabled()
+        self._init_local_report_driver()
 
     def _fip_ns_subscribe(self, router_id):
         is_first = (len(self.fip_ns_subscribers) == 0)
@@ -580,6 +581,12 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
     def _fip_ns_unsubscribe(self, router_id):
         self.fip_ns_subscribers.discard(router_id)
         return len(self.fip_ns_subscribers) == 0
+
+    def _init_local_report_driver(self):
+        self.lr_driver = importutils.import_object(
+            self.conf.AGENT.local_report_driver,
+            self.conf,
+            'l3_agent_report.log')
 
     def _check_config_params(self):
         """Check items in configuration files.
@@ -1343,6 +1350,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
 
         if ri.is_ha:
             self._ha_external_gateway_added(ri, ex_gw_port, interface_name)
+            self._ha_disable_addressing_on_interface(ri, interface_name)
 
     def external_gateway_updated(self, ri, ex_gw_port, interface_name):
         preserve_ips = []
@@ -1533,6 +1541,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
                                      ri.is_ha)
 
         if ri.is_ha:
+            self._ha_disable_addressing_on_interface(ri, interface_name)
             self._add_vip(ri, internal_cidr, interface_name)
 
         ex_gw_port = self._get_ex_gw_port(ri)
@@ -1633,14 +1642,16 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
         rtr_2_fip, fip_2_rtr = ri.rtr_fip_subnet.get_pair()
         ip_wrapper = ip_lib.IPWrapper(self.root_helper,
                                       namespace=ri.ns_name)
-        int_dev = ip_wrapper.add_veth(rtr_2_fip_name,
-                                      fip_2_rtr_name, fip_ns_name)
-        self.internal_ns_interface_added(str(rtr_2_fip),
-                                         rtr_2_fip_name, ri.ns_name)
-        self.internal_ns_interface_added(str(fip_2_rtr),
-                                         fip_2_rtr_name, fip_ns_name)
-        int_dev[0].link.set_up()
-        int_dev[1].link.set_up()
+        if not ip_lib.device_exists(rtr_2_fip_name, self.root_helper,
+                                    namespace=ri.ns_name):
+            int_dev = ip_wrapper.add_veth(rtr_2_fip_name,
+                                          fip_2_rtr_name, fip_ns_name)
+            self.internal_ns_interface_added(str(rtr_2_fip),
+                                             rtr_2_fip_name, ri.ns_name)
+            self.internal_ns_interface_added(str(fip_2_rtr),
+                                             fip_2_rtr_name, fip_ns_name)
+            int_dev[0].link.set_up()
+            int_dev[1].link.set_up()
         # add default route for the link local interface
         device = ip_lib.IPDevice(rtr_2_fip_name, self.root_helper,
                                  namespace=ri.ns_name)
@@ -1904,12 +1915,15 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
                 self._queue.add(update)
             self.fullsync = False
             LOG.debug(_("_sync_routers_task successfully completed"))
+            self.lr_driver.log_event('SYNC_STATE', {'Status': 'success'})
         except n_rpc.RPCException:
             LOG.exception(_("Failed synchronizing routers due to RPC error"))
             self.fullsync = True
+            self.lr_driver.log_event('SYNC_STATE', {'Status': 'failure'})
         except Exception:
             LOG.exception(_("Failed synchronizing routers"))
             self.fullsync = True
+            self.lr_driver.log_event('SYNC_STATE', {'Status': 'failure'})
         else:
             # Resync is not necessary for the cleanup of stale namespaces
             curr_router_ids = set([r['id'] for r in routers])
@@ -1932,6 +1946,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
     def after_start(self):
         eventlet.spawn_n(self._process_routers_loop)
         LOG.info(_("L3 agent started"))
+        self.lr_driver.log_event('STARTUP', {'Status': 'success'})
         # When L3 agent is ready, we immediately do a full sync
         self.periodic_sync_routers_task(self.context)
 
@@ -2019,6 +2034,7 @@ class L3NATAgentWithStateReport(L3NATAgent):
             self.agent_state.pop('start_flag', None)
             self.use_call = False
             LOG.debug(_("Report state task successfully completed"))
+            self.lr_driver.log_event('RPC_STATE_REPORT', {'Status': 'success'})
         except AttributeError:
             # This means the server does not support report_state
             LOG.warn(_("Neutron server does not support state report."
@@ -2027,6 +2043,7 @@ class L3NATAgentWithStateReport(L3NATAgent):
             return
         except Exception:
             LOG.exception(_("Failed reporting state!"))
+            self.lr_driver.log_event('RPC_STATE_REPORT', {'Status': 'failure'})
 
     def agent_updated(self, context, payload):
         """Handle the agent_updated notification event."""

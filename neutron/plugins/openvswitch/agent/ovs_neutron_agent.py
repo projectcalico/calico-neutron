@@ -140,7 +140,8 @@ class OVSNeutronAgent(n_rpc.RpcCallback,
                  ovsdb_monitor_respawn_interval=(
                      constants.DEFAULT_OVSDBMON_RESPAWN),
                  arp_responder=False,
-                 use_veth_interconnection=False):
+                 use_veth_interconnection=False,
+                 quitting_rpc_timeout=None):
         '''Constructor.
 
         :param integ_br: name of the integration bridge.
@@ -163,6 +164,8 @@ class OVSNeutronAgent(n_rpc.RpcCallback,
                supported.
         :param use_veth_interconnection: use veths instead of patch ports to
                interconnect the integration bridge to physical bridges.
+        :param quitting_rpc_timeout: timeout in seconds for rpc calls after
+               SIGTERM is received
         '''
         super(OVSNeutronAgent, self).__init__()
         self.use_veth_interconnection = use_veth_interconnection
@@ -252,6 +255,8 @@ class OVSNeutronAgent(n_rpc.RpcCallback,
 
         # The initialization is complete; we can start receiving messages
         self.connection.consume_in_threads()
+
+        self.quitting_rpc_timeout = quitting_rpc_timeout
 
     def _report_state(self):
         # How many devices are likely used by a VM
@@ -390,6 +395,9 @@ class OVSNeutronAgent(n_rpc.RpcCallback,
 
     def del_fdb_flow(self, br, port_info, remote_ip, lvm, ofport):
         if port_info == q_const.FLOODING_ENTRY:
+            if ofport not in lvm.tun_ofports:
+                LOG.debug("attempt to remove a non-existent port %s", ofport)
+                return
             lvm.tun_ofports.remove(ofport)
             if len(lvm.tun_ofports) > 0:
                 ofports = ','.join(lvm.tun_ofports)
@@ -747,7 +755,7 @@ class OVSNeutronAgent(n_rpc.RpcCallback,
         if not self.tun_br:
             self.tun_br = ovs_lib.OVSBridge(tun_br_name, self.root_helper)
 
-        self.tun_br.reset_bridge()
+        self.tun_br.reset_bridge(secure_mode=True)
         self.patch_tun_ofport = self.int_br.add_patch_port(
             cfg.CONF.OVS.int_peer_patch_port, cfg.CONF.OVS.tun_peer_patch_port)
         self.patch_int_ofport = self.tun_br.add_patch_port(
@@ -1479,6 +1487,12 @@ class OVSNeutronAgent(n_rpc.RpcCallback,
     def _handle_sigterm(self, signum, frame):
         LOG.debug("Agent caught SIGTERM, quitting daemon loop.")
         self.run_daemon_loop = False
+        if self.quitting_rpc_timeout:
+            self.set_rpc_timeout(self.quitting_rpc_timeout)
+
+    def set_rpc_timeout(self, timeout):
+        for rpc_api in (self.plugin_rpc, self.state_rpc):
+            rpc_api._client.timeout = timeout
 
 
 def create_agent_config_map(config):
@@ -1506,6 +1520,7 @@ def create_agent_config_map(config):
         l2_population=config.AGENT.l2_population,
         arp_responder=config.AGENT.arp_responder,
         use_veth_interconnection=config.OVS.use_veth_interconnection,
+        quitting_rpc_timeout=config.AGENT.quitting_rpc_timeout
     )
 
     # If enable_tunneling is TRUE, set tunnel_type to default to GRE
