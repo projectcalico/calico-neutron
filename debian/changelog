@@ -1,0 +1,53 @@
+neutron (1:2014.2.2-fuel6.1~mira20) precise; urgency=low
+
+  [ Eugene Nikanorov ]
+  * 35c86db Merge "Start rabbitmq driver heartbeat thread after a fork"
+    into openstack-ci/fuel-6.1/2014.2
+
+  [ Andrey Epifanov ]
+  * 3299068 Merge "Avoid synchronizing session when deleting
+    networkdhcpagentbinding" into openstack-ci/fuel-6.1/2014.2
+
+  [ Eugene Nikanorov ]
+  * 06e256f Avoid synchronizing session when deleting
+    networkdhcpagentbinding
+  * 5a7ff45 Turn rabbit heartbeats off
+
+  [ mos-infra-ci ]
+  * faef5d6 Merge "Make proper fix for concurrent gre network creation"
+    into openstack-ci/fuel-6.1/2014.2
+
+  [ Kevin Benton ]
+  * 284d2e6 Don't eagerly load ranges from IPAllocationPool
+
+  [ Eugene Nikanorov ]
+  * 6747804 Make proper fix for concurrent gre network creation
+  * 2d2b62c Start rabbitmq driver heartbeat thread after a fork
+
+  [ Ann Kamyshnikova ]
+  * 6d74805 Make listing security groups faster
+
+  [ Eugene Nikanorov ]
+  * b492100 Fix test failure in varmour unit tests
+
+ -- Eugene Nikanorov <enikanorov@mirantis.com>  Thu, 16 Apr 2015 19:16:34 +0400
+
+neutron (1:2014.2.2-fuel6.1-14.04-3) trusty; urgency=medium
+
+  * Fixed patch for requirements.txt, removed upper bound for netaddr
+    because MOS mirros contains newer version (netaddr 0.7.14)
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Mon, 06 Apr 2015 16:47:51 +0300
+
+neutron (1:2014.2.2-fuel6.1-14.04-2) trusty; urgency=medium
+
+  * Updated specs according to upstream version 2014.2.2 [1]
+    [1] https://github.com/openstack/requirements/blob/stable/juno/global-requirements.txt
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Sun, 15 Mar 2015 21:59:56 +0300
+
+neutron (1:2014.2.2-fuel6.1-14.04-1) trusty; urgency=medium
+
+  * Updated specs for Ubuntu 14.04
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Fri, 20 Feb 2015 18:10:43 +0300

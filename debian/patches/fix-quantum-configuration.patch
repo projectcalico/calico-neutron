@@ -1,0 +1,37 @@
+--- a/etc/neutron.conf
++++ b/etc/neutron.conf
+@@ -7,7 +7,7 @@
+
+ # Where to store Neutron state files.  This directory must be writable by the
+ # user executing the agent.
+-# state_path = /var/lib/neutron
++state_path = /var/lib/neutron
+
+ # Where to store lock files
+ lock_path = $state_path/lock
+@@ -50,7 +50,7 @@
+ # previous versions, the class name of a plugin can be specified instead of its
+ # entrypoint name.
+ #
+-# core_plugin =
++core_plugin = neutron.plugins.openvswitch.ovs_neutron_plugin.OVSNeutronPluginV2
+ # Example: core_plugin = ml2
+
+ # (ListOpt) List of service plugin entrypoints to be loaded from the
+@@ -490,6 +490,7 @@
+ # root filter facility.
+ # Change to "sudo" to skip the filtering and just run the comand directly
+ # root_helper = sudo
++root_helper = sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
+
+ # =========== items for agent management extension =============
+ # seconds between nodes reporting state to server; should be less than
+@@ -512,7 +513,7 @@
+ # connection = mysql://root:pass@127.0.0.1:3306/neutron
+ # Replace 127.0.0.1 above with the IP address of the database used by the
+ # main neutron server. (Leave it as is if the database runs on this host.)
+-# connection = sqlite://
++connection = sqlite:////var/lib/neutron/neutron.sqlite
+ # NOTE: In deployment the [database] section and its connection attribute may
+ # be set in the corresponding core plugin '.ini' file. However, it is suggested
+ # to put the [database] section and its connection attribute in this

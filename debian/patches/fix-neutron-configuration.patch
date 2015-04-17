@@ -1,0 +1,34 @@
+diff --git a/etc/neutron.conf b/etc/neutron.conf
+index 31977a8..62a0e14 100644
+--- a/etc/neutron.conf
++++ b/etc/neutron.conf
+@@ -50,7 +50,7 @@ lock_path = $state_path/lock
+ # previous versions, the class name of a plugin can be specified instead of its
+ # entrypoint name.
+ #
+-# core_plugin =
++core_plugin = ml2
+ # Example: core_plugin = ml2
+ 
+ # (ListOpt) List of service plugin entrypoints to be loaded from the
+@@ -389,7 +389,7 @@ notification_driver = neutron.openstack.common.notifier.rpc_notifier
+ # Use "sudo neutron-rootwrap /etc/neutron/rootwrap.conf" to use the real
+ # root filter facility.
+ # Change to "sudo" to skip the filtering and just run the comand directly
+-# root_helper = sudo
++root_helper = sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
+ 
+ # =========== items for agent management extension =============
+ # seconds between nodes reporting state to server; should be less than
+@@ -412,7 +412,7 @@ admin_password = %SERVICE_PASSWORD%
+ # connection = mysql://root:pass@127.0.0.1:3306/neutron
+ # Replace 127.0.0.1 above with the IP address of the database used by the
+ # main neutron server. (Leave it as is if the database runs on this host.)
+-# connection = sqlite://
++connection = sqlite:////var/lib/neutron/neutron.sqlite
+ # NOTE: In deployment the [database] section and its connection attribute may
+ # be set in the corresponding core plugin '.ini' file. However, it is suggested
+ # to put the [database] section and its connection attribute in this
+-- 
+2.0.0
+

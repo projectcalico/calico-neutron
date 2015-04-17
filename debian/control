@@ -1,0 +1,836 @@
+Source: neutron
+Section: net
+Priority: optional
+Maintainer: MOS Neutron Team <mos-neutron@mirantis.com>
+Build-Depends: debhelper (>= 9), python-all (>= 2.7.1)
+Build-Depends-Indep:
+ alembic (>= 0.6.4),
+ python-anyjson (>= 0.3.3),
+ python-babel (>= 1.3),
+ python-cliff (>= 1.7.0),
+ python-coverage,
+ python-eventlet (>= 0.15.1),
+ python-fixtures (>= 0.3.14),
+ python-greenlet (>= 0.3.2),
+ python-hacking (>= 0.9.2),
+ python-httplib2 (>= 0.7.5),
+ python-iso8601 (>= 0.1.9),
+ python-jinja2,
+ python-jsonrpclib,
+ python-keystoneclient (>= 1:0.10.0),
+ python-keystonemiddleware (>= 1.0.0),
+ python-mock (>= 1.0),
+ python-netaddr (>= 0.7.12),
+ python-neutronclient (>= 1:2.3.6),
+ python-novaclient (>= 1:2.18.0),
+ python-oslo.config (>= 1:1.4.0),
+ python-oslo.db (>= 1.0.0),
+ python-oslo.messaging (>= 1.4.0),
+ python-oslo.rootwrap (>= 1.3.0),
+ python-paste,
+ python-pastedeploy,
+ python-pbr (>= 0.10),
+ python-requests (>= 2.1.0),
+ python-requests-mock,
+ python-routes (>= 1.12.3),
+ python-setuptools,
+ python-simplejson,
+ python-six (>= 1.7.0),
+ python-sqlalchemy (>= 0.9.7),
+ python-stevedore (>= 1.0.0),
+ python-testtools (>= 0.9.34),
+ python-webob (>= 1.2.3),
+ python-webtest (>= 2.0),
+ subunit,
+ testrepository ( >= 0.0.18)
+XS-Python-Version: >= 2.7
+Standards-Version: 3.9.4
+XS-Testsuite: autopkgtest
+
+Package: neutron-server
+Architecture: all
+Depends:
+ adduser,
+ conntrack,
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-server (<< 1:2013.2~b2-0ubuntu1~)
+Replaces: quantum-server (<< 1:2013.2~b2-0ubuntu1~)
+Recommends: neutron-plugin-ml2
+Description: Neutron is a virtual network service for Openstack - server
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Neutron server
+
+Package: neutron-common
+Architecture: all
+Depends:
+ adduser,
+ python-neutron (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends}
+Breaks:
+ neutron-l3-agent (<< 1:2014.1~rc2-0ubuntu3~),
+ neutron-vpn-agent (<< 1:2014.1~rc2-0ubuntu3~),
+ quantum-common ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces:
+ neutron-l3-agent (<< 1:2014.1~rc2-0ubuntu3~),
+ neutron-vpn-agent (<< 1:2014.1~rc2-0ubuntu3~),
+ quantum-common ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - common
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the common files.
+
+Package: neutron-plugin-cisco
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-cisco ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-cisco ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - Cisco plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Cisco plugin.
+
+Package: neutron-plugin-nec
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-nec ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-nec ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - NEC plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the NEC plugin.
+
+Package: neutron-plugin-nec-agent
+Architecture: all
+Depends:
+ neutron-common (= ${source:Version}),
+ neutron-plugin-nec,
+ openvswitch-switch,
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-nec-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-nec-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - NEC plugin agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the NEC plugin agent.
+
+Package: neutron-plugin-bigswitch
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-bigswitch ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-bigswitch ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - BigSwitch plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the BigSwitch plugin.
+
+Package: neutron-plugin-bigswitch-agent
+Architecture: all
+Depends:
+ neutron-plugin-bigswitch (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - BigSwitch plugin agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the BigSwitch plugin agent.
+
+Package: neutron-plugin-hyperv
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-hyperv ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-hyperv ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - Hyper-V plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Hyper-V plugin.
+
+Package: neutron-plugin-brocade
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-brocade ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-brocade ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - Brocade plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Brocade plugin.
+
+Package: neutron-plugin-plumgrid
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-plumgrid ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-plumgrid ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - PLUMgrid plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the PLUMgrid plugin.
+
+Package: neutron-plugin-metaplugin
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-metaplugin ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-metaplugin ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - Metaplugin plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Metaplugin plugin.
+
+Package: neutron-plugin-vmware
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: neutron-plugin-nicira ( << 1:2014.1~b2-0ubuntu7~ )
+Replaces: neutron-plugin-nicira ( << 1:2014.1~b2-0ubuntu7~ )
+Description: Neutron is a virtual network service for Openstack - VMware plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the VMware NSX plugin
+
+Package: neutron-plugin-nicira
+Depends: neutron-plugin-vmware, ${misc:Depends}
+Architecture: all
+Breaks: quantum-plugin-nicira ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-nicira ( << 1:2013.2~b2-0ubuntu1~ )
+Section: oldlibs
+Description: transitional dummy package
+ This is a transitional dummy package. It can safely be removed.
+
+Package: neutron-l3-agent
+Architecture: all
+Depends:
+ iputils-arping,
+ neutron-common (= ${source:Version}),
+ neutron-metadata-agent (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-l3-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-l3-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - l3 agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the layer 3 routing agent.
+
+Package: neutron-dhcp-agent
+Architecture: all
+Depends:
+ dnsmasq-base,
+ dnsmasq-utils,
+ neutron-common (= ${source:Version}),
+ neutron-metadata-agent (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-dhcp-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-dhcp-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - DHCP agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the DHCP agent.
+
+Package: neutron-metadata-agent
+Architecture: all
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-metadata-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-metadata-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - metadata agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the metadata proxy agent.
+
+Package: neutron-lbaas-agent
+Architecture: all
+Depends:
+ haproxy,
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-lbaas-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-lbass-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - LBaaS agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Load Balancing as-a Service (LBaaS) agent.
+
+Package: python-neutron
+Architecture: all
+Section: python
+Depends:
+ alembic (>= 0.6.4),
+ python-anyjson (>= 0.3.3),
+ python-babel (>= 1.3),
+ python-eventlet (>= 0.15.1),
+ python-greenlet (>= 0.3.2),
+ python-httplib2 (>= 0.7.5),
+ python-iso8601 (>= 0.1.9),
+ python-jinja2,
+ python-jsonrpclib,
+ python-keystoneclient (>= 1:0.10.0),
+ python-keystonemiddleware (>= 1.0.0),
+ python-kombu (>= 2.5.0),
+ python-netaddr (>= 0.7.12),
+ python-neutronclient (>= 1:2.3.6),
+ python-novaclient (>= 1:2.18.0),
+ python-oslo.config (>= 1:1.4.0),
+ python-oslo.db (>= 1.0.0),
+ python-oslo.messaging (>= 1.4.0),
+ python-oslo.rootwrap (>= 1.3.0),
+ python-paste,
+ python-pastedeploy,
+ python-requests (>= 2.1.0),
+ python-routes (>= 1.12.3),
+ python-six (>= 1.7.0),
+ python-sqlalchemy (>= 0.9.7),
+ python-stevedore (>= 1.0.0),
+ python-webob (>= 1.2.3),
+ ${misc:Depends},
+ ${python:Depends}
+Provides: ${python:Provides}
+XB-Python-Version: ${python:Versions}
+Breaks: python-quantum ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: python-quantum ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virutal network service for Openstack - Python library
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Python library.
+
+Package: neutron-plugin-openvswitch
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-openvswitch ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-openvswitch ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - Open vSwitch plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Open vSwitch plugin.
+
+Package: neutron-plugin-ml2
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - ML2 plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Modular Layer 2 plugin.
+
+Package: neutron-plugin-openvswitch-agent
+Architecture: all
+Depends:
+ ipset,
+ neutron-plugin-ml2 (= ${source:Version}),
+ openvswitch-switch,
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-openvswitch-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-openvswitch-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - Open vSwitch plugin agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Open vSwitch plugin agent.
+
+Package: neutron-plugin-linuxbridge
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-linuxbridge ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-linuxbridge ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - linuxbridge plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the linuxbridge plugin.
+
+Package: neutron-plugin-linuxbridge-agent
+Architecture: all
+Depends:
+ bridge-utils,
+ neutron-plugin-linuxbridge (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-linuxbirdge-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-linuxbridge-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - linuxbridge plugin agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the linuxbridge plugin agent.
+
+Package: neutron-plugin-ryu
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-ryu ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-ryu ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - RYU plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the RYU plugin.
+
+Package: neutron-plugin-ryu-agent
+Architecture: all
+Depends:
+ neutron-plugin-ryu (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-ryu-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-ryu-agent ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - RYU plugin agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the RYU plugin agent.
+
+Package: neutron-plugin-midonet
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: quantum-plugin-midonet ( << 1:2013.2~b2-0ubuntu1~ )
+Replaces: quantum-plugin-midonet ( << 1:2013.2~b2-0ubuntu1~ )
+Description: Neutron is a virtual network service for Openstack - Midonet plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Midonet plugin.
+
+Package: neutron-plugin-mlnx
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: neutron-plugin-mlnx-agent ( << 1:2014.1~b3-0ubuntu2~ )
+Replaces: neutron-plugin-mlnx-agent ( << 1:2014.1~b3-0ubuntu2~ )
+Description: Neutron is a virtual network service for Openstack - Mellanox plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Mellanox plugin.
+
+Package: neutron-plugin-mlnx-agent
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ neutron-plugin-mlnx,
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - Mellanox plugin agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Mellanox plugin agent.
+
+Package: neutron-vpn-agent
+Architecture: all
+Depends:
+ iputils-arping,
+ neutron-common (= ${source:Version}),
+ neutron-metadata-agent (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: neutron-plugin-vpn-agent ( << 1:2014.1~b3-0ubuntu2~ )
+Replaces: neutron-plugin-vpn-agent ( << 1:2014.1~b3-0ubuntu2~ )
+Conflicts: neutron-l3-agent
+Description: Neutron is a virtual network service for Openstack - VPN agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the VPN agent, which also provides L3 agent support.
+
+Package: neutron-plugin-vpn-agent
+Architecture: all
+Depends: neutron-vpn-agent, ${misc:Depends}
+Description: transitional dummy package
+ This is a transitional dummy package. It can safely be removed.
+
+Package: neutron-metering-agent
+Architecture: all
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Breaks: neutron-plugin-metering-agent ( << 1:2014.1~b3-0ubuntu2~ )
+Replaces: neutron-plugin-metering-agent ( << 1:2014.1~b3-0ubuntu2~ )
+Description: Neutron is a virtual network service for Openstack - metering agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the metering agent.
+
+Package: neutron-plugin-metering-agent
+Architecture: all
+Depends: neutron-metering-agent, ${misc:Depends}
+Description: transitional dummy package
+ This is a transitional dummy package. It can safely be removed.
+
+Package: neutron-plugin-openflow-agent
+Architecture: all
+Depends:
+ neutron-plugin-ml2 (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - Openflow agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the Openflow agent.
+
+Package: neutron-plugin-ibm
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - IBM SDN plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the IBM SDN plugin.
+
+Package: neutron-plugin-ibm-agent
+Architecture: all
+Depends:
+ neutron-plugin-ibm (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - IBM agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the IBM agent.
+
+Package: neutron-plugin-oneconvergence
+Architecture: all
+Provides: neutron-plugin
+Depends:
+ neutron-common (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - One Convergence plugin
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the One Convergence plugin.
+
+Package: neutron-plugin-oneconvergence-agent
+Architecture: all
+Depends:
+ neutron-plugin-oneconvergence (= ${source:Version}),
+ ${misc:Depends},
+ ${python:Depends},
+ ${shlibs:Depends}
+Description: Neutron is a virtual network service for Openstack - One Convergence agent
+ Neutron is a virtual network service for Openstack, and a part of
+ Netstack. Just like OpenStack Nova provides an API to dynamically
+ request and configure virtual servers, Neutron provides an API to
+ dynamically request and configure virtual networks. These networks
+ connect "interfaces" from other OpenStack services (e.g., virtual NICs
+ from Nova VMs). The Neutron API supports extensions to provide
+ advanced network capabilities (e.g., QoS, ACLs, network monitoring,
+ etc.)
+ .
+ This package provides the One Convergence agent.

@@ -1,0 +1,18 @@
+#!/bin/bash
+#---------------------------
+# Testing openvswitch-plugin
+#---------------------------
+set -e
+apt-get -y install neutron-plugin-openvswitch
+
+# update plugin path
+sed -i 's/core_plugin/core_plugin \= neutron\.plugins\.openvswitch\.ovs_neutron_plugin\.OVSNeutronPluginV2/g' /etc/neutron/neutron.conf
+service neutron-server restart  > /dev/null 2>&1
+if pidof -x neutron-server > /dev/null; then
+    apt-get -y remove --purge neutron-plugin-openvswitch
+    echo "OK"
+else
+    echo "ERROR: OPENVSWITCH PLUGIN IS NOT RUNNING"
+    apt-get -y remove --purge neutron-plugin-openvswitch
+    exit 1
+fi

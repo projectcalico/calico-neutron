@@ -1,0 +1,6 @@
+Tests: neutron-daemons python-neutron cisco-plugin nec-plugin bigswitch-plugin
+ hyperv-plugin brocade-plugin plumgrid-plugin vmware-plugin openvswitch-plugin
+ linuxbridge-plugin ryu-plugin midonet-plugin
+Depends: neutron-server, neutron-l3-agent, neutron-dhcp-agent, neutron-metadata-agent,
+ neutron-lbaas-agent, python-neutron, rabbitmq-server
+Restrictions: needs-root allow-stderr

@@ -1,0 +1,7 @@
+/var/log/neutron/nvsd-agent.log {
+    daily
+    missingok
+    compress
+    delaycompress
+    notifempty
+}
