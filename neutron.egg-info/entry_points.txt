@@ -1,0 +1,99 @@
+[console_scripts]
+neutron-check-nsx-config = neutron.plugins.vmware.check_nsx_config:main
+neutron-cisco-cfg-agent = neutron.plugins.cisco.cfg_agent.cfg_agent:main
+neutron-db-manage = neutron.db.migration.cli:main
+neutron-debug = neutron.debug.shell:main
+neutron-dhcp-agent = neutron.agent.dhcp_agent:main
+neutron-hyperv-agent = neutron.plugins.hyperv.agent.hyperv_neutron_agent:main
+neutron-ibm-agent = neutron.plugins.ibm.agent.sdnve_neutron_agent:main
+neutron-l3-agent = neutron.agent.l3_agent:main
+neutron-lbaas-agent = neutron.services.loadbalancer.agent.agent:main
+neutron-linuxbridge-agent = neutron.plugins.linuxbridge.agent.linuxbridge_neutron_agent:main
+neutron-metadata-agent = neutron.agent.metadata.agent:main
+neutron-metering-agent = neutron.services.metering.agents.metering_agent:main
+neutron-mlnx-agent = neutron.plugins.mlnx.agent.eswitch_neutron_agent:main
+neutron-nec-agent = neutron.plugins.nec.agent.nec_neutron_agent:main
+neutron-netns-cleanup = neutron.agent.netns_cleanup_util:main
+neutron-ns-metadata-proxy = neutron.agent.metadata.namespace_proxy:main
+neutron-nsx-manage = neutron.plugins.vmware.shell:main
+neutron-nvsd-agent = neutron.plugins.oneconvergence.agent.nvsd_neutron_agent:main
+neutron-ofagent-agent = neutron.plugins.ofagent.agent.main:main
+neutron-openvswitch-agent = neutron.plugins.openvswitch.agent.ovs_neutron_agent:main
+neutron-ovs-cleanup = neutron.agent.ovs_cleanup_util:main
+neutron-restproxy-agent = neutron.plugins.bigswitch.agent.restproxy_agent:main
+neutron-rootwrap = oslo.rootwrap.cmd:main
+neutron-ryu-agent = neutron.plugins.ryu.agent.ryu_neutron_agent:main
+neutron-sanity-check = neutron.cmd.sanity_check:main
+neutron-server = neutron.server:main
+neutron-sriov-nic-agent = neutron.plugins.sriovnicagent.sriov_nic_agent:main
+neutron-usage-audit = neutron.cmd.usage_audit:main
+neutron-vpn-agent = neutron.services.vpn.agent:main
+
+[neutron.core_plugins]
+bigswitch = neutron.plugins.bigswitch.plugin:NeutronRestProxyV2
+brocade = neutron.plugins.brocade.NeutronPlugin:BrocadePluginV2
+cisco = neutron.plugins.cisco.network_plugin:PluginV2
+embrane = neutron.plugins.embrane.plugins.embrane_ml2_plugin:EmbraneMl2Plugin
+hyperv = neutron.plugins.hyperv.hyperv_neutron_plugin:HyperVNeutronPlugin
+ibm = neutron.plugins.ibm.sdnve_neutron_plugin:SdnvePluginV2
+metaplugin = neutron.plugins.metaplugin.meta_neutron_plugin:MetaPluginV2
+midonet = neutron.plugins.midonet.plugin:MidonetPluginV2
+ml2 = neutron.plugins.ml2.plugin:Ml2Plugin
+mlnx = neutron.plugins.mlnx.mlnx_plugin:MellanoxEswitchPlugin
+nec = neutron.plugins.nec.nec_plugin:NECPluginV2
+nuage = neutron.plugins.nuage.plugin:NuagePlugin
+oneconvergence = neutron.plugins.oneconvergence.plugin:OneConvergencePluginV2
+plumgrid = neutron.plugins.plumgrid.plumgrid_plugin.plumgrid_plugin:NeutronPluginPLUMgridV2
+ryu = neutron.plugins.ryu.ryu_neutron_plugin:RyuNeutronPluginV2
+vmware = neutron.plugins.vmware.plugin:NsxPlugin
+
+[neutron.ml2.extension_drivers]
+test = neutron.tests.unit.ml2.test_extension_driver_api:TestExtensionDriver
+
+[neutron.ml2.mechanism_drivers]
+arista = neutron.plugins.ml2.drivers.arista.mechanism_arista:AristaDriver
+bigswitch = neutron.plugins.ml2.drivers.mech_bigswitch.driver:BigSwitchMechanismDriver
+brocade = neutron.plugins.ml2.drivers.brocade.mechanism_brocade:BrocadeMechanism
+bulkless = neutron.tests.unit.ml2.drivers.mechanism_bulkless:BulklessMechanismDriver
+cisco_apic = neutron.plugins.ml2.drivers.cisco.apic.mechanism_apic:APICMechanismDriver
+cisco_nexus = neutron.plugins.ml2.drivers.cisco.nexus.mech_cisco_nexus:CiscoNexusMechanismDriver
+fslsdn = neutron.plugins.ml2.drivers.freescale.mechanism_fslsdn:FslsdnMechanismDriver
+hyperv = neutron.plugins.ml2.drivers.mech_hyperv:HypervMechanismDriver
+l2population = neutron.plugins.ml2.drivers.l2pop.mech_driver:L2populationMechanismDriver
+linuxbridge = neutron.plugins.ml2.drivers.mech_linuxbridge:LinuxbridgeMechanismDriver
+logger = neutron.tests.unit.ml2.drivers.mechanism_logger:LoggerMechanismDriver
+mlnx = neutron.plugins.ml2.drivers.mlnx.mech_mlnx:MlnxMechanismDriver
+ncs = neutron.plugins.ml2.drivers.mechanism_ncs:NCSMechanismDriver
+nuage = neutron.plugins.ml2.drivers.mech_nuage.driver:NuageMechanismDriver
+ofagent = neutron.plugins.ml2.drivers.mech_ofagent:OfagentMechanismDriver
+opendaylight = neutron.plugins.ml2.drivers.mechanism_odl:OpenDaylightMechanismDriver
+openvswitch = neutron.plugins.ml2.drivers.mech_openvswitch:OpenvswitchMechanismDriver
+sriovnicswitch = neutron.plugins.ml2.drivers.mech_sriov.mech_driver:SriovNicSwitchMechanismDriver
+test = neutron.tests.unit.ml2.drivers.mechanism_test:TestMechanismDriver
+
+[neutron.ml2.type_drivers]
+flat = neutron.plugins.ml2.drivers.type_flat:FlatTypeDriver
+gre = neutron.plugins.ml2.drivers.type_gre:GreTypeDriver
+local = neutron.plugins.ml2.drivers.type_local:LocalTypeDriver
+vlan = neutron.plugins.ml2.drivers.type_vlan:VlanTypeDriver
+vxlan = neutron.plugins.ml2.drivers.type_vxlan:VxlanTypeDriver
+
+[neutron.openstack.common.cache.backends]
+memory = neutron.openstack.common.cache._backends.memory:MemoryBackend
+
+[neutron.service_plugins]
+bigswitch_l3 = neutron.plugins.bigswitch.l3_router_plugin:L3RestProxy
+dummy = neutron.tests.unit.dummy_plugin:DummyServicePlugin
+firewall = neutron.services.firewall.fwaas_plugin:FirewallPlugin
+lbaas = neutron.services.loadbalancer.plugin:LoadBalancerPlugin
+metering = neutron.services.metering.metering_plugin:MeteringPlugin
+router = neutron.services.l3_router.l3_router_plugin:L3RouterPlugin
+vpnaas = neutron.services.vpn.plugin:VPNDriverPlugin
+
+[oslo.messaging.notify.drivers]
+neutron.openstack.common.notifier.log_notifier = oslo.messaging.notify._impl_log:LogDriver
+neutron.openstack.common.notifier.no_op_notifier = oslo.messaging.notify._impl_noop:NoOpDriver
+neutron.openstack.common.notifier.rpc_notifier = oslo.messaging.notify._impl_messaging:MessagingDriver
+neutron.openstack.common.notifier.rpc_notifier2 = oslo.messaging.notify._impl_messaging:MessagingV2Driver
+neutron.openstack.common.notifier.test_notifier = oslo.messaging.notify._impl_test:TestDriver
+
