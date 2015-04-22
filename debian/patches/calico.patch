@@ -1,0 +1,608 @@
+--- a/neutron.egg-info/SOURCES.txt
++++ b/neutron.egg-info/SOURCES.txt
+@@ -1467,4 +1467,4 @@
+ tools/i18n_cfg.py
+ tools/install_venv.py
+ tools/install_venv_common.py
+-tools/with_venv.sh
+\ No newline at end of file
++tools/with_venv.sh
+--- a/neutron/agent/dhcp_agent.py
++++ b/neutron/agent/dhcp_agent.py
+@@ -73,9 +73,24 @@
+         self.cache = NetworkCache()
+         self.root_helper = config.get_root_helper(self.conf)
+         self.dhcp_driver_cls = importutils.import_class(self.conf.dhcp_driver)
++
++        # Work out if DHCP serving for bridged or routed VM interfaces.
++        try:
++            interface_driver = importutils.import_object(
++                self.conf.interface_driver, self.conf)
++            self.bridged = interface_driver.bridged()
++        except Exception as e:
++            msg = (_("Error importing interface driver '%(driver)s': "
++                   "%(inner)s") % {'driver': self.conf.interface_driver,
++                                   'inner': e})
++            LOG.error(msg)
++            raise SystemExit(msg)
++
+         ctx = context.get_admin_context_without_session()
+         self.plugin_rpc = DhcpPluginApi(topics.PLUGIN,
+-                                        ctx, self.conf.use_namespaces)
++                                        ctx,
++                                        self.bridged and
++                                        self.conf.use_namespaces)
+         # create dhcp dir to store dhcp info
+         dhcp_dir = os.path.dirname("/%s/dhcp/" % self.conf.state_path)
+         if not os.path.isdir(dhcp_dir):
+@@ -91,7 +106,8 @@
+                 self.root_helper
+             )
+             for net_id in existing_networks:
+-                net = dhcp.NetModel(self.conf.use_namespaces,
++                net = dhcp.NetModel(self.bridged and
++                                    self.conf.use_namespaces,
+                                     {"id": net_id,
+                                      "subnets": [],
+                                      "ports": []})
+@@ -217,7 +233,8 @@
+         for subnet in network.subnets:
+             if subnet.enable_dhcp and subnet.ip_version == 4:
+                 if self.call_driver('enable', network):
+-                    if self.conf.use_namespaces and enable_metadata:
++                    if (self.bridged and
++                        self.conf.use_namespaces and enable_metadata):
+                         self.enable_isolated_metadata_proxy(network)
+                         enable_metadata = False  # Don't trigger twice
+                     self.cache.put(network)
+@@ -227,7 +244,8 @@
+         """Disable DHCP for a network known to the agent."""
+         network = self.cache.get_network_by_id(network_id)
+         if network:
+-            if (self.conf.use_namespaces and
++            if (self.bridged and
++                self.conf.use_namespaces and
+                 self.conf.enable_isolated_metadata):
+                 # NOTE(jschwarz): In the case where a network is deleted, all
+                 # the subnets and ports are deleted before this function is
+--- a/neutron/agent/linux/dhcp.py
++++ b/neutron/agent/linux/dhcp.py
+@@ -324,22 +324,51 @@
+             self.NEUTRON_NETWORK_ID_KEY: self.network.id,
+         }
+ 
+-        cmd = [
+-            'dnsmasq',
+-            '--no-hosts',
+-            '--no-resolv',
+-            '--strict-order',
+-            '--bind-interfaces',
+-            '--interface=%s' % self.interface_name,
+-            '--except-interface=lo',
+-            '--pid-file=%s' % self.get_conf_file_name(
+-                'pid', ensure_conf_dir=True),
+-            '--dhcp-hostsfile=%s' % self._output_hosts_file(),
+-            '--addn-hosts=%s' % self._output_addn_hosts_file(),
+-            '--dhcp-optsfile=%s' % self._output_opts_file(),
+-            '--leasefile-ro',
+-            '--dhcp-authoritative',
+-        ]
++        if self.device_manager.bridged():
++            cmd = [
++                'dnsmasq',
++                '--no-hosts',
++                '--no-resolv',
++                '--strict-order',
++                '--bind-interfaces',
++                '--interface=%s' % self.interface_name,
++                '--except-interface=lo',
++                '--pid-file=%s' % self.get_conf_file_name(
++                    'pid', ensure_conf_dir=True),
++                '--dhcp-hostsfile=%s' % self._output_hosts_file(),
++                '--addn-hosts=%s' % self._output_addn_hosts_file(),
++                '--dhcp-optsfile=%s' % self._output_opts_file(),
++                '--leasefile-ro',
++                '--dhcp-authoritative',
++            ]
++        else:
++            # When the DHCP port and VM TAP interfaces are not
++            # bridged, we change the dnsmasq invocation as follows.
++            #   --interface=tap* # to listen on all TAP interfaces
++            #   --bind-dynamic instead of --bind-interfaces, to
++            #     automatically start listening on new TAP
++            #     interfaces as they appear
++            #   --bridge-interface=%s,tap* # to treat all TAP
++            #     interfaces as aliases of the DHCP port.
++            cmd = [
++                'dnsmasq',
++                '--no-hosts',
++                '--no-resolv',
++                '--strict-order',
++                '--bind-dynamic',
++                '--interface=%s' % self.interface_name,
++                '--interface=tap*',
++                '--bridge-interface=%s,tap*' % self.interface_name,
++                '--except-interface=lo',
++                '--pid-file=%s' % self.get_conf_file_name(
++                    'pid', ensure_conf_dir=True),
++                '--dhcp-hostsfile=%s' % self._output_hosts_file(),
++                '--addn-hosts=%s' % self._output_addn_hosts_file(),
++                '--dhcp-optsfile=%s' % self._output_opts_file(),
++                '--leasefile-ro',
++                '--dhcp-authoritative',
++                '--enable-ra',
++                ]
+ 
+         possible_leases = 0
+         for i, subnet in enumerate(self.network.subnets):
+@@ -348,10 +377,16 @@
+                 continue
+             if subnet.ip_version == 4:
+                 mode = 'static'
+-            else:
++            elif self.device_manager.bridged():
+                 # TODO(mark): how do we indicate other options
+                 # ra-only, slaac, ra-nameservers, and ra-stateless.
+                 mode = 'static'
++            else:
++                # For routed IPv6 networking specify 'off-link' flag
++                # to Dnsmasq.  This results in VM adding a default
++                # route to the link-local address of the TAP interface
++                # on the compute host.
++                mode = 'static,off-link'
+             if self.version >= self.MINIMUM_VERSION:
+                 set_tag = 'set:'
+             else:
+@@ -729,6 +764,7 @@
+         try:
+             self.driver = importutils.import_object(
+                 conf.interface_driver, conf)
++            self.driver_bridged = bool(self.driver.bridged())
+         except Exception as e:
+             msg = (_("Error importing interface driver '%(driver)s': "
+                    "%(inner)s") % {'driver': conf.interface_driver,
+@@ -736,6 +772,9 @@
+             LOG.error(msg)
+             raise SystemExit(msg)
+ 
++    def bridged(self):
++        return self.driver_bridged
++
+     def get_interface_name(self, network, port):
+         """Return interface(device) name for use by the DHCP process."""
+         return self.driver.get_device_name(port)
+@@ -800,23 +839,30 @@
+         for port in network.ports:
+             port_device_id = getattr(port, 'device_id', None)
+             if port_device_id == device_id:
+-                port_fixed_ips = []
+-                for fixed_ip in port.fixed_ips:
+-                    port_fixed_ips.append({'subnet_id': fixed_ip.subnet_id,
+-                                           'ip_address': fixed_ip.ip_address})
+-                    if fixed_ip.subnet_id in dhcp_enabled_subnet_ids:
+-                        dhcp_enabled_subnet_ids.remove(fixed_ip.subnet_id)
+-
+-                # If there are dhcp_enabled_subnet_ids here that means that
+-                # we need to add those to the port and call update.
+-                if dhcp_enabled_subnet_ids:
+-                    port_fixed_ips.extend(
+-                        [dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
+-                    dhcp_port = self.plugin.update_dhcp_port(
+-                        port.id, {'port': {'fixed_ips': port_fixed_ips}})
+-                    if not dhcp_port:
+-                        raise exceptions.Conflict()
++                if self.driver_bridged:
++                    port_fixed_ips = []
++                    for fixed_ip in port.fixed_ips:
++                        port_fixed_ips.append({'subnet_id': fixed_ip.subnet_id,
++                                               'ip_address': fixed_ip.ip_address})
++                        if fixed_ip.subnet_id in dhcp_enabled_subnet_ids:
++                            dhcp_enabled_subnet_ids.remove(fixed_ip.subnet_id)
++
++                    # If there are dhcp_enabled_subnet_ids here that means that
++                    # we need to add those to the port and call update.
++                    if dhcp_enabled_subnet_ids:
++                        port_fixed_ips.extend(
++                            [dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
++                        dhcp_port = self.plugin.update_dhcp_port(
++                            port.id, {'port': {'fixed_ips': port_fixed_ips}})
++                        if not dhcp_port:
++                            raise exceptions.Conflict()
++                    else:
++                        dhcp_port = port
+                 else:
++                    # When the DHCP port and VM TAP interfaces are not
++                    # bridged, we don't allocate a unique IP address
++                    # for the DHCP port.
++                    LOG.debug("port.fixed_ips = %s" % port.fixed_ips)
+                     dhcp_port = port
+                 # break since we found port that matches device_id
+                 break
+@@ -839,13 +885,21 @@
+             LOG.debug(_('DHCP port %(device_id)s on network %(network_id)s'
+                         ' does not yet exist.'), {'device_id': device_id,
+                                                   'network_id': network.id})
++
++            # When the DHCP port and VM TAP interfaces are not
++            # bridged, we don't allocate a unique IP address for the
++            # DHCP port.
++            port_fixed_ips = []
++            if self.driver_bridged:
++                port_fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids]
++
+             port_dict = dict(
+                 name='',
+                 admin_state_up=True,
+                 device_id=device_id,
+                 network_id=network.id,
+                 tenant_id=network.tenant_id,
+-                fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
++                fixed_ips=port_fixed_ips)
+             dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
+ 
+         if not dhcp_port:
+@@ -889,27 +943,50 @@
+             ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
+             ip_cidrs.append(ip_cidr)
+ 
+-        if (self.conf.enable_isolated_metadata and
++        if not self.driver_bridged:
++            # When the DHCP port and VM TAP interfaces are not
++            # bridged, assign the subnet's gateway IP address to the
++            # DHCP port.
++            LOG.debug("ip_cidrs = %s" % ip_cidrs)
++
++            for i, subnet in enumerate(network.subnets):
++                if not subnet.enable_dhcp:
++                    continue
++
++                gateway = subnet.gateway_ip
++                for hr in subnet.host_routes:
++                    if hr.destination == "0.0.0.0/0":
++                        gateway = hr.nexthop
++
++                if gateway:
++                    net = netaddr.IPNetwork(subnet.cidr)
++                    ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
++
++        if (self.driver_bridged and
++            self.conf.enable_isolated_metadata and
+             self.conf.use_namespaces):
+             ip_cidrs.append(METADATA_DEFAULT_CIDR)
+ 
++        LOG.debug("ip_cidrs = %s" % ip_cidrs)
+         self.driver.init_l3(interface_name, ip_cidrs,
+                             namespace=network.namespace)
+ 
+         # ensure that the dhcp interface is first in the list
+-        if network.namespace is None:
++        if self.driver_bridged and network.namespace is None:
+             device = ip_lib.IPDevice(interface_name,
+                                      self.root_helper)
+             device.route.pullup_route(interface_name)
+ 
+-        if self.conf.use_namespaces:
++        if (self.driver_bridged and
++            self.conf.use_namespaces):
+             self._set_default_route(network, interface_name)
+ 
+         return interface_name
+ 
+     def update(self, network, device_name):
+         """Update device settings for the network's DHCP on this host."""
+-        if self.conf.use_namespaces:
++        if (self.driver_bridged and
++            self.conf.use_namespaces):
+             self._set_default_route(network, device_name)
+ 
+     def destroy(self, network, device_name):
+--- a/neutron/agent/linux/interface.py
++++ b/neutron/agent/linux/interface.py
+@@ -101,6 +101,13 @@
+             if ip_cidr not in preserve_ips:
+                 device.addr.delete(ip_version, ip_cidr)
+ 
++    def bridged(self):
++        # Interfaces are normally plugged into some kind of bridge;
++        # the only exception is RoutedInterfaceDriver.  Hence return
++        # True by default here and override that in
++        # RoutedInterfaceDriver.
++        return True
++
+     def check_bridge_exists(self, bridge):
+         if not ip_lib.device_exists(bridge):
+             raise exceptions.BridgeDoesNotExist(bridge=bridge)
+@@ -371,6 +378,51 @@
+         device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
+         try:
+             device.link.delete()
++            LOG.debug(_("Unplugged interface '%s'"), device_name)
++        except RuntimeError:
++            LOG.error(_("Failed unplugging interface '%s'"),
++                      device_name)
++
++
++class RoutedInterfaceDriver(LinuxInterfaceDriver):
++    """Driver for DHCP service for routed virtual interfaces."""
++
++    DEV_NAME_PREFIX = 'ns-'
++
++    def bridged(self):
++        # Routed interfaces are not plugged into an L2 bridge.
++        return False
++
++    def plug(self, network_id, port_id, device_name, mac_address,
++             bridge=None, namespace=None, prefix=None):
++        """Plugin the interface."""
++        LOG.warning("RoutedInterfaceDriver::plug(%s, %s, %s, %s, %s, %s, %s)" %
++                    (network_id, port_id, device_name, mac_address,
++                     bridge, namespace, prefix));
++        if not ip_lib.device_exists(device_name,
++                                    self.root_helper,
++                                    namespace=namespace):
++            ip = ip_lib.IPWrapper(self.root_helper)
++
++            # Create ns_veth in a namespace if one is configured.
++            ns_veth = ip.add_dummy(device_name, namespace2=namespace)
++            ns_veth.link.set_address(mac_address)
++
++            if self.conf.network_device_mtu:
++                ns_veth.link.set_mtu(self.conf.network_device_mtu)
++
++            ns_veth.link.set_up()
++
++        else:
++            LOG.info(_("Device %s already exists"), device_name)
++
++    def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
++        """Unplug the interface."""
++        LOG.warning("BridgeInterfaceDriver::unplug(%s, %s, %s, %s)" %
++                    (device_name, bridge, namespace, prefix));
++        device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
++        try:
++            device.link.delete()
+             LOG.debug(_("Unplugged interface '%s'"), device_name)
+         except RuntimeError:
+             LOG.error(_("Failed unplugging interface '%s'"),
+--- a/neutron/agent/linux/ip_lib.py
++++ b/neutron/agent/linux/ip_lib.py
+@@ -132,6 +132,19 @@
+         return (IPDevice(name1, self.root_helper, self.namespace),
+                 IPDevice(name2, self.root_helper, namespace2))
+ 
++    def add_dummy(self, name1, namespace2=None):
++        args = ['add', name1, 'type', 'dummy']
++
++        if namespace2 is None:
++            namespace2 = self.namespace
++        else:
++            self.ensure_namespace(namespace2)
++            args += ['netns', namespace2]
++
++        self._as_root('', 'link', tuple(args))
++
++        return IPDevice(name1, self.root_helper, self.namespace)
++
+     def ensure_namespace(self, name):
+         if not self.netns.exists(name):
+             ip = self.netns.add(name)
+--- a/neutron/agent/metadata/agent.py
++++ b/neutron/agent/metadata/agent.py
+@@ -146,9 +146,13 @@
+         """
+         qclient = self._get_neutron_client()
+ 
+-        all_ports = qclient.list_ports(
+-            network_id=networks,
+-            fixed_ips=['ip_address=%s' % remote_address])['ports']
++        if networks:
++            all_ports = qclient.list_ports(
++                network_id=networks,
++                fixed_ips=['ip_address=%s' % remote_address])['ports']
++        else:
++            all_ports = qclient.list_ports(
++                fixed_ips=['ip_address=%s' % remote_address])['ports']
+         self.auth_info = qclient.get_auth_info()
+         return all_ports
+ 
+@@ -165,8 +169,7 @@
+         elif router_id:
+             networks = self._get_router_networks(router_id)
+         else:
+-            raise TypeError(_("Either one of parameter network_id or router_id"
+-                              " must be passed to _get_ports method."))
++            networks = None
+ 
+         return self._get_ports_for_remote_address(remote_address, networks)
+ 
+--- a/neutron/agent/metadata/namespace_proxy.py
++++ b/neutron/agent/metadata/namespace_proxy.py
+@@ -55,12 +55,14 @@
+     accessible within the isolated tenant context.
+     """
+ 
+-    def __init__(self, network_id=None, router_id=None):
++    def __init__(self, network_id=None, router_id=None, flat=None):
+         self.network_id = network_id
+         self.router_id = router_id
++        self.flat = flat
+ 
+-        if network_id is None and router_id is None:
+-            msg = _('network_id and router_id are None. One must be provided.')
++        if network_id is None and router_id is None and flat is None:
++            msg = _('network_id, router_id and flat are None. One must be '
++                    'provided.')
+             raise ValueError(msg)
+ 
+     @webob.dec.wsgify(RequestClass=webob.Request)
+@@ -86,7 +88,7 @@
+ 
+         if self.router_id:
+             headers['X-Neutron-Router-ID'] = self.router_id
+-        else:
++        elif self.network_id:
+             headers['X-Neutron-Network-ID'] = self.network_id
+ 
+         url = urlparse.urlunsplit((
+@@ -127,17 +129,20 @@
+ 
+ 
+ class ProxyDaemon(daemon.Daemon):
+-    def __init__(self, pidfile, port, network_id=None, router_id=None):
+-        uuid = network_id or router_id
+-        super(ProxyDaemon, self).__init__(pidfile, uuid=uuid)
++    def __init__(self, pidfile, port, network_id=None, router_id=None,
++                 flat=None):
++        this_uuid = network_id or router_id or flat
++        super(ProxyDaemon, self).__init__(pidfile, uuid=this_uuid)
+         self.network_id = network_id
+         self.router_id = router_id
++        self.flat = flat
+         self.port = port
+ 
+     def run(self):
+         handler = NetworkMetadataProxyHandler(
+             self.network_id,
+-            self.router_id)
++            self.router_id,
++            self.flat)
+         proxy = wsgi.Server('neutron-network-metadata-proxy')
+         proxy.start(handler, self.port)
+         proxy.wait()
+@@ -152,6 +157,10 @@
+         cfg.StrOpt('router_id',
+                    help=_('Router that will have connected instances\' '
+                           'metadata proxied.')),
++        cfg.StrOpt('flat',
++                   help=_('Flat networking is being used: neither the network '
++                          'nor the router ID is provided. This argument takes '
++                          'a UUID to identify the instance.')),
+         cfg.StrOpt('pid_file',
+                    help=_('Location of pid file of this process.')),
+         cfg.BoolOpt('daemonize',
+@@ -175,7 +184,8 @@
+     proxy = ProxyDaemon(cfg.CONF.pid_file,
+                         cfg.CONF.metadata_port,
+                         network_id=cfg.CONF.network_id,
+-                        router_id=cfg.CONF.router_id)
++                        router_id=cfg.CONF.router_id,
++                        flat=cfg.CONF.flat)
+ 
+     if cfg.CONF.daemonize:
+         proxy.start()
+--- a/neutron/plugins/ml2/rpc.py
++++ b/neutron/plugins/ml2/rpc.py
+@@ -150,7 +150,11 @@
+                      'admin_state_up': port.admin_state_up,
+                      'network_type': segment[api.NETWORK_TYPE],
+                      'segmentation_id': segment[api.SEGMENTATION_ID],
+-                     'physical_network': segment[api.PHYSICAL_NETWORK]}
++                     'physical_network': segment[api.PHYSICAL_NETWORK],
++                     'fixed_ips': [{'subnet_id': ip["subnet_id"],
++                                    'ip_address': ip["ip_address"]}
++                                   for ip in port["fixed_ips"]],
++                     'mac_address': port.mac_address}
+             LOG.debug(_("Returning: %s"), entry)
+             return entry
+ 
+--- a/neutron/tests/unit/test_dhcp_agent.py
++++ b/neutron/tests/unit/test_dhcp_agent.py
+@@ -223,11 +223,11 @@
+         network.id = '1'
+         dhcp = dhcp_agent.DhcpAgent(cfg.CONF)
+         self.assertTrue(dhcp.call_driver('foo', network))
+-        self.driver.assert_called_once_with(cfg.CONF,
+-                                            mock.ANY,
+-                                            'sudo',
+-                                            mock.ANY,
+-                                            mock.ANY)
++        self.driver.assert_has_calls([mock.call(cfg.CONF,
++                                                mock.ANY,
++                                                'sudo',
++                                                mock.ANY,
++                                                mock.ANY)])
+ 
+     def _test_call_driver_failure(self, exc=None,
+                                   trace_level='exception', expected_sync=True):
+@@ -237,11 +237,11 @@
+         with mock.patch.object(dhcp_agent.LOG, trace_level) as log:
+             dhcp = dhcp_agent.DhcpAgent(HOSTNAME)
+             self.assertIsNone(dhcp.call_driver('foo', network))
+-            self.driver.assert_called_once_with(cfg.CONF,
+-                                                mock.ANY,
+-                                                'sudo',
+-                                                mock.ANY,
+-                                                mock.ANY)
++            self.driver.assert_has_calls([mock.call(cfg.CONF,
++                                                    mock.ANY,
++                                                    'sudo',
++                                                    mock.ANY,
++                                                    mock.ANY)])
+             self.assertEqual(log.call_count, 1)
+             self.assertEqual(expected_sync, dhcp.needs_resync)
+ 
+@@ -1161,6 +1161,7 @@
+         self.mock_iproute = mock.MagicMock()
+         driver_cls.return_value = self.mock_driver
+         iproute_cls.return_value = self.mock_iproute
++        self.mock_driver.bridged.return_value = True
+ 
+     def tearDown(self):
+         self.dvr_cls_p.stop()
+@@ -1194,6 +1195,7 @@
+ 
+         expected_ips = ['172.9.9.9/24', '169.254.169.254/16']
+         expected = [
++            mock.call.bridged(),
+             mock.call.get_device_name(port),
+             mock.call.init_l3(
+                 'tap12345678-12',
+@@ -1201,7 +1203,7 @@
+                 namespace=net.namespace)]
+ 
+         if not reuse_existing:
+-            expected.insert(1,
++            expected.insert(2,
+                             mock.call.plug(net.id,
+                                            port.id,
+                                            'tap12345678-12',
+--- a/neutron/tests/unit/test_metadata_agent.py
++++ b/neutron/tests/unit/test_metadata_agent.py
+@@ -198,7 +198,15 @@
+         self.assertEqual(expected, ports)
+ 
+     def test_get_ports_no_id(self):
+-        self.assertRaises(TypeError, self.handler._get_ports, 'remote_address')
++        remote_address = 'remote-address'
++        expected = ['port1']
++        with contextlib.nested(
++            mock.patch.object(self.handler, '_get_ports_for_remote_address'),
++        ) as (mock_get_ip_addr):
++            mock_get_ip_addr[0].return_value = expected
++            ports = self.handler._get_ports(remote_address)
++            mock_get_ip_addr[0].assert_called_once_with(remote_address, None)
++        self.assertEqual(expected, ports)
+ 
+     def _get_instance_and_tenant_id_helper(self, headers, list_ports_retval,
+                                            networks=None, router_id=None):
+--- a/neutron/tests/unit/test_metadata_namespace_proxy.py
++++ b/neutron/tests/unit/test_metadata_namespace_proxy.py
+@@ -330,7 +330,8 @@
+                             daemon.assert_has_calls([
+                                 mock.call('pidfile', 9697,
+                                           router_id='router_id',
+-                                          network_id=None),
++                                          network_id=None,
++                                          flat=mock.ANY),
+                                 mock.call().start()]
+                             )
+ 
+@@ -353,6 +354,7 @@
+                             daemon.assert_has_calls([
+                                 mock.call('pidfile', 9697,
+                                           router_id='router_id',
+-                                          network_id=None),
++                                          network_id=None,
++                                          flat=mock.ANY),
+                                 mock.call().run()]
+                             )
