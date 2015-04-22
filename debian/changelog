@@ -1,4 +1,4 @@
-neutron (1:2014.2.2-0ubuntu1~calico0.12.1) trusty; urgency=medium
+neutron (1:2014.2.2-0ubuntu1calico0.12.1) trusty; urgency=medium
 
   * Initial release of Project Calico for Juno on trusty
     - DHCP agent: support routed VM interfaces as well as bridged
