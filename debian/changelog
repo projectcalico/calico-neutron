@@ -1,8 +1,21 @@
+neutron (1:2014.2.2-0ubuntu1~calico0.12.1) trusty; urgency=medium
+
+  * Initial release of Project Calico for Juno on trusty
+    - DHCP agent: support routed VM interfaces as well as bridged
+    - Specify off-link flag to Dnsmasq
+    - DHCP agent: ifnore 'use_namespaces' config when serving routed VM
+      interfaces
+    - Calico RoutedInterfaceDriver unplug() method has typo in logging
+      statement that will cause a NameError: global name 'mac_address' is
+      not defined
+
+ -- Cory Benfield <cory@project-calico.org>  Wed, 22 Apr 2015 14:00:33 +0100
+
 neutron (1:2014.2.2-0ubuntu1~cloud0) trusty-juno; urgency=medium
 
-  * New upstream release for the Ubuntu Cloud Archive.
+  * new upstream release for the ubuntu cloud archive.
 
- -- Openstack Ubuntu Testing Bot <openstack-testing-bot@ubuntu.com>  Fri, 20 Feb 2015 22:00:33 +0000
+ -- openstack ubuntu testing bot <openstack-testing-bot@ubuntu.com>  fri, 20 feb 2015 22:00:33 +0000
 
 neutron (1:2014.2.2-0ubuntu1) utopic; urgency=medium
 
