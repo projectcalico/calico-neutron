@@ -1,3 +1,36 @@
+neutron (1:2014.1.4-0ubuntu2calico0.12.1) trusty; urgency=medium
+
+  * Add Calico patch with the following changes:
+    - Add VIF_TYPE constant for routed virtual interfaces
+    - DHCP agent: support routed VM interfaces as well as bridged
+    - ML2 plugin get_device_details: also return fixed IPs
+    - DHCP agent: ignore 'use_namespaces' config when serving routed VM interfaces
+    - Correctly apply non-/24 subnet masks to DHCP i/fs.
+    - Accept flat networks in the Neutron metadata agent
+    - Must be passed a UUID on the command line.
+    - Run Dnsmasq with --enable-ra, so that it generates IPv6 router advertisements
+    - Add IPv6 gateway address to DHCP port, as well as IPv4 address
+    - Specify off-link flag to Dnsmasq
+    - Add Calico mechanism driver to Neutron
+    - Depend on DHCP agent, rather than on Calico
+    - Report port status
+    - Simulate Felix agent state based on connections from Felix instances
+    - Simplify segment-network checking
+    - Plugin: VM ports only have to start with 'compute:'
+    - Fix neutron.tests.unit.test_dhcp_agent
+    - Fix neutron.tests.unit.test_metadata_namespace_proxy
+    - Fix representation of 'any IP address', in Network API security group rules
+    - Add Calico mechanism driver and ML2 entry point config to neutron.egg-info
+    - Simplify metadata patch and fix associated unit test
+    - Use a distinct Neutron DB context on each green thread
+    - CalicoMechanismDriver: Introduce initialize method, and move socket opening there
+    - Move CalicoMechanismDriver out of Neutron tree
+    - Calico RoutedIntergateDriver unplug() method has typo in logging statement that will cause a NameError:
+      global name 'mac_address' is not defined
+    - Revert "Add VIF_TYPE constant for routed virtual interfaces"
+
+ -- Cory Benfield <cory@projectcalico.org>  Wed, 22 Apr 2015 11:46:31 +0100
+
 neutron (1:2014.1.4-0ubuntu2) trusty; urgency=medium
 
   * d/control: Set minimum python-six dependency to 1.5.2 (LP: #1403114).
