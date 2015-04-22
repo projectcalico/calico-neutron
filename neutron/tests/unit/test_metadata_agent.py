@@ -198,7 +198,15 @@ class TestMetadataProxyHandlerCache(base.BaseTestCase):
         self.assertEqual(expected, ports)
 
     def test_get_ports_no_id(self):
-        self.assertRaises(TypeError, self.handler._get_ports, 'remote_address')
+        remote_address = 'remote-address'
+        expected = ['port1']
+        with contextlib.nested(
+            mock.patch.object(self.handler, '_get_ports_for_remote_address'),
+        ) as (mock_get_ip_addr):
+            mock_get_ip_addr[0].return_value = expected
+            ports = self.handler._get_ports(remote_address)
+            mock_get_ip_addr[0].assert_called_once_with(remote_address, None)
+        self.assertEqual(expected, ports)
 
     def _get_instance_and_tenant_id_helper(self, headers, list_ports_retval,
                                            networks=None, router_id=None):
