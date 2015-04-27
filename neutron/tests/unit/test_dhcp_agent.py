@@ -234,11 +234,11 @@ class TestDhcpAgent(base.BaseTestCase):
         network.id = '1'
         dhcp = dhcp_agent.DhcpAgent(cfg.CONF)
         self.assertTrue(dhcp.call_driver('foo', network))
-        self.driver.assert_has_calls([mock.call(cfg.CONF,
-                                                mock.ANY,
-                                                'sudo',
-                                                mock.ANY,
-                                                mock.ANY)])
+        self.driver.assert_called_once_with(cfg.CONF,
+                                            mock.ANY,
+                                            'sudo',
+                                            mock.ANY,
+                                            mock.ANY)
 
     def _test_call_driver_failure(self, exc=None,
                                   trace_level='exception', expected_sync=True):
@@ -250,11 +250,11 @@ class TestDhcpAgent(base.BaseTestCase):
             with mock.patch.object(dhcp,
                                    'schedule_resync') as schedule_resync:
                 self.assertIsNone(dhcp.call_driver('foo', network))
-                self.driver.assert_has_calls([mock.call(cfg.CONF,
-                                                        mock.ANY,
-                                                        'sudo',
-                                                        mock.ANY,
-                                                        mock.ANY)])
+                self.driver.assert_called_once_with(cfg.CONF,
+                                                    mock.ANY,
+                                                    'sudo',
+                                                    mock.ANY,
+                                                    mock.ANY)
                 self.assertEqual(log.call_count, 1)
                 self.assertEqual(expected_sync, schedule_resync.called)
 
@@ -1187,7 +1187,6 @@ class TestDeviceManager(base.BaseTestCase):
         self.mock_iproute = mock.MagicMock()
         driver_cls.return_value = self.mock_driver
         iproute_cls.return_value = self.mock_iproute
-        self.mock_driver.bridged.return_value = True
 
     def _test_setup_helper(self, device_is_ready, net=None, port=None):
         net = net or fake_network
@@ -1214,7 +1213,6 @@ class TestDeviceManager(base.BaseTestCase):
 
         expected_ips = ['172.9.9.9/24', '169.254.169.254/16']
         expected = [
-            mock.call.bridged(),
             mock.call.get_device_name(port),
             mock.call.init_l3(
                 'tap12345678-12',
@@ -1222,7 +1220,7 @@ class TestDeviceManager(base.BaseTestCase):
                 namespace=net.namespace)]
 
         if not device_is_ready:
-            expected.insert(2,
+            expected.insert(1,
                             mock.call.plug(net.id,
                                            port.id,
                                            'tap12345678-12',
