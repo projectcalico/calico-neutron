@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.1calico0.12.1
+Version:	2014.2.1calico0.12.2
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -974,6 +974,9 @@ exit 0
 
 
 %changelog
+* Mon Apr 27 2015 Neil Jerram <neil.jerram@metaswitch.com> 2014.2.1calico0.12.2-1
+- Specify prefix length for IPv6 subnets
+
 * Fri Feb 13 2015 Matt Dupre <matthew.dupre@metaswitch.com> 2014.2.1calico0.12.1-1
 - Fix unit tests
 
