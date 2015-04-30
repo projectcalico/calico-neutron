@@ -23,8 +23,11 @@ The following branches are currently our **active** ones - i.e. the ones
 that we actively maintain for installing Calico on the relevant target
 distribution:
 
-- calico\_2014.1.3 and ubuntu\_2014.1.3, for installation on Ubuntu
-  14.04 (Trusty).
+- calico\_2014.1.4 and ubuntu\_2014.1.4, for installation on Ubuntu
+  14.04 (Trusty) with OpenStack Icehouse.
+
+- calico\_2014.2.2 and ubuntu\_2014.2.2, for installation on Ubuntu
+  14.04 (Trusty) with OpenStack Juno.
 
 - calico\_2014.1.1 and ubuntu\_precise\_mira\_2014.1.1, for installing
   Calico using Mirantis Fuel 5.1.
