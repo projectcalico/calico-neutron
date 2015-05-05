@@ -485,6 +485,28 @@ class RoutedInterfaceDriver(LinuxInterfaceDriver):
         else:
             LOG.info(_("Device %s already exists"), device_name)
 
+    def init_l3(self, device_name, ip_cidrs, namespace=None,
+                preserve_ips=[], gateway=None, extra_subnets=[]):
+        """Extend LinuxInterfaceDriver.init_l3 by removing the subnet route(s)
+        that Linux automatically creates.
+        """
+        super(RoutedInterfaceDriver, self).init_l3(device_name,
+                                                   ip_cidrs,
+                                                   namespace,
+                                                   preserve_ips,
+                                                   gateway,
+                                                   extra_subnets)
+        device = ip_lib.IPDevice(device_name,
+                                 self.root_helper,
+                                 namespace=namespace)
+        device.set_log_fail_as_error(False)
+        for ip_cidr in ip_cidrs:
+            LOG.debug("Remove subnet route %s" % ip_cidr)
+            try:
+                device.route.delete_onlink_route(ip_cidr)
+            except RuntimeError:
+                LOG.debug("Subnet route %s did not exist" % ip_cidr)
+
     def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
         """Unplug the interface."""
         LOG.warning("BridgeInterfaceDriver::unplug(%s, %s, %s, %s)" %
