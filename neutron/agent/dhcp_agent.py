@@ -370,6 +370,7 @@ class DhcpAgent(manager.Manager):
 
     @utils.synchronized('dhcp-agent')
     def _handle_network_create(self, network_id):
+        LOG.debug("Worker: Handling network create for %s.", network_id)
         self.enable_dhcp_helper(network_id)
 
     def network_update_end(self, context, payload):
@@ -380,12 +381,13 @@ class DhcpAgent(manager.Manager):
         """
         network_id = payload['network']['id']
         up = payload['network']['admin_state_up']
+        LOG.info("Network updated: %s. Up? %s", network_id, up)
         self.queue.put((self._handle_network_update, {"network_id": network_id,
                                                   "up": up}))
 
     @utils.synchronized('dhcp-agent')
     def _handle_network_update(self, network_id, up):
-        LOG.info("Network updated: %s. Up? %s", network_id, up)
+        LOG.debug("Worker: Handling network update for %s: %s", network_id, up)
         if up:
             self.enable_dhcp_helper(network_id)
         else:
@@ -404,6 +406,7 @@ class DhcpAgent(manager.Manager):
 
     @utils.synchronized('dhcp-agent')
     def _handle_network_delete(self, network_id):
+        LOG.debug("Worker: Handling network deletion for %s", network_id)
         self.disable_dhcp_helper(network_id)
 
     def subnet_update_end(self, context, payload):
@@ -418,6 +421,7 @@ class DhcpAgent(manager.Manager):
 
     @utils.synchronized('dhcp-agent')
     def _handle_subnet_update(self, network_id):
+        LOG.debug("Worker: Handling subnet update for %s", network_id)
         self.refresh_dhcp_helper(network_id)
 
     # Use the update handler for the subnet create event.
@@ -430,11 +434,12 @@ class DhcpAgent(manager.Manager):
         Parses the message and then queues the operation.
         """
         subnet_id = payload['subnet_id']
+        LOG.info("Subnet deleted %s", subnet_id)
         self.queue.put((self._handle_subnet_delete, {"subnet_id": subnet_id}))
 
     @utils.synchronized('dhcp-agent')
     def _handle_subnet_delete(self, subnet_id):
-        LOG.info("Subnet deleted %s", subnet_id)
+        LOG.debug("Worker: Handling subnet delete for %s", subnet_id)
         network = self.cache.get_network_by_subnet_id(subnet_id)
         if network:
             LOG.debug("Network found, refreshing dhcp helper.")
@@ -447,11 +452,12 @@ class DhcpAgent(manager.Manager):
         Parses the message and then queues the operation.
         """
         updated_port = dhcp.DictModel(payload['port'])
+        LOG.info("Port updated: %s", updated_port.id)
         self.queue.put((self._handle_port_update, {"updated_port": updated_port}))
 
     def _handle_port_update(self, updated_port):
+        LOG.debug("Worker: Handling port update for %s", updated_port.id)
         network = self.cache.get_network_by_id(updated_port.network_id)
-        LOG.info("Port updated: %s", updated_port.id)
         if network:
             LOG.debug("Network for port found, updating cache/driver.")
             self.cache.put_port(updated_port)
@@ -467,11 +473,12 @@ class DhcpAgent(manager.Manager):
         Parses the message and then queues the operation.
         """
         port_id = payload['port_id']
+        LOG.info("Port deleted: %s", port_id)
         self.queue.put((self._handle_port_delete, {"port_id": port_id}))
 
     def _handle_port_delete(self, port_id):
+        LOG.debug("Worker: Handling port deletion for %s", port_id)
         port = self.cache.get_port_by_id(port_id)
-        LOG.info("Port deleted: %s", port_id)
         if port:
             LOG.debug("Port %s found, updating cache/driver.", port_id)
             self.cache.remove_port(port)
