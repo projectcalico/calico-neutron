@@ -153,7 +153,32 @@
              if self.version >= self.MINIMUM_VERSION:
                  set_tag = 'set:'
              else:
-@@ -729,6 +764,7 @@
+@@ -359,11 +394,19 @@
+ 
+             cidr = netaddr.IPNetwork(subnet.cidr)
+ 
+-            cmd.append('--dhcp-range=%s%s,%s,%s,%ss' %
+-                       (set_tag, self._TAG_PREFIX % i,
+-                        cidr.network,
+-                        mode,
+-                        self.conf.dhcp_lease_duration))
++            if subnet.ip_version == 4:
++                cmd.append('--dhcp-range=%s%s,%s,%s,%ss' %
++                           (set_tag, self._TAG_PREFIX % i,
++                            cidr.network,
++                            mode,
++                            self.conf.dhcp_lease_duration))
++            else:
++                cmd.append('--dhcp-range=%s%s,%s,%s,%d,%ss' %
++                           (set_tag, self._TAG_PREFIX % i,
++                            cidr.network,
++                            mode,
++                            cidr.prefixlen,
++                            self.conf.dhcp_lease_duration))
+             possible_leases += cidr.size
+ 
+         # Cap the limit because creating lots of subnets can inflate
+@@ -729,6 +772,7 @@
          try:
              self.driver = importutils.import_object(
                  conf.interface_driver, conf)
@@ -161,7 +186,7 @@
          except Exception as e:
              msg = (_("Error importing interface driver '%(driver)s': "
                     "%(inner)s") % {'driver': conf.interface_driver,
-@@ -736,6 +772,9 @@
+@@ -736,6 +780,9 @@
              LOG.error(msg)
              raise SystemExit(msg)
  
@@ -171,7 +196,7 @@
      def get_interface_name(self, network, port):
          """Return interface(device) name for use by the DHCP process."""
          return self.driver.get_device_name(port)
-@@ -800,23 +839,30 @@
+@@ -800,23 +847,30 @@
          for port in network.ports:
              port_device_id = getattr(port, 'device_id', None)
              if port_device_id == device_id:
@@ -218,7 +243,7 @@
                      dhcp_port = port
                  # break since we found port that matches device_id
                  break
-@@ -839,13 +885,21 @@
+@@ -839,13 +893,21 @@
              LOG.debug(_('DHCP port %(device_id)s on network %(network_id)s'
                          ' does not yet exist.'), {'device_id': device_id,
                                                    'network_id': network.id})
@@ -241,7 +266,7 @@
              dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
  
          if not dhcp_port:
-@@ -889,27 +943,50 @@
+@@ -889,27 +951,50 @@
              ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
              ip_cidrs.append(ip_cidr)
  
@@ -312,7 +337,7 @@
      def check_bridge_exists(self, bridge):
          if not ip_lib.device_exists(bridge):
              raise exceptions.BridgeDoesNotExist(bridge=bridge)
-@@ -371,6 +378,51 @@
+@@ -371,6 +378,73 @@
          device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
          try:
              device.link.delete()
@@ -353,6 +378,28 @@
 +
 +        else:
 +            LOG.info(_("Device %s already exists"), device_name)
++
++    def init_l3(self, device_name, ip_cidrs, namespace=None,
++                preserve_ips=[], gateway=None, extra_subnets=[]):
++        """Extend LinuxInterfaceDriver.init_l3 by removing the subnet route(s)
++        that Linux automatically creates.
++        """
++        super(RoutedInterfaceDriver, self).init_l3(device_name,
++                                                   ip_cidrs,
++                                                   namespace,
++                                                   preserve_ips,
++                                                   gateway,
++                                                   extra_subnets)
++        device = ip_lib.IPDevice(device_name,
++                                 self.root_helper,
++                                 namespace=namespace)
++        device.set_log_fail_as_error(False)
++        for ip_cidr in ip_cidrs:
++            LOG.debug("Remove subnet route %s" % ip_cidr)
++            try:
++                device.route.delete_onlink_route(ip_cidr)
++            except RuntimeError:
++                LOG.debug("Subnet route %s did not exist" % ip_cidr)
 +
 +    def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
 +        """Unplug the interface."""
@@ -606,3 +653,29 @@
 +                                          flat=mock.ANY),
                                  mock.call().run()]
                              )
+--- a/neutron/tests/unit/test_linux_dhcp.py
++++ b/neutron/tests/unit/test_linux_dhcp.py
+@@ -700,11 +700,18 @@
+             '--leasefile-ro',
+             '--dhcp-authoritative']
+ 
+-        expected.extend(
+-            '--dhcp-range=set:tag%d,%s,static,86400s' %
+-            (i, s.cidr.split('/')[0])
+-            for i, s in enumerate(network.subnets)
+-        )
++        if s.ip_version == 4:
++            expected.extend(
++                '--dhcp-range=set:tag%d,%s,static,86400s' %
++                (i, s.cidr.split('/')[0])
++                for i, s in enumerate(network.subnets)
++            )
++        else:
++            expected.extend(
++                '--dhcp-range=set:tag%d,%s,static,%s,86400s' %
++                (i, s.cidr.split('/')[0], s.cidr.split('/')[1])
++                for i, s in enumerate(network.subnets)
++            )
+         expected.append('--dhcp-lease-max=%d' % max_leases)
+         expected.extend(extra_options)
+ 
