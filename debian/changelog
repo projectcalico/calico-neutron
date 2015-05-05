@@ -1,3 +1,9 @@
+neutron (1:2014.2.1-0ubuntu1calico0.18) trusty; urgency=medium
+
+  * Remove the Linux-created subnet routes on the DHCP port
+
+ -- Neil Jerram <Neil.Jerram@metaswitch.com>  Tue, 05 May 2015 17:02:21 +0100
+
 neutron (1:2014.2.1-0ubuntu1calico0.12.2) trusty; urgency=medium
 
   * Specify prefix length for IPv6 subnets
