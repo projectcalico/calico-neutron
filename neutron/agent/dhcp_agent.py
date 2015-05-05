@@ -46,6 +46,20 @@ LOG = logging.getLogger(__name__)
 
 
 class DhcpAgent(manager.Manager):
+    """
+    DHCP agent.  Manages a DHCP driver (such as the dnsmasq wrapper).
+
+    Architecture:
+
+    - Receives RPC messages for networks, subnet and port CRUD
+      operations.
+    - To avoid blocking the RPC queue while handling the messages,
+      queues all updates to a worker thread.
+    - The worker thread processes messages in turn, coalescing
+      port updates into single calls to the driver's
+      reload_allocations method.
+
+    """
     OPTS = [
         cfg.IntOpt('resync_interval', default=5,
                    help=_("Interval to resync.")),
@@ -71,8 +85,18 @@ class DhcpAgent(manager.Manager):
         self.needs_resync_reasons = []
         self.conf = cfg.CONF
         self.cache = NetworkCache()
+        """Cache of the current state of the networks, owned by the
+        worker thread."""
         self.root_helper = config.get_root_helper(self.conf)
         self.dhcp_driver_cls = importutils.import_class(self.conf.dhcp_driver)
+
+        self.queue = eventlet.queue.Queue()
+        """Queue used to send messages to our worker thread."""
+        self.dirty_networks = set()
+        """
+        Set of networks that need to be refreshed via a call to
+        the driver's reload_allocations method.
+        """
 
         # Work out if DHCP serving for bridged or routed VM interfaces.
         try:
@@ -125,9 +149,65 @@ class DhcpAgent(manager.Manager):
         LOG.info(_("DHCP agent started"))
 
     def run(self):
-        """Activate the DHCP agent."""
+        """
+        Starts the worker thread, which owns the driver and does our
+        periodic resyncs.
+        """
+        eventlet.spawn(self._loop)
+
+    def _loop(self):
+        """
+        Worker loop, owns the driver and cache.
+        """
         self.sync_state()
-        self.periodic_resync()
+
+        while True:
+            if self.needs_resync_reasons:
+                # be careful to avoid a race with additions to list
+                # from other threads
+                reasons = self.needs_resync_reasons
+                self.needs_resync_reasons = []
+                for r in reasons:
+                    LOG.debug(_("resync: %(reason)s"), {"reason": r})
+                self.sync_state()
+            try:
+                # Wait for messages.  Wake up at least every resync interval
+                # to check for any need to resync.
+                batch = [self.queue.get(timeout=self.conf.resync_interval)]
+            except eventlet.queue.Empty:
+                continue
+            else:
+                # Opportunistically grab as many messages as we can from the
+                # queue.  This allows us to coalesce multiple port
+                # update/delete messages below.  Since we don't yield here,
+                # we also can't build up an unlimited batch.
+                while not self.queue.empty():
+                    batch.append(self.queue.get())
+
+                while batch:
+                    msg_hndlr, params = batch.pop(0)
+                    if (self.dirty_networks and
+                            (msg_hndlr not in (self._handle_port_delete,
+                                               self._handle_port_update))):
+                        # This isn't a message that we can coalesce, process
+                        # any dirty networks now before we handle the message
+                        # itself.
+                        self._reload_dirty_networks()
+                    msg_hndlr(**params)
+                if self.dirty_networks:
+                    self._reload_dirty_networks()
+
+    @utils.synchronized('dhcp-agent')
+    def _reload_dirty_networks(self):
+        """
+        Calls reload_allocations for any networks marked as dirty.
+
+        Clears the dirty_networks set.
+        """
+        for network_id in self.dirty_networks:
+            network = self.cache.get_network_by_id(network_id)
+            self.call_driver('reload_allocations', network)
+        self.dirty_networks.clear()
 
     def call_driver(self, action, network, **action_kwargs):
         """Invoke an action on a DHCP driver instance."""
@@ -191,25 +271,6 @@ class DhcpAgent(manager.Manager):
         except Exception as e:
             self.schedule_resync(e)
             LOG.exception(_('Unable to sync network state.'))
-
-    @utils.exception_logger()
-    def _periodic_resync_helper(self):
-        """Resync the dhcp state at the configured interval."""
-        while True:
-            eventlet.sleep(self.conf.resync_interval)
-            if self.needs_resync_reasons:
-                # be careful to avoid a race with additions to list
-                # from other threads
-                reasons = self.needs_resync_reasons
-                self.needs_resync_reasons = []
-                for r in reasons:
-                    LOG.debug(_("resync: %(reason)s"),
-                              {"reason": r})
-                self.sync_state()
-
-    def periodic_resync(self):
-        """Spawn a thread to periodically resync the dhcp state."""
-        eventlet.spawn(self._periodic_resync_helper)
 
     def safe_get_network_info(self, network_id):
         try:
@@ -296,63 +357,126 @@ class DhcpAgent(manager.Manager):
         else:
             self.disable_dhcp_helper(network.id)
 
-    @utils.synchronized('dhcp-agent')
     def network_create_end(self, context, payload):
-        """Handle the network.create.end notification event."""
+        """
+        Handle the network.create.end notification event.
+
+        Parses the message and then queues the operation.
+        """
         network_id = payload['network']['id']
-        self.enable_dhcp_helper(network_id)
+        LOG.info("Network created: %s", network_id)
+        self.queue.put((self._handle_network_create,
+                         {"network_id": network_id}))
 
     @utils.synchronized('dhcp-agent')
+    def _handle_network_create(self, network_id):
+        self.enable_dhcp_helper(network_id)
+
     def network_update_end(self, context, payload):
-        """Handle the network.update.end notification event."""
+        """
+        Handle the network.update.end notification event.
+
+        Parses the message and then queues the operation.
+        """
         network_id = payload['network']['id']
-        if payload['network']['admin_state_up']:
+        up = payload['network']['admin_state_up']
+        self.queue.put((self._handle_network_update, {"network_id": network_id,
+                                                  "up": up}))
+
+    @utils.synchronized('dhcp-agent')
+    def _handle_network_update(self, network_id, up):
+        LOG.info("Network updated: %s. Up? %s", network_id, up)
+        if up:
             self.enable_dhcp_helper(network_id)
         else:
             self.disable_dhcp_helper(network_id)
 
-    @utils.synchronized('dhcp-agent')
     def network_delete_end(self, context, payload):
-        """Handle the network.delete.end notification event."""
-        self.disable_dhcp_helper(payload['network_id'])
+        """
+        Handle the network.delete.end notification event.
+
+        Parses the message and then queues the operation.
+        """
+        network_id = payload['network_id']
+        LOG.info("Network deleted: %s. Up? %s", network_id)
+        self.queue.put((self._handle_network_delete,
+                         {"network_id": network_id}))
 
     @utils.synchronized('dhcp-agent')
+    def _handle_network_delete(self, network_id):
+        self.disable_dhcp_helper(network_id)
+
     def subnet_update_end(self, context, payload):
-        """Handle the subnet.update.end notification event."""
+        """
+        Handle the subnet.update.end notification event.
+
+        Parses the message and then queues the operation.
+        """
         network_id = payload['subnet']['network_id']
+        LOG.info("Subnet updated, network %s", network_id)
+        self.queue.put((self._handle_subnet_update, {"network_id": network_id}))
+
+    @utils.synchronized('dhcp-agent')
+    def _handle_subnet_update(self, network_id):
         self.refresh_dhcp_helper(network_id)
 
     # Use the update handler for the subnet create event.
     subnet_create_end = subnet_update_end
 
-    @utils.synchronized('dhcp-agent')
     def subnet_delete_end(self, context, payload):
-        """Handle the subnet.delete.end notification event."""
+        """
+        Handle the subnet.delete.end notification event.
+
+        Parses the message and then queues the operation.
+        """
         subnet_id = payload['subnet_id']
-        network = self.cache.get_network_by_subnet_id(subnet_id)
-        if network:
-            self.refresh_dhcp_helper(network.id)
+        self.queue.put((self._handle_subnet_delete, {"subnet_id": subnet_id}))
 
     @utils.synchronized('dhcp-agent')
-    def port_update_end(self, context, payload):
-        """Handle the port.update.end notification event."""
-        updated_port = dhcp.DictModel(payload['port'])
-        network = self.cache.get_network_by_id(updated_port.network_id)
+    def _handle_subnet_delete(self, subnet_id):
+        LOG.info("Subnet deleted %s", subnet_id)
+        network = self.cache.get_network_by_subnet_id(subnet_id)
         if network:
+            LOG.debug("Network found, refreshing dhcp helper.")
+            self.refresh_dhcp_helper(network.id)
+
+    def port_update_end(self, context, payload):
+        """
+        Handle the port.update.end notification event.
+
+        Parses the message and then queues the operation.
+        """
+        updated_port = dhcp.DictModel(payload['port'])
+        self.queue.put((self._handle_port_update, {"updated_port": updated_port}))
+
+    def _handle_port_update(self, updated_port):
+        network = self.cache.get_network_by_id(updated_port.network_id)
+        LOG.info("Port updated: %s", updated_port.id)
+        if network:
+            LOG.debug("Network for port found, updating cache/driver.")
             self.cache.put_port(updated_port)
-            self.call_driver('reload_allocations', network)
+            self.dirty_networks.add(updated_port.network_id)
 
     # Use the update handler for the port create event.
     port_create_end = port_update_end
 
-    @utils.synchronized('dhcp-agent')
     def port_delete_end(self, context, payload):
-        """Handle the port.delete.end notification event."""
-        port = self.cache.get_port_by_id(payload['port_id'])
+        """
+        Handle the port.delete.end notification event.
+
+        Parses the message and then queues the operation.
+        """
+        port_id = payload['port_id']
+        self.queue.put((self._handle_port_delete, {"port_id": port_id}))
+
+    def _handle_port_delete(self, port_id):
+        port = self.cache.get_port_by_id(port_id)
+        LOG.info("Port deleted: %s", port_id)
         if port:
-            network = self.cache.get_network_by_id(port.network_id)
+            LOG.debug("Port %s found, updating cache/driver.", port_id)
             self.cache.remove_port(port)
-            self.call_driver('reload_allocations', network)
+            network = self.cache.get_network_by_id(port.network_id)
+            self.dirty_networks.add(port.network_id)
 
     def enable_isolated_metadata_proxy(self, network):
 
