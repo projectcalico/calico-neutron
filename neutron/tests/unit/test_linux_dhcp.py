@@ -700,11 +700,18 @@ class TestDnsmasq(TestBase):
             '--leasefile-ro',
             '--dhcp-authoritative']
 
-        expected.extend(
-            '--dhcp-range=set:tag%d,%s,static,86400s' %
-            (i, s.cidr.split('/')[0])
-            for i, s in enumerate(network.subnets)
-        )
+        if s.ip_version == 4:
+            expected.extend(
+                '--dhcp-range=set:tag%d,%s,static,86400s' %
+                (i, s.cidr.split('/')[0])
+                for i, s in enumerate(network.subnets)
+            )
+        else:
+            expected.extend(
+                '--dhcp-range=set:tag%d,%s,static,%s,86400s' %
+                (i, s.cidr.split('/')[0], s.cidr.split('/')[1])
+                for i, s in enumerate(network.subnets)
+            )
         expected.append('--dhcp-lease-max=%d' % max_leases)
         expected.extend(extra_options)
 

@@ -394,11 +394,19 @@ class Dnsmasq(DhcpLocalProcess):
 
             cidr = netaddr.IPNetwork(subnet.cidr)
 
-            cmd.append('--dhcp-range=%s%s,%s,%s,%ss' %
-                       (set_tag, self._TAG_PREFIX % i,
-                        cidr.network,
-                        mode,
-                        self.conf.dhcp_lease_duration))
+            if subnet.ip_version == 4:
+                cmd.append('--dhcp-range=%s%s,%s,%s,%ss' %
+                           (set_tag, self._TAG_PREFIX % i,
+                            cidr.network,
+                            mode,
+                            self.conf.dhcp_lease_duration))
+            else:
+                cmd.append('--dhcp-range=%s%s,%s,%s,%d,%ss' %
+                           (set_tag, self._TAG_PREFIX % i,
+                            cidr.network,
+                            mode,
+                            cidr.prefixlen,
+                            self.conf.dhcp_lease_duration))
             possible_leases += cidr.size
 
         # Cap the limit because creating lots of subnets can inflate
