@@ -1,3 +1,9 @@
+neutron (1:2014.1.4-0ubuntu2calico0.18.2) trusty; urgency=medium
+
+  * Fix testing for IPv6 prefix length change
+
+ -- Neil Jerram <Neil.Jerram@metaswitch.com>  Wed, 06 May 2015 15:20:34 +0100
+
 neutron (1:2014.1.4-0ubuntu2calico0.18.1) trusty; urgency=medium
 
   * Fix back application of last change to Icehouse-level code
