@@ -389,6 +389,9 @@ class IpRouteCommand(IpDeviceCommandBase):
                       'dev',
                       self.name)
 
+    def delete_onlink_route(self, cidr):
+        self._as_root('del', cidr, 'dev', self.name, 'scope', 'link')
+
     def get_gateway(self, scope=None, filters=None):
         if filters is None:
             filters = []
