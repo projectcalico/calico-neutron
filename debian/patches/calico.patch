@@ -337,7 +337,7 @@
      def check_bridge_exists(self, bridge):
          if not ip_lib.device_exists(bridge):
              raise exceptions.BridgeDoesNotExist(bridge=bridge)
-@@ -371,6 +378,73 @@
+@@ -371,6 +378,70 @@
          device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
          try:
              device.link.delete()
@@ -380,20 +380,17 @@
 +            LOG.info(_("Device %s already exists"), device_name)
 +
 +    def init_l3(self, device_name, ip_cidrs, namespace=None,
-+                preserve_ips=[], gateway=None, extra_subnets=[]):
++                preserve_ips=[]):
 +        """Extend LinuxInterfaceDriver.init_l3 by removing the subnet route(s)
 +        that Linux automatically creates.
 +        """
 +        super(RoutedInterfaceDriver, self).init_l3(device_name,
 +                                                   ip_cidrs,
 +                                                   namespace,
-+                                                   preserve_ips,
-+                                                   gateway,
-+                                                   extra_subnets)
++                                                   preserve_ips)
 +        device = ip_lib.IPDevice(device_name,
 +                                 self.root_helper,
 +                                 namespace=namespace)
-+        device.set_log_fail_as_error(False)
 +        for ip_cidr in ip_cidrs:
 +            LOG.debug("Remove subnet route %s" % ip_cidr)
 +            try:
@@ -433,6 +430,16 @@
      def ensure_namespace(self, name):
          if not self.netns.exists(name):
              ip = self.netns.add(name)
+@@ -376,6 +389,9 @@
+                       'dev',
+                       self.name)
+ 
++    def delete_onlink_route(self, cidr):
++        self._as_root('del', cidr, 'dev', self.name, 'scope', 'link')
++
+     def get_gateway(self, scope=None, filters=None):
+         if filters is None:
+             filters = []
 --- a/neutron/agent/metadata/agent.py
 +++ b/neutron/agent/metadata/agent.py
 @@ -146,9 +146,13 @@
