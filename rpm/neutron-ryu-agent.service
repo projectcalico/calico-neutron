@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenStack Neutron Ryu Network Operating System Agent
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=neutron
+ExecStart=/usr/bin/neutron-ryu-agent --config-file /usr/share/neutron/neutron-dist.conf --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ryu/ryu.ini --log-file /var/log/neutron/ryu-agent.log
+PrivateTmp=true
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
