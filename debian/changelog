@@ -1,3 +1,9 @@
+neutron (1:2014.1.4-0ubuntu2calico0.18.1) trusty; urgency=medium
+
+  * Fix back application of last change to Icehouse-level code
+
+ -- Neil Jerram <Neil.Jerram@metaswitch.com>  Wed, 06 May 2015 11:52:04 +0100
+
 neutron (1:2014.1.4-0ubuntu2calico0.18) trusty; urgency=medium
 
   * Specify prefix length for IPv6 subnets
