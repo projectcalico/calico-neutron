@@ -96,6 +96,7 @@ class DhcpAgent(manager.Manager):
             os.makedirs(dhcp_dir, 0o755)
         self.dhcp_version = self.dhcp_driver_cls.check_version()
         self._populate_networks_cache()
+        self.driver_queues = {}
 
     def _populate_networks_cache(self):
         """Populate the networks cache when the DHCP-agent starts."""
@@ -129,6 +130,53 @@ class DhcpAgent(manager.Manager):
         self.periodic_resync()
 
     def call_driver(self, action, network, **action_kwargs):
+        # Spawn a thread for this network, if there isn't one already.
+        if network.id not in self.driver_queues:
+            LOG.info("Create queue and thread for network %s", network)
+            self.driver_queues[network.id] = eventlet.queue.Queue()
+            eventlet.spawn(self._call_driver_thread,
+                           network,
+                           self.driver_queues[network.id])
+        # Add the requested action to the queue for that thread and
+        # network.
+        self.driver_queues[network.id].put((action, action_kwargs))
+
+    def _call_driver_thread(self, network, queue):
+        LOG.info("_call_driver_thread for network %s, queue %s",
+                 network, queue)
+        while True:
+            try:
+                (action, action_kwargs) = queue.get()
+                LOG.info("_call_driver_thread: %s, %s",
+                         action, action_kwargs)
+                self._call_driver_dispatch(action,
+                                           network,
+                                           **action_kwargs)
+                if action == 'reload_allocations':
+                    # Consume any further 'reload_allocations' actions
+                    # that are already queued.
+                    LOG.info("Consume more 'reload_allocations' actions")
+                    try:
+                        while True:
+                            (action, action_kwargs) = queue.get_nowait()
+                           if action == 'reload_allocations':
+                               LOG.info("Consumed!")
+                           else:
+                                # Not 'reload_allocations'.  Dispatch
+                                # it and then break out of this
+                                # subloop.
+                                LOG.info("_call_driver_thread: %s, %s",
+                                         action, action_kwargs)
+                                self._call_driver_dispatch(action,
+                                                           network,
+                                                           **action_kwargs)
+                                break
+                    except eventlet.queue.Empty:
+                        pass
+            except Exception as e:
+                LOG.exception(_LE('Exception in _call_driver_thread.'))
+
+    def _call_driver_dispatch(self, action, network, **action_kwargs):
         """Invoke an action on a DHCP driver instance."""
         LOG.debug(_('Calling driver for network: %(net)s action: %(action)s'),
                   {'net': network.id, 'action': action})
