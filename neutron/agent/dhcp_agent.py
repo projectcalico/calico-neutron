@@ -400,6 +400,8 @@ class DhcpAgent(manager.Manager):
             network = self.cache.get_network_by_id(port.network_id)
             self.cache.remove_port(port)
             self.call_driver('reload_allocations', network)
+        else:
+            LOG.info("port_delete_end: No port")
 
     def enable_isolated_metadata_proxy(self, network):
 
@@ -598,6 +600,7 @@ class NetworkCache(object):
 
     def get_port_by_id(self, port_id):
         network = self.get_network_by_port_id(port_id)
+        LOG.debug("get_port_by_id: %s -> %s", port_id, network)
         if network:
             for port in network.ports:
                 if port.id == port_id:
