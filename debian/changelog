@@ -1,3 +1,9 @@
+neutron (1:2015.1.0-0ubuntu1calico0.18) trusty; urgency=medium
+
+  * New upstream release for Kilo from Cloud Archive.
+
+ -- Cory Benfield <cory.benfield@metaswitch.com>  Fri, 22 May 2015 16:07:55 +0100
+
 neutron (1:2015.1.0-0ubuntu1~cloud0) trusty-kilo; urgency=medium
 
   * New update for the Ubuntu Cloud Archive.
