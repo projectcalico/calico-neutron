@@ -1,0 +1,7 @@
+#!/bin/bash
+#----------------------
+# Testing vmware-plugin
+#----------------------
+set -e
+
+$(dirname $0)/test-plugin neutron-plugin-vmware /etc/neutron/plugins/vmware/nsx.ini vmware

@@ -1,0 +1,29 @@
+#!/bin/bash
+#--------------
+# Test a plugin
+#--------------
+set -e
+
+pkg=$1
+conf=$2
+plugin=$3
+
+apt-get -y install $pkg
+
+# update plugin path and config
+sed -i "s|NEUTRON_PLUGIN_CONFIG.*|NEUTRON_PLUGIN_CONFIG=\"$conf\"|g" /etc/default/neutron-server
+sed -i "s/core_plugin = .*/core_plugin = $plugin/g" /etc/neutron/neutron.conf
+
+service neutron-server restart > /dev/null 2>&1
+
+sleep 5
+
+if service neutron-server status > /dev/null; then
+    apt-get -y remove --purge $pkg
+    echo "OK"
+else
+    echo "ERROR: $pkg IS NOT RUNNING"
+    tail -50 /var/log/neutron/neutron-server.log
+    apt-get -y remove --purge $pkg
+    exit 1
+fi

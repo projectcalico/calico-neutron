@@ -1,0 +1,7 @@
+#!/bin/bash
+#-----------------------
+# Testing brocade-plugin
+#-----------------------
+set -e
+
+$(dirname $0)/test-plugin neutron-plugin-brocade /etc/neutron/plugins/brocade/brocade.ini brocade

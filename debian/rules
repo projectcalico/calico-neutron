@@ -1,0 +1,47 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+include /usr/share/openstack-pkg-tools/pkgos.make
+
+%:
+	dh $@  --with python2,systemd
+
+override_dh_install:
+	dh_install --fail-missing -X/usr/etc -X/usr/bin/neutron-vpn-agent \
+		-X/usr/bin/neutron-lbaas-agent -X/usr/bin/neutron-hyperv-agent
+
+override_dh_systemd_enable:
+	dh_systemd_enable -pneutron-plugin-openvswitch-agent --name=neutron-ovs-cleanup \
+		neutron-ovs-cleanup.service
+	dh_systemd_enable
+
+override_dh_installinit:
+	dh_installinit -pneutron-plugin-openvswitch-agent --no-start \
+        --name=neutron-ovs-cleanup
+	dh_installinit --error-handler=true
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -f debian/*.upstart debian/*.init debian/*.service
+
+get-orig-source:
+	uscan --verbose --force-download --rename --destdir=../build-area
+
+ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
+override_dh_auto_test:
+	# Unpatch neutron configuration to fixup tests which conflict
+	# with a core_plugin being set.
+	patch -p1 -R < debian/patches/fix-neutron-configuration.patch
+	rm -rf .testrepository
+	testr init && \
+    set -e && \
+    TEMP_REZ=`mktemp -t` && \
+    testr run --subunit neutron.tests.unit | tee $$TEMP_REZ | subunit2pyunit; \
+	cat $$TEMP_REZ | subunit-filter -s --no-passthrough | subunit-stats; \
+	rm -f $$TEMP_REZ ; \
+	testr slowest; \
+	# Patch configuration file after testing
+	patch -p1 < debian/patches/fix-neutron-configuration.patch
+endif
