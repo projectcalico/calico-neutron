@@ -453,9 +453,8 @@ class RoutedInterfaceDriver(LinuxInterfaceDriver):
                     (network_id, port_id, device_name, mac_address,
                      bridge, namespace, prefix));
         if not ip_lib.device_exists(device_name,
-                                    self.root_helper,
                                     namespace=namespace):
-            ip = ip_lib.IPWrapper(self.root_helper)
+            ip = ip_lib.IPWrapper()
 
             # Create ns_veth in a namespace if one is configured.
             ns_veth = ip.add_dummy(device_name, namespace2=namespace)
@@ -481,7 +480,6 @@ class RoutedInterfaceDriver(LinuxInterfaceDriver):
                                                    gateway,
                                                    extra_subnets)
         device = ip_lib.IPDevice(device_name,
-                                 self.root_helper,
                                  namespace=namespace)
         device.set_log_fail_as_error(False)
         for ip_cidr in ip_cidrs:
@@ -495,7 +493,7 @@ class RoutedInterfaceDriver(LinuxInterfaceDriver):
         """Unplug the interface."""
         LOG.warning("BridgeInterfaceDriver::unplug(%s, %s, %s, %s)" %
                     (device_name, bridge, namespace, prefix));
-        device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
+        device = ip_lib.IPDevice(device_name, namespace)
         try:
             device.link.delete()
             LOG.debug(_("Unplugged interface '%s'"), device_name)
