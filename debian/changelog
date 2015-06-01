@@ -1,4 +1,4 @@
-neutron (1:2015.1.0-0ubuntu1calico0.22~rc1) trusty; urgency=medium
+neutron (1:2015.1.0-0ubuntu1calico0.22) trusty; urgency=medium
 
   * Remove unwanted root helper.
 
