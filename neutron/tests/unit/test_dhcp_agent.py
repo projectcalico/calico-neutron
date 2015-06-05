@@ -201,33 +201,29 @@ class TestDhcpAgent(base.BaseTestCase):
         # sync_state is needed for this test
         cfg.CONF.set_override('report_interval', 1, 'AGENT')
         with mock.patch.object(dhcp_agent.DhcpAgentWithStateReport,
-                               'sync_state',
-                               autospec=True) as mock_sync_state:
-            with mock.patch.object(dhcp_agent.DhcpAgentWithStateReport,
-                                   'periodic_resync',
-                                   autospec=True) as mock_periodic_resync:
-                with mock.patch(state_rpc_str) as state_rpc:
-                    with mock.patch.object(sys, 'argv') as sys_argv:
-                        sys_argv.return_value = [
-                            'dhcp', '--config-file',
-                            base.etcdir('neutron.conf.test')]
-                        cfg.CONF.register_opts(dhcp_agent.DhcpAgent.OPTS)
-                        config.register_interface_driver_opts_helper(cfg.CONF)
-                        config.register_agent_state_opts_helper(cfg.CONF)
-                        config.register_root_helper(cfg.CONF)
-                        cfg.CONF.register_opts(dhcp.OPTS)
-                        cfg.CONF.register_opts(interface.OPTS)
-                        common_config.init(sys.argv[1:])
-                        agent_mgr = dhcp_agent.DhcpAgentWithStateReport(
-                            'testhost')
-                        eventlet.greenthread.sleep(1)
-                        agent_mgr.after_start()
-                        mock_sync_state.assert_called_once_with(agent_mgr)
-                        mock_periodic_resync.assert_called_once_with(agent_mgr)
-                        state_rpc.assert_has_calls(
-                            [mock.call(mock.ANY),
-                             mock.call().report_state(mock.ANY, mock.ANY,
-                                                      mock.ANY)])
+                               'run',
+                               autospec=True) as mock_run:
+            with mock.patch(state_rpc_str) as state_rpc:
+                with mock.patch.object(sys, 'argv') as sys_argv:
+                    sys_argv.return_value = [
+                        'dhcp', '--config-file',
+                        base.etcdir('neutron.conf.test')]
+                    cfg.CONF.register_opts(dhcp_agent.DhcpAgent.OPTS)
+                    config.register_interface_driver_opts_helper(cfg.CONF)
+                    config.register_agent_state_opts_helper(cfg.CONF)
+                    config.register_root_helper(cfg.CONF)
+                    cfg.CONF.register_opts(dhcp.OPTS)
+                    cfg.CONF.register_opts(interface.OPTS)
+                    common_config.init(sys.argv[1:])
+                    agent_mgr = dhcp_agent.DhcpAgentWithStateReport(
+                        'testhost')
+                    eventlet.greenthread.sleep(1)
+                    agent_mgr.after_start()
+                    mock_run.assert_called_once_with(agent_mgr)
+                    state_rpc.assert_has_calls(
+                        [mock.call(mock.ANY),
+                         mock.call().report_state(mock.ANY, mock.ANY,
+                                                  mock.ANY)])
 
     def test_dhcp_agent_main_agent_manager(self):
         logging_str = 'neutron.agent.common.config.setup_logging'
@@ -245,13 +241,12 @@ class TestDhcpAgent(base.BaseTestCase):
     def test_run_completes_single_pass(self):
         with mock.patch(DEVICE_MANAGER):
             dhcp = dhcp_agent.DhcpAgent(HOSTNAME)
-            attrs_to_mock = dict(
-                [(a, mock.DEFAULT) for a in
-                 ['sync_state', 'periodic_resync']])
-            with mock.patch.multiple(dhcp, **attrs_to_mock) as mocks:
+            with mock.patch("eventlet.spawn") as m_spawn:
                 dhcp.run()
-                mocks['sync_state'].assert_called_once_with()
-                mocks['periodic_resync'].assert_called_once_with()
+                m_spawn.assert_has_calls([
+                    mock.call(dhcp._loop),
+                    mock.call(dhcp._periodic_resync_helper),
+                ])
 
     def test_call_driver(self):
         network = mock.Mock()
@@ -367,23 +362,29 @@ class TestDhcpAgent(base.BaseTestCase):
                     self.assertTrue(log.called)
                     self.assertTrue(schedule_resync.called)
 
+    def test_resync_if_needed(self):
+        dhcp = dhcp_agent.DhcpAgent(HOSTNAME)
+        dhcp.needs_resync_reasons = ['reason1', 'reason2']
+        with mock.patch.object(dhcp, 'sync_state') as sync_state:
+            class ExpectedError(RuntimeError):
+                pass
+            sync_state.side_effect = ExpectedError
+            with testtools.ExpectedException(ExpectedError):
+                dhcp._resync_if_needed()
+            sync_state.assert_called_once_with()
+            self.assertEqual(len(dhcp.needs_resync_reasons), 0)
+
     def test_periodic_resync(self):
         dhcp = dhcp_agent.DhcpAgent(HOSTNAME)
-        with mock.patch.object(dhcp_agent.eventlet, 'spawn') as spawn:
-            dhcp.periodic_resync()
-            spawn.assert_called_once_with(dhcp._periodic_resync_helper)
-
-    def test_periodoc_resync_helper(self):
-        with mock.patch.object(dhcp_agent.eventlet, 'sleep') as sleep:
-            dhcp = dhcp_agent.DhcpAgent(HOSTNAME)
-            dhcp.needs_resync_reasons = ['reason1', 'reason2']
-            with mock.patch.object(dhcp, 'sync_state') as sync_state:
-                sync_state.side_effect = RuntimeError
-                with testtools.ExpectedException(RuntimeError):
+        with mock.patch("eventlet.sleep") as m_sleep:
+            class ExpectedError(RuntimeError):
+                pass
+            m_sleep.side_effect = None, None, ExpectedError
+            with mock.patch.object(dhcp, "_send_to_worker") as m_send:
+                with testtools.ExpectedException(ExpectedError):
                     dhcp._periodic_resync_helper()
-                sync_state.assert_called_once_with()
-                sleep.assert_called_once_with(dhcp.conf.resync_interval)
-                self.assertEqual(len(dhcp.needs_resync_reasons), 0)
+                call = mock.call(dhcp._resync_if_needed)
+                m_send.assert_has_calls([call] * 2)
 
     def test_populate_cache_on_start_without_active_networks_support(self):
         # emul dhcp driver that doesn't support retrieving of active networks
@@ -803,26 +804,30 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
 
         with mock.patch.object(self.dhcp, 'enable_dhcp_helper') as enable:
             self.dhcp.network_create_end(None, payload)
-            enable.assertCalledOnceWith(fake_network.id)
+            self.dhcp._step(block=False)
+            enable.assert_called_once_with(fake_network.id)
 
     def test_network_update_end_admin_state_up(self):
         payload = dict(network=dict(id=fake_network.id, admin_state_up=True))
         with mock.patch.object(self.dhcp, 'enable_dhcp_helper') as enable:
             self.dhcp.network_update_end(None, payload)
-            enable.assertCalledOnceWith(fake_network.id)
+            self.dhcp._step(block=False)
+            enable.assert_called_once_with(fake_network.id)
 
     def test_network_update_end_admin_state_down(self):
         payload = dict(network=dict(id=fake_network.id, admin_state_up=False))
         with mock.patch.object(self.dhcp, 'disable_dhcp_helper') as disable:
             self.dhcp.network_update_end(None, payload)
-            disable.assertCalledOnceWith(fake_network.id)
+            self.dhcp._step(block=False)
+            disable.assert_called_once_with(fake_network.id)
 
     def test_network_delete_end(self):
         payload = dict(network_id=fake_network.id)
 
         with mock.patch.object(self.dhcp, 'disable_dhcp_helper') as disable:
             self.dhcp.network_delete_end(None, payload)
-            disable.assertCalledOnceWith(fake_network.id)
+            self.dhcp._step(block=False)
+            disable.assert_called_once_with(fake_network.id)
 
     def test_refresh_dhcp_helper_no_dhcp_enabled_networks(self):
         network = dhcp.NetModel(True, dict(id='net-id',
@@ -864,6 +869,7 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         self.plugin.get_network_info.return_value = fake_network
 
         self.dhcp.subnet_update_end(None, payload)
+        self.dhcp._step(block=False)
 
         self.cache.assert_has_calls([mock.call.put(fake_network)])
         self.call_driver.assert_called_once_with('reload_allocations',
@@ -881,6 +887,7 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         self.plugin.get_network_info.return_value = new_state
 
         self.dhcp.subnet_update_end(None, payload)
+        self.dhcp._step(block=False)
 
         self.cache.assert_has_calls([mock.call.put(new_state)])
         self.call_driver.assert_called_once_with('restart',
@@ -899,6 +906,7 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         self.plugin.get_network_info.return_value = fake_network
 
         self.dhcp.subnet_delete_end(None, payload)
+        self.dhcp._step(block=False)
 
         self.cache.assert_has_calls([
             mock.call.get_network_by_subnet_id(
@@ -913,11 +921,89 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         self.cache.get_network_by_id.return_value = fake_network
         self.cache.get_port_by_id.return_value = fake_port2
         self.dhcp.port_update_end(None, payload)
-        self.cache.assert_has_calls(
-            [mock.call.get_network_by_id(fake_port2.network_id),
-             mock.call.put_port(mock.ANY)])
+        self.dhcp._step(block=False)
+        self.cache.assert_has_calls([
+            # Initial check for network existence.
+            mock.call.get_network_by_id(fake_port2.network_id),
+            # Port update.
+            mock.call.put_port(mock.ANY),
+            # Grab the network gain to update it.
+            mock.call.get_network_by_id(fake_port2.network_id),
+        ])
         self.call_driver.assert_called_once_with('reload_allocations',
                                                  fake_network)
+
+    def test_port_update_delete_end_coalesce(self):
+        self.cache.get_network_by_id.return_value = fake_network
+        self.cache.get_port_by_id.return_value = fake_port2
+
+        # Duplicate updates should get processed in one batch.
+        payload = dict(port=fake_port2)
+        self.dhcp.port_update_end(None, payload)
+        payload = dict(port=fake_port2)
+        self.dhcp.port_update_end(None, payload)
+        # Along with deletion for that port.
+        payload = dict(port_id=fake_port2.id)
+        self.dhcp.port_delete_end(None, payload)
+
+        self.dhcp._step(block=False)
+
+        self.cache.assert_has_calls([
+            # Update 1, check network then set port.
+            mock.call.get_network_by_id(fake_port2.network_id),
+            mock.call.put_port(mock.ANY),
+            # Update 2, check network then set port.
+            mock.call.get_network_by_id(fake_port2.network_id),
+            mock.call.put_port(mock.ANY),
+            # Delete, check port then set delete.
+            mock.call.get_port_by_id(fake_port2.id),
+            mock.call.remove_port(fake_port2),
+            # Grab the network gain to update it.
+            mock.call.get_network_by_id(fake_port2.network_id),])
+        # Only one reload.
+        self.call_driver.assert_called_once_with('reload_allocations',
+                                                 fake_network)
+
+    def test_non_port_update_interrupts_coallesce(self):
+        self.cache.get_network_by_id.return_value = fake_network
+        self.plugin.get_network_info.return_value = fake_network
+        self.cache.get_port_by_id.return_value = fake_port2
+
+        with mock.patch.object(self.dhcp, "refresh_dhcp_helper",
+                               autospec=True) as m_refresh:
+            # Queue one port update.
+            payload = dict(port=fake_port2)
+            self.dhcp.port_update_end(None, payload)
+            # Then a non-coalescable update.
+            payload = dict(subnet=dict(network_id=fake_network.id))
+            self.dhcp.subnet_update_end(None, payload)
+            # Then another port update.
+            payload = dict(port=fake_port2)
+            self.dhcp.port_update_end(None, payload)
+
+            self.dhcp._step(block=False)
+
+            self.cache.assert_has_calls([
+                # Update 1, check network then set port.
+                mock.call.get_network_by_id(fake_port2.network_id),
+                mock.call.put_port(mock.ANY),
+                # Updates get applied before next message.
+                mock.call.get_network_by_id(fake_port2.network_id),
+
+                # Subnet update.
+
+                # Update 2, check network then set port.
+                mock.call.get_network_by_id(fake_port2.network_id),
+                mock.call.put_port(mock.ANY),
+
+                # Grab the network gain to update it.
+                mock.call.get_network_by_id(fake_port2.network_id),])
+            # Two reloads.  Note: assert_has_calls doesn't warn if there were
+            # too many calls.
+            self.assertEqual(
+                self.call_driver.mock_calls,
+                [mock.call('reload_allocations', fake_network)] * 2
+            )
 
     def test_port_update_change_ip_on_port(self):
         payload = dict(port=fake_port1)
@@ -926,9 +1012,12 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         updated_fake_port1.fixed_ips[0].ip_address = '172.9.9.99'
         self.cache.get_port_by_id.return_value = updated_fake_port1
         self.dhcp.port_update_end(None, payload)
+        self.dhcp._step(block=False)
+
         self.cache.assert_has_calls(
-            [mock.call.get_network_by_id(fake_port1.network_id),
-             mock.call.put_port(mock.ANY)])
+            [mock.call.put_port(mock.ANY),
+             # Network only gets loaded later at refresh time.
+             mock.call.get_network_by_id(fake_port1.network_id),])
         self.call_driver.assert_has_calls(
             [mock.call.call_driver('reload_allocations', fake_network)])
 
@@ -938,10 +1027,12 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         self.cache.get_port_by_id.return_value = fake_port2
 
         self.dhcp.port_delete_end(None, payload)
+        self.dhcp._step(block=False)
         self.cache.assert_has_calls(
             [mock.call.get_port_by_id(fake_port2.id),
-             mock.call.get_network_by_id(fake_network.id),
-             mock.call.remove_port(fake_port2)])
+             mock.call.remove_port(fake_port2),
+             # Network only gets loaded later at refresh time.
+             mock.call.get_network_by_id(fake_network.id)])
         self.call_driver.assert_has_calls(
             [mock.call.call_driver('reload_allocations', fake_network)])
 
@@ -950,6 +1041,7 @@ class TestDhcpAgentEventHandler(base.BaseTestCase):
         self.cache.get_port_by_id.return_value = None
 
         self.dhcp.port_delete_end(None, payload)
+        self.dhcp._step(block=False)
 
         self.cache.assert_has_calls([mock.call.get_port_by_id('unknown')])
         self.assertEqual(self.call_driver.call_count, 0)
