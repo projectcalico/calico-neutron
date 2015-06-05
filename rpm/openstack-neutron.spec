@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.2calico0.18
+Version:	2014.2.2calico0.22
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -978,6 +978,9 @@ exit 0
 
 
 %changelog
+* Fri Jun 05 2015 Matt Dupre <matt@projectcalico.org> 2014.2.2calico0.22-1
+- Move DHCP agent updates onto their own thread, coalesce port updates
+
 * Wed May 06 2015 Neil Jerram <neil.jerram@metaswitch.com> - 2014.2.2calico0.18-1
 - DHCP agent enhancements for Calico networking
 - Remove the Linux-created subnet routes on the DHCP port
