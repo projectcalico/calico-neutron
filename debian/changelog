@@ -1,3 +1,9 @@
+neutron (1:2014.1.4-0ubuntu2calico0.23) trusty; urgency=medium
+
+  * Move DHCP driver updates onto worker thread and coalesce port updates
+
+ -- Matt Dupre <matt@projectcalico.org>  Mon, 08 Jun 2015 15:43:22 +0100
+
 neutron (1:2014.1.4-0ubuntu2calico0.18.2) trusty; urgency=medium
 
   * Fix testing for IPv6 prefix length change
