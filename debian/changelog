@@ -1,36 +1,43 @@
-neutron (1:2014.2.2-fuel6.1~mira20) precise; urgency=low
+neutron (1:2014.2.2-1~u14.04+mos30) mos6.1; urgency=low
 
   [ Eugene Nikanorov ]
-  * 35c86db Merge "Start rabbitmq driver heartbeat thread after a fork"
-    into openstack-ci/fuel-6.1/2014.2
-
-  [ Andrey Epifanov ]
-  * 3299068 Merge "Avoid synchronizing session when deleting
-    networkdhcpagentbinding" into openstack-ci/fuel-6.1/2014.2
-
-  [ Eugene Nikanorov ]
-  * 06e256f Avoid synchronizing session when deleting
-    networkdhcpagentbinding
-  * 5a7ff45 Turn rabbit heartbeats off
+  * b805793 Add route to metadata IP by default
 
   [ mos-infra-ci ]
-  * faef5d6 Merge "Make proper fix for concurrent gre network creation"
-    into openstack-ci/fuel-6.1/2014.2
+  * 2c0908b Merge "Randomize tunnel id query to avoid contention" into
+    openstack-ci/fuel-6.1/2014.2
+
+  [ Kevin Fox ]
+  * 726df31 Fixes floating IP regression with multiple routers
+
+  [ Eugene Nikanorov ]
+  * e64e785 Randomize tunnel id query to avoid contention
 
   [ Kevin Benton ]
-  * 284d2e6 Don't eagerly load ranges from IPAllocationPool
+  * d5368e7 Persist DHCP leases to a local database
 
   [ Eugene Nikanorov ]
-  * 6747804 Make proper fix for concurrent gre network creation
-  * 2d2b62c Start rabbitmq driver heartbeat thread after a fork
+  * cf3106e Catch wide Exception to preven periodic checks interruption
+  * 34db4f4 Merge "Fix l3 agent to not create already deleted router"
+    into openstack-ci/fuel-6.1/2014.2
 
-  [ Ann Kamyshnikova ]
-  * 6d74805 Make listing security groups faster
+  [ Oleg Bondarev ]
+  * 5e44614 Merge "Set IPset hash type to 'net' instead of 'ip'" into
+    openstack-ci/fuel-6.1/2014.2
+  * 5d792fe Fix l3 agent to not create already deleted router
 
-  [ Eugene Nikanorov ]
-  * b492100 Fix test failure in varmour unit tests
+  [ Kevin Benton ]
+  * d7a036d Don't resync on DHCP agent setup failure
 
- -- Eugene Nikanorov <enikanorov@mirantis.com>  Thu, 16 Apr 2015 19:16:34 +0400
+ -- Kevin Benton <blak111@gmail.com>  Wed, 03 Jun 2015 23:35:22 +0400
+
+neutron (1:2014.2.2-1~u14.04+mos1) mos6.1; urgency=medium
+
+  * Fix version according to Fuel versioning policy:
+    https://github.com/stackforge/fuel-specs/blob/master/specs/6.1/separate-mos-from-linux.rst
+  * No actual changes in specs
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Tue, 12 May 2015 22:32:47 +0300
 
 neutron (1:2014.2.2-fuel6.1-14.04-3) trusty; urgency=medium
 
