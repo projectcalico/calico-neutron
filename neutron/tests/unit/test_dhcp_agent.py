@@ -324,16 +324,16 @@ class TestDhcpAgent(base.BaseTestCase):
                 self.assertTrue(dhcp.needs_resync)
 
     def test_resync_if_needed(self):
-        dhcp = dhcp_agent.DhcpAgent(HOSTNAME)
-        dhcp.needs_resync_reasons = ['reason1', 'reason2']
-        with mock.patch.object(dhcp, 'sync_state') as sync_state:
+        agent = dhcp_agent.DhcpAgent(HOSTNAME)
+        agent.needs_resync = True
+        with mock.patch.object(agent, 'sync_state') as sync_state:
             class ExpectedError(RuntimeError):
                 pass
             sync_state.side_effect = ExpectedError
             with testtools.ExpectedException(ExpectedError):
-                dhcp._resync_if_needed()
+                agent._resync_if_needed()
             sync_state.assert_called_once_with()
-            self.assertEqual(len(dhcp.needs_resync_reasons), 0)
+            self.assertFalse(agent.needs_resync)
 
     def test_periodic_resync(self):
         dhcp = dhcp_agent.DhcpAgent(HOSTNAME)
