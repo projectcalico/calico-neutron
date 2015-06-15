@@ -1,3 +1,9 @@
+neutron (1:2014.1.4-0ubuntu2calico0.24) trusty; urgency=medium
+
+  * Fix unit test incorrectly back-ported from 2.2.
+
+ -- Cory Benfield <cory@projectcalico.org>  Mon, 15 Jun 2015 14:50:45 +0100
+
 neutron (1:2014.1.4-0ubuntu2calico0.23) trusty; urgency=medium
 
   * Move DHCP driver updates onto worker thread and coalesce port updates
