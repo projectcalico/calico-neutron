@@ -1,3 +1,18 @@
+neutron (1:2014.2.3-0ubuntu1~cloud0calico0.22) trusty; urgency=medium
+
+  * DHCP agent: support routed VM interfaces as well as bridged
+  * Run Dnsmasq with --enable-ra, so that it generates IPv6 router advertisements
+  * Specify off-link flag to Dnsmasq 
+  * Add VIF_TYPE constant for routed virtual interfaces
+  * Calico RoutedIntergateDriver unplug() method has typo in logging statement that will cause a NameError: global name 'mac_address' is not defined
+  * Revert "Add VIF_TYPE constant for routed virtual interfaces"
+  * Fix neutron.tests.unit.test_dhcp_agent
+  * Remove the Linux-created subnet routes on the DHCP port
+  * Move DHCP agent updates onto their own thread, coalesce port updates.
+  * Clean up DHCP Agent optimizations and update UTs.
+
+ -- Neil Jerram <Neil.Jerram@metaswitch.com>  Tue, 23 Jun 2015 11:09:07 +0100
+
 neutron (1:2014.2.3-0ubuntu1~cloud0) trusty-juno; urgency=medium
 
   * New upstream release for the Ubuntu Cloud Archive.
