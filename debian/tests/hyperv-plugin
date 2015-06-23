@@ -1,0 +1,19 @@
+#!/bin/bash
+#----------------------
+# Testing hyperv-plugin
+#----------------------
+set -e
+apt-get -y install neutron-plugin-hyperv
+
+# update plugin path
+sed -i 's/NEUTRON_PLUGIN_CONFIG\=.*/NEUTRON_PLUGIN_CONFIG\=\"\/etc\/neutron\/plugins\/hyperv\/hyperv_neutron_plugin\.ini\"/g' /etc/default/neutron-server
+sed -i 's/core_plugin/core_plugin \= neutron\.plugins\.hyperv\.hyperv_neutron_plugin\.HyperVNeutronPlugin/g' /etc/neutron/neutron.conf
+service neutron-server restart  > /dev/null 2>&1
+if pidof -x neutron-server > /dev/null; then
+    apt-get -y remove --purge neutron-plugin-hyperv
+    echo "OK"
+else
+    echo "ERROR: HYPERV PLUGIN IS NOT RUNNING"
+    apt-get -y remove --purge neutron-plugin-hyperv
+    exit 1
+fi

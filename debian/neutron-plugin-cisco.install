@@ -1,0 +1,2 @@
+etc/neutron/plugins/cisco/* etc/neutron/plugins/cisco
+usr/bin/neutron-cisco-cfg-agent usr/bin
