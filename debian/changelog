@@ -1,3 +1,42 @@
+neutron (1:2014.1.5-0ubuntu1calico0.24) trusty; urgency=medium
+
+  * Add VIF_TYPE constant for routed virtual interfaces
+  * DHCP agent: support routed VM interfaces as well as bridged
+  * ML2 plugin get_device_details: also return fixed IPs
+  * DHCP agent: ignore 'use_namespaces' config when serving routed VM interfaces
+  * Correctly apply non-/24 subnet masks to DHCP i/fs.
+  * Accept flat networks in the Neutron metadata agent
+  * Must be passed a UUID on the command line.
+  * Run Dnsmasq with --enable-ra, so that it generates IPv6 router advertisements
+  * Add IPv6 gateway address to DHCP port, as well as IPv4 address
+  * Specify off-link flag to Dnsmasq
+  * Add Calico mechanism driver to Neutron
+  * Depend on DHCP agent, rather than on Calico
+  * Report port status
+  * Simulate Felix agent state based on connections from Felix instances
+  * Simplify segment-network checking
+  * Plugin: VM ports only have to start with 'compute:'
+  * Fix neutron.tests.unit.test_dhcp_agent
+  * Fix neutron.tests.unit.test_metadata_namespace_proxy
+  * Fix representation of 'any IP address', in Network API security group rules
+  * Add Calico mechanism driver and ML2 entry point config to neutron.egg-info
+  * Simplify metadata patch and fix associated unit test
+  * Use a distinct Neutron DB context on each green thread
+  * CalicoMechanismDriver: Introduce initialize method, and move socket opening there
+  * Move CalicoMechanismDriver out of Neutron tree
+  * Calico RoutedIntergateDriver unplug() method has typo in logging statement that will cause a NameError: global name 'mac_address' is not defined
+  * Revert "Add VIF_TYPE constant for routed virtual interfaces"
+  * Specify prefix length for IPv6 subnets
+  * Remove the Linux-created subnet routes on the DHCP port
+  * Fix back application of last change to Icehouse-level code
+  * Fix testing for IPv6 prefix length change
+  * Move DHCP driver updates onto worker thread.  Coalesce port updates for performance.
+  * Log from DHCP agent worker thread.
+  * Clean up DHCP Agent optimizations and update UTs.
+  * Fix UT, incorrectly back-ported from 2.2.
+
+ -- Neil Jerram <Neil.Jerram@metaswitch.com>  Thu, 25 Jun 2015 11:38:33 +0100
+
 neutron (1:2014.1.5-0ubuntu1) trusty; urgency=medium
 
   * Resynchronize with stable/icehouse (877df58) (LP: #1467533):
