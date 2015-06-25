@@ -703,18 +703,11 @@ class TestDnsmasq(TestBase):
             '--dhcp-optsfile=/dhcp/%s/opts' % network.id,
             '--dhcp-leasefile=/dhcp/%s/leases' % network.id]
 
-        for i, s in enumerate(network.subnets):
-            if s.ip_version == 4:
-                expected.append(
-                    '--dhcp-range=set:tag%d,%s,static,86400s' %
-                    (i, s.cidr.split('/')[0])
-                )
-            else:
-                expected.append(
-                    '--dhcp-range=set:tag%d,%s,static,%s,86400s' %
-                    (i, s.cidr.split('/')[0], s.cidr.split('/')[1])
-                )
-
+        expected.extend(
+            '--dhcp-range=set:tag%d,%s,static,86400s' %
+            (i, s.cidr.split('/')[0])
+            for i, s in enumerate(network.subnets)
+        )
         expected.append('--dhcp-lease-max=%d' % max_leases)
         expected.extend(extra_options)
 
