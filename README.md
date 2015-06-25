@@ -26,7 +26,7 @@ distribution:
 - calico\_2014.1.1 and ubuntu\_precise\_mira\_2014.1.1, for installing
   Calico using Mirantis Fuel 5.1.
 
-- calico\_2014.1.4 and ubuntu\_2014.1.4, for installation on Ubuntu
+- calico\_2014.1.5 and ubuntu\_2014.1.5, for installation on Ubuntu
   14.04 (Trusty) with OpenStack Icehouse.
 
 - calico\_2014.2.3 and ubuntu\_2014.2.3, for installation on Ubuntu
