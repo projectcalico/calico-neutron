@@ -132,6 +132,19 @@ class IPWrapper(SubProcessBase):
         return (IPDevice(name1, self.root_helper, self.namespace),
                 IPDevice(name2, self.root_helper, namespace2))
 
+    def add_dummy(self, name1, namespace2=None):
+        args = ['add', name1, 'type', 'dummy']
+
+        if namespace2 is None:
+            namespace2 = self.namespace
+        else:
+            self.ensure_namespace(namespace2)
+            args += ['netns', namespace2]
+
+        self._as_root('', 'link', tuple(args))
+
+        return IPDevice(name1, self.root_helper, self.namespace)
+
     def ensure_namespace(self, name):
         if not self.netns.exists(name):
             ip = self.netns.add(name)
@@ -375,6 +388,9 @@ class IpRouteCommand(IpDeviceCommandBase):
                       gateway,
                       'dev',
                       self.name)
+
+    def delete_onlink_route(self, cidr):
+        self._as_root('del', cidr, 'dev', self.name, 'scope', 'link')
 
     def get_gateway(self, scope=None, filters=None):
         if filters is None:
