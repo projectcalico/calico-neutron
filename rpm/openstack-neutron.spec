@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.2calico0.22
+Version:	2014.2.2calico0.27
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -978,6 +978,9 @@ exit 0
 
 
 %changelog
+* Thu Jul 02 2015 Matt Dupre <matt@projectcalico.org> 2014.2.2calico0.27-1
+- Always fill UDP checksums in DHCP replies
+
 * Fri Jun 05 2015 Matt Dupre <matt@projectcalico.org> 2014.2.2calico0.22-1
 - Move DHCP agent updates onto their own thread, coalesce port updates
 
