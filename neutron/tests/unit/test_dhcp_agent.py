@@ -1260,6 +1260,14 @@ class TestDeviceManager(base.BaseTestCase):
         iproute_cls.return_value = self.mock_iproute
         self.mock_driver.bridged.return_value = True
 
+        iptables_cls_p = mock.patch(
+            'neutron.agent.linux.iptables_manager.IptablesManager')
+        iptables_cls = iptables_cls_p.start()
+        self.iptables_inst = mock.Mock()
+        iptables_cls.return_value = self.iptables_inst
+        self.mangle_inst = mock.Mock()
+        self.iptables_inst.ipv4 = {'mangle': self.mangle_inst}
+
     def tearDown(self):
         self.dvr_cls_p.stop()
         self.device_exists_p.stop()
@@ -1319,6 +1327,13 @@ class TestDeviceManager(base.BaseTestCase):
     def test_setup_device_exists(self):
         with testtools.ExpectedException(exceptions.PreexistingDeviceFailure):
             self._test_setup_helper(True)
+
+    def test_setup_calls_fill_dhcp_udp_checksums(self):
+        self._test_setup_helper(False)
+        rule = ('-p udp --dport %d -j CHECKSUM --checksum-fill'
+                % const.DHCP_RESPONSE_PORT)
+        expected = [mock.call.add_rule('POSTROUTING', rule)]
+        self.mangle_inst.assert_has_calls(expected)
 
     def test_setup_device_exists_reuse(self):
         self._test_setup_helper(True, True)
