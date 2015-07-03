@@ -70,6 +70,7 @@ Neutron Internals
    oslo-incubator
    callbacks
    dns_order
+   l3_only_networks
 
 Testing
 -------
