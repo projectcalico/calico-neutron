@@ -1,7 +1,7 @@
 Index: calico-neutron/neutron.egg-info/SOURCES.txt
 ===================================================================
---- calico-neutron.orig/neutron.egg-info/SOURCES.txt	2015-07-02 10:34:34.131570786 +0100
-+++ calico-neutron/neutron.egg-info/SOURCES.txt	2015-07-02 10:34:34.147570982 +0100
+--- calico-neutron.orig/neutron.egg-info/SOURCES.txt	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron.egg-info/SOURCES.txt	2015-07-09 11:45:15.306678581 +0100
 @@ -1467,4 +1467,4 @@
  tools/i18n_cfg.py
  tools/install_venv.py
@@ -11,8 +11,8 @@ Index: calico-neutron/neutron.egg-info/SOURCES.txt
 +tools/with_venv.sh
 Index: calico-neutron/neutron/agent/dhcp_agent.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/dhcp_agent.py	2015-07-02 10:34:34.131570786 +0100
-+++ calico-neutron/neutron/agent/dhcp_agent.py	2015-07-02 10:34:34.147570982 +0100
+--- calico-neutron.orig/neutron/agent/dhcp_agent.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/agent/dhcp_agent.py	2015-07-09 11:45:15.306678581 +0100
 @@ -1,6 +1,7 @@
  # vim: tabstop=4 shiftwidth=4 softtabstop=4
  
@@ -422,8 +422,8 @@ Index: calico-neutron/neutron/agent/dhcp_agent.py
          # The proxy might work for either a single network
 Index: calico-neutron/neutron/agent/linux/dhcp.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/agent/linux/dhcp.py	2015-07-02 10:36:02.856662747 +0100
+--- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/agent/linux/dhcp.py	2015-07-09 11:45:15.546684585 +0100
 @@ -29,6 +29,7 @@
  import six
  
@@ -432,7 +432,17 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
  from neutron.agent.linux import utils
  from neutron.common import constants
  from neutron.common import exceptions
-@@ -325,21 +326,49 @@
+@@ -76,6 +77,9 @@
+ METADATA_PORT = 80
+ WIN2k3_STATIC_DNS = 249
+ NS_PREFIX = 'qdhcp-'
++# FIXME (Calico SMC) This is Metaswitch Networks' Enterprise Number.  It
++# should be replaced by OpenStack's own EN before upstreaming this patch.
++METASWITCH_EN = 19444
+ 
+ 
+ class DictModel(object):
+@@ -325,21 +329,59 @@
              self.NEUTRON_NETWORK_ID_KEY: self.network.id,
          }
  
@@ -468,6 +478,15 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
 +                '--dhcp-leasefile=%s' % self._output_init_lease_file(),
 +            ]
 +        else:
++            # Calculate a DUID that is unique for each network.  This is
++            # required because dnsmasq's default algorithm for choosing one
++            # does not work if multiple dnsmasqs are listening onto the same
++            # interface.  (dnsmasq chooses its DUID by time and initialises it
++            # on the first DHCP packet received.  If there are multiple
++            # dnsmasq processes listening on the same interface, they receive
++            # the same DHCPSOLICIT and hence pick the same DUID.)
++            duid = ("neutron-dhcp-agent.%s" % self.network.id).encode("hex")
++
 +            # When the DHCP port and VM TAP interfaces are not
 +            # bridged, we change the dnsmasq invocation as follows.
 +            #   --interface=tap* # to listen on all TAP interfaces
@@ -492,12 +511,13 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
 +                '--addn-hosts=%s' % self._output_addn_hosts_file(),
 +                '--dhcp-optsfile=%s' % self._output_opts_file(),
 +                '--dhcp-leasefile=%s' % self._output_init_lease_file(),
++                '--dhcp-duid=%s,%s' % (METASWITCH_EN, duid),
 +                '--enable-ra',
 +                ]
  
          possible_leases = 0
          for i, subnet in enumerate(self.network.subnets):
-@@ -348,10 +377,16 @@
+@@ -348,10 +390,16 @@
                  continue
              if subnet.ip_version == 4:
                  mode = 'static'
@@ -515,7 +535,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
              if self.version >= self.MINIMUM_VERSION:
                  set_tag = 'set:'
              else:
-@@ -359,11 +394,19 @@
+@@ -359,11 +407,19 @@
  
              cidr = netaddr.IPNetwork(subnet.cidr)
  
@@ -540,7 +560,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
              possible_leases += cidr.size
  
          # Cap the limit because creating lots of subnets can inflate
-@@ -776,6 +819,7 @@
+@@ -776,6 +832,7 @@
          try:
              self.driver = importutils.import_object(
                  conf.interface_driver, conf)
@@ -548,7 +568,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
          except Exception as e:
              msg = (_("Error importing interface driver '%(driver)s': "
                     "%(inner)s") % {'driver': conf.interface_driver,
-@@ -783,6 +827,9 @@
+@@ -783,6 +840,9 @@
              LOG.error(msg)
              raise SystemExit(msg)
  
@@ -558,7 +578,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
      def get_interface_name(self, network, port):
          """Return interface(device) name for use by the DHCP process."""
          return self.driver.get_device_name(port)
-@@ -847,23 +894,30 @@
+@@ -847,23 +907,30 @@
          for port in network.ports:
              port_device_id = getattr(port, 'device_id', None)
              if port_device_id == device_id:
@@ -605,7 +625,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
                      dhcp_port = port
                  # break since we found port that matches device_id
                  break
-@@ -886,13 +940,21 @@
+@@ -886,13 +953,21 @@
              LOG.debug(_('DHCP port %(device_id)s on network %(network_id)s'
                          ' does not yet exist.'), {'device_id': device_id,
                                                    'network_id': network.id})
@@ -628,7 +648,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
              dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
  
          if not dhcp_port:
-@@ -929,6 +991,7 @@
+@@ -929,6 +1004,7 @@
                               interface_name,
                               port.mac_address,
                               namespace=network.namespace)
@@ -636,7 +656,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
          ip_cidrs = []
          for fixed_ip in port.fixed_ips:
              subnet = fixed_ip.subnet
-@@ -936,27 +999,50 @@
+@@ -936,27 +1012,50 @@
              ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
              ip_cidrs.append(ip_cidr)
  
@@ -691,7 +711,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
              self._set_default_route(network, device_name)
  
      def destroy(self, network, device_name):
-@@ -965,3 +1051,12 @@
+@@ -965,3 +1064,12 @@
  
          self.plugin.release_dhcp_port(network.id,
                                        self.get_device_id(network))
@@ -706,8 +726,8 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
 +        iptables_mgr.apply()
 Index: calico-neutron/neutron/agent/linux/interface.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/interface.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/agent/linux/interface.py	2015-07-02 10:34:34.147570982 +0100
+--- calico-neutron.orig/neutron/agent/linux/interface.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/agent/linux/interface.py	2015-07-09 11:45:15.306678581 +0100
 @@ -101,6 +101,13 @@
              if ip_cidr not in preserve_ips:
                  device.addr.delete(ip_version, ip_cidr)
@@ -795,8 +815,8 @@ Index: calico-neutron/neutron/agent/linux/interface.py
              LOG.error(_("Failed unplugging interface '%s'"),
 Index: calico-neutron/neutron/agent/linux/ip_lib.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-07-02 10:34:34.147570982 +0100
+--- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-07-09 11:45:15.306678581 +0100
 @@ -132,6 +132,19 @@
          return (IPDevice(name1, self.root_helper, self.namespace),
                  IPDevice(name2, self.root_helper, namespace2))
@@ -829,8 +849,8 @@ Index: calico-neutron/neutron/agent/linux/ip_lib.py
              filters = []
 Index: calico-neutron/neutron/agent/metadata/agent.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/metadata/agent.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/agent/metadata/agent.py	2015-07-02 10:34:34.147570982 +0100
+--- calico-neutron.orig/neutron/agent/metadata/agent.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/agent/metadata/agent.py	2015-07-09 11:45:15.306678581 +0100
 @@ -146,9 +146,13 @@
          """
          qclient = self._get_neutron_client()
@@ -860,8 +880,8 @@ Index: calico-neutron/neutron/agent/metadata/agent.py
  
 Index: calico-neutron/neutron/agent/metadata/namespace_proxy.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/metadata/namespace_proxy.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/agent/metadata/namespace_proxy.py	2015-07-02 10:34:34.147570982 +0100
+--- calico-neutron.orig/neutron/agent/metadata/namespace_proxy.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/agent/metadata/namespace_proxy.py	2015-07-09 11:45:15.306678581 +0100
 @@ -55,12 +55,14 @@
      accessible within the isolated tenant context.
      """
@@ -937,8 +957,8 @@ Index: calico-neutron/neutron/agent/metadata/namespace_proxy.py
          proxy.start()
 Index: calico-neutron/neutron/plugins/ml2/rpc.py
 ===================================================================
---- calico-neutron.orig/neutron/plugins/ml2/rpc.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/plugins/ml2/rpc.py	2015-07-02 10:34:34.223571918 +0100
+--- calico-neutron.orig/neutron/plugins/ml2/rpc.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/plugins/ml2/rpc.py	2015-07-09 11:45:15.306678581 +0100
 @@ -150,7 +150,11 @@
                       'admin_state_up': port.admin_state_up,
                       'network_type': segment[api.NETWORK_TYPE],
@@ -954,8 +974,8 @@ Index: calico-neutron/neutron/plugins/ml2/rpc.py
  
 Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
 ===================================================================
---- calico-neutron.orig/neutron/tests/unit/test_dhcp_agent.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/tests/unit/test_dhcp_agent.py	2015-07-02 10:36:02.856662747 +0100
+--- calico-neutron.orig/neutron/tests/unit/test_dhcp_agent.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/tests/unit/test_dhcp_agent.py	2015-07-09 11:45:15.306678581 +0100
 @@ -166,33 +166,29 @@
          state_rpc_str = 'neutron.agent.rpc.PluginReportStateAPI'
          # sync_state is needed for this test
@@ -1349,8 +1369,8 @@ Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
  
 Index: calico-neutron/neutron/tests/unit/test_linux_dhcp.py
 ===================================================================
---- calico-neutron.orig/neutron/tests/unit/test_linux_dhcp.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/tests/unit/test_linux_dhcp.py	2015-07-02 10:34:34.271572509 +0100
+--- calico-neutron.orig/neutron/tests/unit/test_linux_dhcp.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/tests/unit/test_linux_dhcp.py	2015-07-09 11:45:15.306678581 +0100
 @@ -703,11 +703,18 @@
              '--dhcp-optsfile=/dhcp/%s/opts' % network.id,
              '--dhcp-leasefile=/dhcp/%s/leases' % network.id]
@@ -1377,8 +1397,8 @@ Index: calico-neutron/neutron/tests/unit/test_linux_dhcp.py
  
 Index: calico-neutron/neutron/tests/unit/test_metadata_agent.py
 ===================================================================
---- calico-neutron.orig/neutron/tests/unit/test_metadata_agent.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/tests/unit/test_metadata_agent.py	2015-07-02 10:34:34.271572509 +0100
+--- calico-neutron.orig/neutron/tests/unit/test_metadata_agent.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/tests/unit/test_metadata_agent.py	2015-07-09 11:45:15.306678581 +0100
 @@ -198,7 +198,15 @@
          self.assertEqual(expected, ports)
  
@@ -1398,8 +1418,8 @@ Index: calico-neutron/neutron/tests/unit/test_metadata_agent.py
                                             networks=None, router_id=None):
 Index: calico-neutron/neutron/tests/unit/test_metadata_namespace_proxy.py
 ===================================================================
---- calico-neutron.orig/neutron/tests/unit/test_metadata_namespace_proxy.py	2015-07-02 10:34:34.135570835 +0100
-+++ calico-neutron/neutron/tests/unit/test_metadata_namespace_proxy.py	2015-07-02 10:34:34.271572509 +0100
+--- calico-neutron.orig/neutron/tests/unit/test_metadata_namespace_proxy.py	2015-07-09 11:45:15.310678679 +0100
++++ calico-neutron/neutron/tests/unit/test_metadata_namespace_proxy.py	2015-07-09 11:45:15.306678581 +0100
 @@ -330,7 +330,8 @@
                              daemon.assert_has_calls([
                                  mock.call('pidfile', 9697,
