@@ -47,7 +47,6 @@ class FakeIpDevice(object):
 class TestLinuxBridge(base.BaseTestCase):
 
     def setUp(self):
-        self.skipTest("udev not consistently available in Ubuntu buildds")
         super(TestLinuxBridge, self).setUp()
         interface_mappings = {'physnet1': 'eth1'}
         root_helper = cfg.CONF.AGENT.root_helper
@@ -96,7 +95,6 @@ class TestLinuxBridgeAgent(base.BaseTestCase):
         'cc:dd:ee:ff:ab:cd brd ff:ff:ff:ff:ff:ff']
 
     def setUp(self):
-        self.skipTest("udev not consistently available in Ubuntu buildds")
         super(TestLinuxBridgeAgent, self).setUp()
         # disable setting up periodic state reporting
         cfg.CONF.set_override('report_interval', 0, 'AGENT')
@@ -165,7 +163,6 @@ class TestLinuxBridgeAgent(base.BaseTestCase):
 
 class TestLinuxBridgeManager(base.BaseTestCase):
     def setUp(self):
-        self.skipTest("udev not consistently available in Ubuntu buildds")
         super(TestLinuxBridgeManager, self).setUp()
         self.interface_mappings = {'physnet1': 'eth1'}
         self.root_helper = cfg.CONF.AGENT.root_helper
