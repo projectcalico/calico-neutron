@@ -1,3 +1,9 @@
+neutron (1:2014.2.3-0ubuntu1cloud0calico0.27~rc2) trusty; urgency=medium
+
+  * Fix problems with DHCPv6 when using multiple IPv6 addresses.
+
+ -- Cory Benfield <cory@projectcalico.org>  Fri, 10 Jul 2015 10:31:58 +0100
+
 neutron (1:2014.2.3-0ubuntu1cloud0calico0.27~rc1) trusty; urgency=medium
 
   * Always fill UDP checksums in DHCP replies
