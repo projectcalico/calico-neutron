@@ -980,6 +980,7 @@ exit 0
 %changelog
 * Thu Jul 02 2015 Matt Dupre <matt@projectcalico.org> 2014.2.2calico0.27-1
 - Always fill UDP checksums in DHCP replies
+- Set dnsmasq's DUID explicitly
 
 * Fri Jun 05 2015 Matt Dupre <matt@projectcalico.org> 2014.2.2calico0.22-1
 - Move DHCP agent updates onto their own thread, coalesce port updates
