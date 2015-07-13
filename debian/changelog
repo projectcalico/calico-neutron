@@ -1,3 +1,10 @@
+neutron (1:2015.1.0-0ubuntu1calico0.27) trusty; urgency=medium
+
+  * Remove left over root_helper parameter in IPDevice constructor
+  * Set dnsmasq's DUID explicitly
+
+ -- Matt Dupre <matt@projectcalico.org>  Mon, 13 Jul 2015 18:02:20 +0100
+
 neutron (1:2015.1.0-0ubuntu1calico0.22) trusty; urgency=medium
 
   * Remove unwanted root helper.
