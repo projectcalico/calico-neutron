@@ -147,7 +147,7 @@ class IPWrapper(SubProcessBase):
 
         self._as_root('', 'link', tuple(args))
 
-        return IPDevice(name1, self.root_helper, self.namespace)
+        return IPDevice(name1, self.namespace)
 
     def ensure_namespace(self, name):
         if not self.netns.exists(name):

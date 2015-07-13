@@ -52,6 +52,10 @@ WIN2k3_STATIC_DNS = 249
 NS_PREFIX = 'qdhcp-'
 DNSMASQ_SERVICE_NAME = 'dnsmasq'
 
+# FIXME (Calico SMC) This is Metaswitch Networks' Enterprise Number.  It
+# should be replaced by OpenStack's own EN before upstreaming this patch.
+METASWITCH_EN = 19444
+
 
 class DictModel(dict):
     """Convert dict into an object that provides attribute access to values."""
@@ -315,6 +319,15 @@ class Dnsmasq(DhcpLocalProcess):
                 '--dhcp-authoritative',
             ]
         else:
+            # Calculate a DUID that is unique for each network.  This is
+            # required because dnsmasq's default algorithm for choosing one
+            # does not work if multiple dnsmasqs are listening onto the same
+            # interface.  (dnsmasq chooses its DUID by time and initialises it
+            # on the first DHCP packet received.  If there are multiple
+            # dnsmasq processes listening on the same interface, they receive
+            # the same DHCPSOLICIT and hence pick the same DUID.)
+            duid = ("neutron-dhcp-agent.%s" % self.network.id).encode("hex")
+
             # When the DHCP port and VM TAP interfaces are not
             # bridged, we change the dnsmasq invocation as follows.
             #   --interface=tap* # to listen on all TAP interfaces
@@ -339,6 +352,7 @@ class Dnsmasq(DhcpLocalProcess):
                 '--dhcp-optsfile=%s' % self.get_conf_file_name('opts'),
                 '--leasefile-ro',
                 '--dhcp-authoritative',
+                '--dhcp-duid=%s,%s' % (METASWITCH_EN, duid),
                 '--enable-ra',
                 ]
 
