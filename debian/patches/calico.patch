@@ -1,5 +1,7 @@
---- a/neutron/agent/dhcp/agent.py
-+++ b/neutron/agent/dhcp/agent.py
+Index: calico-neutron/neutron/agent/dhcp/agent.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/dhcp/agent.py	2015-07-13 17:58:54.365692880 +0100
++++ calico-neutron/neutron/agent/dhcp/agent.py	2015-07-13 17:56:59.722824285 +0100
 @@ -58,9 +58,24 @@
          self.conf = cfg.CONF
          self.cache = NetworkCache()
@@ -55,9 +57,22 @@
                  self.conf.enable_isolated_metadata):
                  # NOTE(jschwarz): In the case where a network is deleted, all
                  # the subnets and ports are deleted before this function is
---- a/neutron/agent/linux/dhcp.py
-+++ b/neutron/agent/linux/dhcp.py
-@@ -298,21 +298,49 @@
+Index: calico-neutron/neutron/agent/linux/dhcp.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-07-13 17:58:54.365692880 +0100
++++ calico-neutron/neutron/agent/linux/dhcp.py	2015-07-13 17:58:22.440894636 +0100
+@@ -52,6 +52,10 @@
+ NS_PREFIX = 'qdhcp-'
+ DNSMASQ_SERVICE_NAME = 'dnsmasq'
+ 
++# FIXME (Calico SMC) This is Metaswitch Networks' Enterprise Number.  It
++# should be replaced by OpenStack's own EN before upstreaming this patch.
++METASWITCH_EN = 19444
++
+ 
+ class DictModel(dict):
+     """Convert dict into an object that provides attribute access to values."""
+@@ -298,21 +302,59 @@
              return []
  
      def _build_cmdline_callback(self, pid_file):
@@ -93,6 +108,15 @@
 +                '--dhcp-authoritative',
 +            ]
 +        else:
++            # Calculate a DUID that is unique for each network.  This is
++            # required because dnsmasq's default algorithm for choosing one
++            # does not work if multiple dnsmasqs are listening onto the same
++            # interface.  (dnsmasq chooses its DUID by time and initialises it
++            # on the first DHCP packet received.  If there are multiple
++            # dnsmasq processes listening on the same interface, they receive
++            # the same DHCPSOLICIT and hence pick the same DUID.)
++            duid = ("neutron-dhcp-agent.%s" % self.network.id).encode("hex")
++
 +            # When the DHCP port and VM TAP interfaces are not
 +            # bridged, we change the dnsmasq invocation as follows.
 +            #   --interface=tap* # to listen on all TAP interfaces
@@ -117,12 +141,13 @@
 +                '--dhcp-optsfile=%s' % self.get_conf_file_name('opts'),
 +                '--leasefile-ro',
 +                '--dhcp-authoritative',
++                '--dhcp-duid=%s,%s' % (METASWITCH_EN, duid),
 +                '--enable-ra',
 +                ]
  
          possible_leases = 0
          for i, subnet in enumerate(self.network.subnets):
-@@ -322,7 +350,7 @@
+@@ -322,7 +364,7 @@
                  continue
              if subnet.ip_version == 4:
                  mode = 'static'
@@ -131,7 +156,7 @@
                  # Note(scollins) If the IPv6 attributes are not set, set it as
                  # static to preserve previous behavior
                  addr_mode = getattr(subnet, 'ipv6_address_mode', None)
-@@ -331,6 +359,12 @@
+@@ -331,6 +373,12 @@
                                    constants.DHCPV6_STATELESS] or
                          not addr_mode and not ra_mode):
                      mode = 'static'
@@ -144,7 +169,7 @@
  
              cidr = netaddr.IPNetwork(subnet.cidr)
  
-@@ -791,6 +825,7 @@
+@@ -791,6 +839,7 @@
          try:
              self.driver = importutils.import_object(
                  conf.interface_driver, conf)
@@ -152,7 +177,7 @@
          except Exception as e:
              LOG.error(_LE("Error importing interface driver '%(driver)s': "
                            "%(inner)s"),
-@@ -798,6 +833,9 @@
+@@ -798,6 +847,9 @@
                         'inner': e})
              raise SystemExit(1)
  
@@ -162,7 +187,7 @@
      def get_interface_name(self, network, port):
          """Return interface(device) name for use by the DHCP process."""
          return self.driver.get_device_name(port)
-@@ -860,24 +898,31 @@
+@@ -860,24 +912,31 @@
          for port in network.ports:
              port_device_id = getattr(port, 'device_id', None)
              if port_device_id == device_id:
@@ -211,7 +236,7 @@
                      dhcp_port = port
                  # break since we found port that matches device_id
                  break
-@@ -901,13 +946,21 @@
+@@ -901,13 +960,21 @@
              LOG.debug('DHCP port %(device_id)s on network %(network_id)s'
                        ' does not yet exist.', {'device_id': device_id,
                                                 'network_id': network.id})
@@ -234,7 +259,7 @@
              dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
  
          if not dhcp_port:
-@@ -948,26 +1001,49 @@
+@@ -948,26 +1015,49 @@
                  ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
                  ip_cidrs.append(ip_cidr)
  
@@ -288,8 +313,10 @@
              self._set_default_route(network, device_name)
  
      def destroy(self, network, device_name):
---- a/neutron/agent/linux/interface.py
-+++ b/neutron/agent/linux/interface.py
+Index: calico-neutron/neutron/agent/linux/interface.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/linux/interface.py	2015-07-13 17:58:54.365692880 +0100
++++ calico-neutron/neutron/agent/linux/interface.py	2015-07-13 17:56:59.726824390 +0100
 @@ -164,6 +164,13 @@
              LOG.exception(_LE("Failed deleting egress connection state of"
                                " floatingip %s"), ip_str)
@@ -376,8 +403,10 @@
  class MetaInterfaceDriver(LinuxInterfaceDriver):
      def __init__(self, conf):
          super(MetaInterfaceDriver, self).__init__(conf)
---- a/neutron/agent/linux/ip_lib.py
-+++ b/neutron/agent/linux/ip_lib.py
+Index: calico-neutron/neutron/agent/linux/ip_lib.py
+===================================================================
+--- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-07-13 17:58:54.365692880 +0100
++++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-07-13 17:58:22.440894636 +0100
 @@ -136,6 +136,19 @@
          """Delete a virtual interface between two namespaces."""
          self._as_root([], 'link', ('del', name))
@@ -393,13 +422,15 @@
 +
 +        self._as_root('', 'link', tuple(args))
 +
-+        return IPDevice(name1, self.root_helper, self.namespace)
++        return IPDevice(name1, self.namespace)
 +
      def ensure_namespace(self, name):
          if not self.netns.exists(name):
              ip = self.netns.add(name)
---- a/neutron/tests/unit/agent/dhcp/test_agent.py
-+++ b/neutron/tests/unit/agent/dhcp/test_agent.py
+Index: calico-neutron/neutron/tests/unit/agent/dhcp/test_agent.py
+===================================================================
+--- calico-neutron.orig/neutron/tests/unit/agent/dhcp/test_agent.py	2015-07-13 17:58:54.365692880 +0100
++++ calico-neutron/neutron/tests/unit/agent/dhcp/test_agent.py	2015-07-13 17:56:59.726824390 +0100
 @@ -276,11 +276,11 @@
          network.id = '1'
          dhcp = dhcp_agent.DhcpAgent(cfg.CONF)
