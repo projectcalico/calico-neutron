@@ -4,7 +4,7 @@
 %{!?upstream_version: %global upstream_version %{version}%{?milestone}}
 
 Name:		openstack-%{service}
-Version:	2015.1.0calico0.23
+Version:	2015.1.0calico0.27
 Release:	1%{?milestone}%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -950,6 +950,9 @@ exit 0
 
 
 %changelog
+* Mon Jul 13 2015 Matt Dupre <matt@projectcalico.org> 2015.1.0calico0.27-1
+- Set dnsmasq's DUID explicitly
+
 * Wed Jun 03 2015 Matt Dupre <matt@projectcalico.org> 2015.1.0calico0.23-1
 - DHCP agent enhancements for Calico networking
 - Remove the Linux-created subnet routes on the DHCP port
