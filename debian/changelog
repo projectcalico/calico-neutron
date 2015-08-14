@@ -1,3 +1,9 @@
+neutron (1:2014.2.3-0ubuntu1~cloud0calico1.0.0+1) trusty; urgency=medium
+
+  * Calico version 1.0.0 release
+
+ -- Matt Dupre <matt@projectcalico.org>  Fri, 14 Aug 2015 12:33:56 +0100
+
 neutron (1:2014.2.3-0ubuntu1cloud0calico0.27) trusty; urgency=medium
 
   * Fix problems with DHCPv6 when using multiple IPv6 addresses.
