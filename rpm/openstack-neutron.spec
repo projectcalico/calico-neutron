@@ -4,7 +4,7 @@
 %{!?upstream_version: %global upstream_version %{version}%{?milestone}}
 
 Name:		openstack-%{service}
-Version:	2015.1.0calico0.27
+Version:	2015.1.0calico1.0.0
 Release:	1%{?milestone}%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -950,6 +950,9 @@ exit 0
 
 
 %changelog
+* Fri Aug 14 2015 Matt Dupre <matt@projectcalico.org> 2015.1.0calico1.0.0-1
+- Calico version 1.0.0 release
+
 * Mon Jul 13 2015 Matt Dupre <matt@projectcalico.org> 2015.1.0calico0.27-1
 - Set dnsmasq's DUID explicitly
 
