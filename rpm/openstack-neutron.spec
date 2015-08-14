@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.2calico0.27
+Version:	2014.2.2calico1.0.0
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -978,6 +978,9 @@ exit 0
 
 
 %changelog
+* Fri Aug 14 2015 Matt Dupre <matt@projectcalico.org> 2014.2.2calico1.0.0-1
+- Calico version 1.0.0 release
+
 * Thu Jul 02 2015 Matt Dupre <matt@projectcalico.org> 2014.2.2calico0.27-1
 - Always fill UDP checksums in DHCP replies
 - Set dnsmasq's DUID explicitly
