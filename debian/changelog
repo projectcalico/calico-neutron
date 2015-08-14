@@ -1,4 +1,4 @@
-neutron (1:2014.2.3-0ubuntu1~cloud0calico1.0.0+1) trusty; urgency=medium
+neutron (1:2014.2.3-0ubuntu1cloud0calico1.0.0+1) trusty; urgency=medium
 
   * Calico version 1.0.0 release
 
