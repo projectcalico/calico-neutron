@@ -1,3 +1,9 @@
+neutron (1:2015.1.0-0ubuntu1~cloud0calico1.0.0+1) trusty; urgency=medium
+
+  * Calico version 1.0.0 release
+
+ -- Matt Dupre <matt@projectcalico.org>  Fri, 14 Aug 2015 12:41:33 +0100
+
 neutron (1:2015.1.0-0ubuntu1calico0.27) trusty; urgency=medium
 
   * Remove left over root_helper parameter in IPDevice constructor
