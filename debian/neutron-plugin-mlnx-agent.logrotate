@@ -1,7 +1,0 @@
-/var/log/neutron/mlnx-agent.log {
-    daily
-    missingok
-    compress
-    delaycompress
-    notifempty
-}

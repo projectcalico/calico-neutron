@@ -1,7 +1,8 @@
-/var/log/neutron/openvswitch-agent.log {
+/var/log/neutron/*.log {
     daily
     missingok
     compress
     delaycompress
     notifempty
+    copytruncate
 }
