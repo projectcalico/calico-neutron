@@ -38,6 +38,9 @@ distribution:
 - mirantis\_2014.2.2 and fuel\_6.1, for installing Calico using
   Mirantis Fuel 6.1.
 
+- mirantis\_2015.1.1 and fuel\_7.0, for installing Calico using
+  Mirantis Fuel 7.0.
+
 Please do contact us via http://www.projectcalico.org/community/, for
 help with rebasing or applying Calico patches to other upstream
 releases, or with targeting other distributions.
