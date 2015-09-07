@@ -38,13 +38,15 @@ class L3AgentNotifyAPI(object):
         target = oslo_messaging.Target(topic=topic, version='1.0')
         self.client = n_rpc.get_client(target)
 
-    def _notification_host(self, context, method, payload, host):
+    def _notification_host(self, context, method, payload, host,
+                           use_call=False):
         """Notify the agent that is hosting the router."""
         LOG.debug('Notify agent at %(host)s the message '
                   '%(method)s', {'host': host,
                                  'method': method})
         cctxt = self.client.prepare(server=host)
-        cctxt.cast(context, method, payload=payload)
+        rpc_method = cctxt.call if use_call else cctxt.cast
+        rpc_method(context, method, payload=payload)
 
     def _agent_notification(self, context, method, router_ids, operation,
                             shuffle_agents):
@@ -100,7 +102,7 @@ class L3AgentNotifyAPI(object):
             cctxt.cast(context, method, payload=dvr_arptable)
 
     def _notification(self, context, method, router_ids, operation,
-                      shuffle_agents):
+                      shuffle_agents, schedule_routers=True):
         """Notify all the agents that are hosting the routers."""
         plugin = manager.NeutronManager.get_service_plugins().get(
             service_constants.L3_ROUTER_NAT)
@@ -112,7 +114,8 @@ class L3AgentNotifyAPI(object):
                 plugin, constants.L3_AGENT_SCHEDULER_EXT_ALIAS):
             adminContext = (context.is_admin and
                             context or context.elevated())
-            plugin.schedule_routers(adminContext, router_ids)
+            if schedule_routers:
+                plugin.schedule_routers(adminContext, router_ids)
             self._agent_notification(
                 context, method, router_ids, operation, shuffle_agents)
         else:
@@ -138,10 +141,10 @@ class L3AgentNotifyAPI(object):
         self._notification_fanout(context, 'router_deleted', router_id)
 
     def routers_updated(self, context, router_ids, operation=None, data=None,
-                        shuffle_agents=False):
+                        shuffle_agents=False, schedule_routers=True):
         if router_ids:
             self._notification(context, 'routers_updated', router_ids,
-                               operation, shuffle_agents)
+                               operation, shuffle_agents, schedule_routers)
 
     def add_arp_entry(self, context, router_id, arp_table, operation=None):
         self._agent_notification_arp(context, 'add_arp_entry', router_id,
@@ -156,5 +159,7 @@ class L3AgentNotifyAPI(object):
                                 {'router_id': router_id}, host)
 
     def router_added_to_agent(self, context, router_ids, host):
+        # need to use call here as we want to be sure agent received
+        # notification and router will not be "lost"
         self._notification_host(context, 'router_added_to_agent',
-                                router_ids, host)
+                                router_ids, host, use_call=True)

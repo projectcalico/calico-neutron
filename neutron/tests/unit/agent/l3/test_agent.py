@@ -432,11 +432,10 @@ class TestBasicRouterOperations(BasicRouterOperationsFramework):
                                                        conf=self.conf)
 
             self.assertEqual(agent.agent_state['start_flag'], True)
-            use_call_arg = agent.use_call
             agent.after_start()
             report_state.assert_called_once_with(agent.context,
                                                  agent.agent_state,
-                                                 use_call_arg)
+                                                 True)
             self.assertTrue(agent.agent_state.get('start_flag') is None)
 
     def test_periodic_sync_routers_task_call_clean_stale_namespaces(self):
@@ -444,6 +443,29 @@ class TestBasicRouterOperations(BasicRouterOperationsFramework):
         self.plugin_api.get_routers.return_value = []
         agent.periodic_sync_routers_task(agent.context)
         self.assertFalse(agent.namespaces_manager._clean_stale)
+
+    def test_periodic_sync_routers_task_call_clean_stale_meta_proxies(self):
+        agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
+        stale_router_ids = [_uuid(), _uuid()]
+        active_routers = [{'id': _uuid()}, {'id': _uuid()}]
+        self.plugin_api.get_routers.return_value = active_routers
+        namespace_list = [namespaces.NS_PREFIX + r_id
+                          for r_id in stale_router_ids]
+        namespace_list += [namespaces.NS_PREFIX + r['id']
+                           for r in active_routers]
+        self.mock_ip.get_namespaces.return_value = namespace_list
+        driver = metadata_driver.MetadataDriver
+        with mock.patch.object(
+                driver, 'destroy_monitored_metadata_proxy') as destroy_proxy:
+            agent.periodic_sync_routers_task(agent.context)
+
+            expected_calls = [mock.call(mock.ANY,
+                                        r_id,
+                                        namespaces.NS_PREFIX + r_id,
+                                        agent.conf)
+                              for r_id in stale_router_ids]
+            self.assertEqual(len(stale_router_ids), destroy_proxy.call_count)
+            destroy_proxy.assert_has_calls(expected_calls, any_order=True)
 
     def test_router_info_create(self):
         id = _uuid()
@@ -812,40 +834,60 @@ class TestBasicRouterOperations(BasicRouterOperationsFramework):
     def test_external_gateway_updated_dual_stack(self):
         self._test_external_gateway_updated(dual_stack=True)
 
-    def _test_ext_gw_updated_dvr_agent_mode(self, host,
-                                            agent_mode, expected_call_count):
+    def _test_ext_gw_updated_dvr_edge_router(self, host_match,
+                                             snat_hosted_before=True):
+        """
+        Helper to test external gw update for edge router on dvr_snat agent
+
+        :param host_match: True if new gw host should be the same as agent host
+        :param snat_hosted_before: True if agent has already been hosting
+        snat for the router
+        """
         router = prepare_router_data(num_internal_ports=2)
-        agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
-        ri = dvr_router.DvrRouter(agent,
+        self.conf.agent_mode = l3_constants.L3_AGENT_MODE_DVR_SNAT
+        ri = dvr_router.DvrRouter(mock.Mock(),
                                   HOSTNAME,
                                   router['id'],
                                   router,
                                   **self.ri_kwargs)
-        ri.create_snat_namespace()
+        if snat_hosted_before:
+            ri.create_snat_namespace()
+            snat_ns_name = ri.snat_namespace.name
+        else:
+            self.assertIsNone(ri.snat_namespace)
+
         interface_name, ex_gw_port = self._prepare_ext_gw_test(ri)
         ri._external_gateway_added = mock.Mock()
 
-        # test agent mode = dvr (compute node)
-        router['gw_port_host'] = host
-        agent.conf.agent_mode = agent_mode
+        router['gw_port_host'] = ri.host if host_match else (ri.host + 'foo')
 
         ri.external_gateway_updated(ex_gw_port, interface_name)
-        # no gateway should be added on dvr node
-        self.assertEqual(expected_call_count,
-                         ri._external_gateway_added.call_count)
+        if not host_match:
+            self.assertFalse(ri._external_gateway_added.called)
+            if snat_hosted_before:
+                # host mismatch means that snat was rescheduled to another
+                # agent, hence need to verify that gw port was unplugged and
+                # snat namespace was deleted
+                self.mock_driver.unplug.assert_called_with(
+                    interface_name,
+                    bridge=self.conf.external_network_bridge,
+                    namespace=snat_ns_name,
+                    prefix=l3_agent.EXTERNAL_DEV_PREFIX)
+                self.assertIsNone(ri.snat_namespace)
+        else:
+            if not snat_hosted_before:
+                self.assertIsNotNone(ri.snat_namespace)
+            self.assertTrue(ri._external_gateway_added.called)
 
-    def test_ext_gw_updated_dvr_agent_mode(self):
-        # no gateway should be added on dvr node
-        self._test_ext_gw_updated_dvr_agent_mode('any-foo', 'dvr', 0)
+    def test_ext_gw_updated_dvr_edge_router(self):
+        self._test_ext_gw_updated_dvr_edge_router(host_match=True)
 
-    def test_ext_gw_updated_dvr_snat_agent_mode_no_host(self):
-        # no gateway should be added on dvr_snat node without host match
-        self._test_ext_gw_updated_dvr_agent_mode('any-foo', 'dvr_snat', 0)
+    def test_ext_gw_updated_dvr_edge_router_host_mismatch(self):
+        self._test_ext_gw_updated_dvr_edge_router(host_match=False)
 
-    def test_ext_gw_updated_dvr_snat_agent_mode_host(self):
-        # gateway should be added on dvr_snat node
-        self._test_ext_gw_updated_dvr_agent_mode(HOSTNAME,
-                                                 'dvr_snat', 1)
+    def test_ext_gw_updated_dvr_dvr_edge_router_snat_rescheduled(self):
+        self._test_ext_gw_updated_dvr_edge_router(host_match=True,
+                                                  snat_hosted_before=False)
 
     def test_agent_add_external_gateway(self):
         router = prepare_router_data(num_internal_ports=2)

@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+import signal
 
 from neutron.cmd import netns_cleanup as util
 from neutron.tests import base
@@ -157,15 +158,14 @@ class TestNetnsCleanup(base.BaseTestCase):
 
             with mock.patch.object(util, 'unplug_device') as unplug:
 
-                with mock.patch.object(util, 'kill_dhcp') as kill_dhcp:
+                with mock.patch.object(util, 'kill_processes') as killer:
                     util.destroy_namespace(conf, ns, force)
                     expected = [mock.call(namespace=ns)]
 
                     if force:
                         expected.extend([
-                            mock.call().netns.exists(ns),
                             mock.call().get_devices(exclude_loopback=True)])
-                        self.assertTrue(kill_dhcp.called)
+                        self.assertTrue(killer.called)
                         unplug.assert_has_calls(
                             [mock.call(conf, d) for d in
                              devices[1:]])
@@ -250,3 +250,99 @@ class TestNetnsCleanup(base.BaseTestCase):
                         self.assertFalse(mocks['destroy_namespace'].called)
 
                         self.assertFalse(time_sleep.called)
+
+    def test_fast_main(self):
+        namespaces = ['ns1', 'ns2']
+        with mock.patch('pyroute2.netns') as netns:
+            netns.listnetns.return_value = namespaces
+
+            with mock.patch('os.geteuid') as geteuid:
+                geteuid.return_value = 0
+
+                conf = mock.Mock()
+                conf.force = True
+                conf.terminate_timeout = 10
+                conf.check_interval = 1
+                methods_to_mock = dict(
+                    eligible_for_deletion=mock.DEFAULT,
+                    fast_destroy_namespace=mock.DEFAULT,
+                    batch_kill_processes=mock.DEFAULT,
+                    setup_conf=mock.DEFAULT)
+
+                with mock.patch.multiple(util, **methods_to_mock) as mocks:
+                    mocks['eligible_for_deletion'].return_value = True
+                    mocks['setup_conf'].return_value = conf
+                    with mock.patch('neutron.common.config.setup_logging'):
+                        util.main()
+
+                        mocks['eligible_for_deletion'].assert_has_calls(
+                            [mock.call(conf, 'ns1', True),
+                             mock.call(conf, 'ns2', True)])
+
+                        mocks['fast_destroy_namespace'].assert_has_calls(
+                            [mock.call('ns1', True), mock.call('ns2', True)])
+
+                        mocks['batch_kill_processes'].assert_called_once_with(
+                            ['ns1', 'ns2'], conf.terminate_timeout,
+                            conf.check_interval)
+
+                        netns.assert_has_calls([mock.call.listnetns()])
+
+    @mock.patch('time.sleep')
+    @mock.patch('oslo_utils.timeutils.StopWatch')
+    @mock.patch('os.kill')
+    @mock.patch('neutron.cmd.netns_cleanup.get_all_pids')
+    @mock.patch('neutron.cmd.netns_cleanup.get_netns_pids')
+    def test_batch_kill_processes(self, netns_pids, all_pids, os_kill, watch,
+                                  time_sleep):
+        namespaces = ['ns1', 'ns2']
+        terminate_timeout = 10
+        check_interval = 1
+        netns_pids.return_value = {1234, 5678, 9012}
+        all_pids.return_value = set()
+
+        watch_inst = mock.Mock()
+        watch_inst.expired.return_value = False
+        wait_watch_inst = mock.Mock()
+        wait_watch_inst.elapsed.return_value = 0
+        watch.side_effect = [watch_inst, wait_watch_inst]
+
+        util.batch_kill_processes(namespaces, terminate_timeout,
+                                  check_interval)
+
+        os_kill.assert_has_calls([mock.call(1234, signal.SIGTERM),
+                                  mock.call(5678, signal.SIGTERM),
+                                  mock.call(9012, signal.SIGTERM)],
+                                 any_order=True)
+        time_sleep.assert_has_calls([mock.call(check_interval)])
+
+    @mock.patch('time.sleep')
+    @mock.patch('oslo_utils.timeutils.StopWatch')
+    @mock.patch('os.kill')
+    @mock.patch('neutron.cmd.netns_cleanup.get_all_pids')
+    @mock.patch('neutron.cmd.netns_cleanup.get_netns_pids')
+    def test_batch_kill_processes_slow(self, netns_pids, all_pids, os_kill,
+                                       watch, time_sleep):
+        # verify the case when one process does not finish on SIGTERM
+        # and needs to be killed brutally
+        namespaces = ['ns1', 'ns2']
+        terminate_timeout = 10
+        check_interval = 2
+        netns_pids.return_value = {1234, 5678, 9012}
+        all_pids.side_effect = [{5678}, set()]
+
+        watch_inst = mock.Mock()
+        watch_inst.expired.side_effect = [False, True]
+        wait_watch_inst = mock.Mock()
+        wait_watch_inst.elapsed.return_value = 0.5
+        watch.side_effect = [watch_inst, wait_watch_inst]
+
+        util.batch_kill_processes(namespaces, terminate_timeout,
+                                  check_interval)
+
+        os_kill.assert_has_calls([mock.call(1234, signal.SIGTERM),
+                                  mock.call(5678, signal.SIGTERM),
+                                  mock.call(9012, signal.SIGTERM),
+                                  mock.call(5678, signal.SIGKILL)],
+                                 any_order=True)
+        time_sleep.assert_has_calls([mock.call(1.5)])

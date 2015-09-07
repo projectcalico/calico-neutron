@@ -93,7 +93,10 @@ agent_opts = [
     cfg.IntOpt('quitting_rpc_timeout', default=10,
                help=_("Set new timeout in seconds for new rpc calls after "
                       "agent receives SIGTERM. If value is set to 0, rpc "
-                      "timeout won't be changed"))
+                      "timeout won't be changed")),
+    cfg.BoolOpt('drop_flows_on_start', default=True,
+                help=_("Drop all flows during agent start for a clean flow "
+                       "tables resetting"))
 ]
 
 

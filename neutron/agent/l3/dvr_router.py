@@ -45,6 +45,7 @@ class DvrRouter(router.RouterInfo):
         self.rtr_fip_subnet = None
         self.dist_fip_count = None
         self.snat_namespace = None
+        self.fip_ns = None
 
     def get_floating_ips(self):
         """Filter Floating IPs to be hosted on this agent."""
@@ -430,12 +431,22 @@ class DvrRouter(router.RouterInfo):
         if not self._is_this_snat_host():
             # no centralized SNAT gateway for this node/agent
             LOG.debug("not hosting snat for router: %s", self.router['id'])
+            if self.snat_namespace:
+                LOG.debug("SNAT was rescheduled to host %s. Clearing snat "
+                          "namespace.", self.router.get('gw_port_host'))
+                return self.external_gateway_removed(
+                    ex_gw_port, interface_name)
             return
 
-        self._external_gateway_added(ex_gw_port,
-                                     interface_name,
-                                     self.snat_namespace.name,
-                                     preserve_ips=[])
+        if not self.snat_namespace:
+            # SNAT might be rescheduled to this agent; need to process like
+            # newly created gateway
+            return self.external_gateway_added(ex_gw_port, interface_name)
+        else:
+            self._external_gateway_added(ex_gw_port,
+                                         interface_name,
+                                         self.snat_namespace.name,
+                                         preserve_ips=[])
 
     def external_gateway_removed(self, ex_gw_port, interface_name):
         # TODO(Carl) Should this be calling process_snat_dnat_for_fip?
@@ -450,7 +461,7 @@ class DvrRouter(router.RouterInfo):
             internal_interface = self.get_internal_device_name(p['id'])
             self._snat_redirect_remove(gateway, p, internal_interface)
 
-        if not self._is_this_snat_host():
+        if not self._is_this_snat_host() and not self.snat_namespace:
             # no centralized SNAT gateway for this node/agent
             LOG.debug("not hosting snat for router: %s", self.router['id'])
             return

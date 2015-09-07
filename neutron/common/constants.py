@@ -177,3 +177,11 @@ RPC_NAMESPACE_STATE = None
 
 # Default network MTU value when not configured
 DEFAULT_NETWORK_MTU = 0
+
+# Agent states as detected by server, used to reply on agent's state report
+# agent has just been registered
+AGENT_NEW = 'new'
+# agent is alive
+AGENT_ALIVE = 'alive'
+# agent has just returned to alive after being dead
+AGENT_REVIVED = 'revived'

@@ -16,6 +16,7 @@
 
 import contextlib
 import time
+import uuid
 
 import mock
 from oslo_config import cfg
@@ -72,10 +73,13 @@ class TunnelTest(base.BaseTestCase):
 
     def setUp(self):
         super(TunnelTest, self).setUp()
+        self.uuid = uuid.uuid4()
+        self.uuid_for_cookie = self.uuid.int & (1 << 64) - 1
         cfg.CONF.set_default('firewall_driver',
                              'neutron.agent.firewall.NoopFirewallDriver',
                              group='SECURITYGROUP')
         cfg.CONF.set_override('report_interval', 0, 'AGENT')
+        cfg.CONF.set_override('drop_flows_on_start', False, 'AGENT')
 
         self.INT_BRIDGE = 'integration_bridge'
         self.TUN_BRIDGE = 'tunnel_bridge'
@@ -106,7 +110,8 @@ class TunnelTest(base.BaseTestCase):
         self.mock_int_bridge.add_port.return_value = self.MAP_TUN_INT_OFPORT
         self.mock_int_bridge.add_patch_port.side_effect = (
             lambda tap, peer: self.ovs_int_ofports[tap])
-
+        self.mock_int_bridge.get_vif_ports.return_value = []
+        self.mock_int_bridge.db_get_val.return_value = {}
         self.mock_map_tun_bridge = self.ovs_bridges[self.MAP_TUN_BRIDGE]
         self.mock_map_tun_bridge.br_name = self.MAP_TUN_BRIDGE
         self.mock_map_tun_bridge.add_port.return_value = (
@@ -137,7 +142,7 @@ class TunnelTest(base.BaseTestCase):
 
         self._define_expected_calls()
 
-    def _define_expected_calls(self):
+    def _define_expected_calls(self, arp_responder=False):
         self.mock_bridge_expected = [
             mock.call(self.INT_BRIDGE),
             mock.call(self.MAP_TUN_BRIDGE),
@@ -146,24 +151,22 @@ class TunnelTest(base.BaseTestCase):
 
         self.mock_int_bridge = self.ovs_bridges[self.INT_BRIDGE]
         self.mock_int_bridge_expected = [
+            mock.call.set_agent_uuid_stamp(mock.ANY),
             mock.call.create(),
             mock.call.set_secure_mode(),
             mock.call.delete_port('patch-tun'),
-            mock.call.remove_all_flows(),
             mock.call.add_flow(priority=1, actions='normal'),
             mock.call.add_flow(priority=0, table=constants.CANARY_TABLE,
                                actions='drop'),
+            mock.call.db_get_val('Interface', 'int-tun_br_map', 'type')
         ]
 
         self.mock_map_tun_bridge_expected = [
-            mock.call.remove_all_flows(),
             mock.call.add_flow(priority=1, actions='normal'),
-            mock.call.delete_port('phy-%s' % self.MAP_TUN_BRIDGE),
             mock.call.add_patch_port('phy-%s' % self.MAP_TUN_BRIDGE,
                                      constants.NONEXISTENT_PEER),
         ]
         self.mock_int_bridge_expected += [
-            mock.call.delete_port('int-%s' % self.MAP_TUN_BRIDGE),
             mock.call.add_patch_port('int-%s' % self.MAP_TUN_BRIDGE,
                                      constants.NONEXISTENT_PEER),
         ]
@@ -186,15 +189,13 @@ class TunnelTest(base.BaseTestCase):
         ]
 
         self.mock_tun_bridge_expected = [
-            mock.call.reset_bridge(secure_mode=True),
+            mock.call.set_agent_uuid_stamp(mock.ANY),
+            mock.call.bridge_exists('br-tun'),
+            mock.call.port_exists('patch-int'),
             mock.call.add_patch_port('patch-int', 'patch-tun'),
-        ]
-        self.mock_int_bridge_expected += [
-            mock.call.add_patch_port('patch-tun', 'patch-int')
         ]
 
         self.mock_tun_bridge_expected += [
-            mock.call.remove_all_flows(),
             mock.call.add_flow(priority=1,
                                actions="resubmit(,%s)" %
                                constants.PATCH_LV_TO_TUN,
@@ -215,15 +216,16 @@ class TunnelTest(base.BaseTestCase):
                     table=constants.TUN_TABLE[tunnel_type],
                     priority=0,
                     actions="drop"))
-        learned_flow = ("table=%s,"
+        learned_flow = ("cookie=%s,"
+                        "table=%s,"
                         "priority=1,"
                         "hard_timeout=300,"
                         "NXM_OF_VLAN_TCI[0..11],"
                         "NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],"
                         "load:0->NXM_OF_VLAN_TCI[],"
                         "load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[],"
-                        "output:NXM_OF_IN_PORT[]" %
-                        constants.UCAST_TO_TUN)
+                        "output:NXM_OF_IN_PORT[]" % (self.uuid_for_cookie,
+                        constants.UCAST_TO_TUN))
         self.mock_tun_bridge_expected += [
             mock.call.add_flow(table=constants.LEARN_FROM_TUN,
                                priority=1,
@@ -236,6 +238,13 @@ class TunnelTest(base.BaseTestCase):
             mock.call.add_flow(table=constants.FLOOD_TO_TUN,
                                priority=0,
                                actions="drop")
+        ]
+        self.mock_int_bridge_expected += [
+            mock.call.port_exists('patch-tun'),
+            mock.call.add_patch_port('patch-tun', 'patch-int'),
+        ]
+        self.mock_int_bridge_expected += [
+            mock.call.get_vif_ports(),
         ]
 
         self.device_exists_expected = []
@@ -282,7 +291,8 @@ class TunnelTest(base.BaseTestCase):
         self._verify_mock_call(self.execute, self.execute_expected)
 
     def test_construct(self):
-        agent = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            agent = self._build_agent()
         self.assertEqual(agent.agent_id, 'ovs-agent-%s' % cfg.CONF.host)
         self._verify_mock_calls()
 
@@ -290,9 +300,10 @@ class TunnelTest(base.BaseTestCase):
     #                 ML2 l2 population mechanism driver.
     #                 The next two tests use l2_pop flag to test ARP responder
     def test_construct_with_arp_responder(self):
-        self._build_agent(l2_population=True, arp_responder=True)
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            self._build_agent(l2_population=True, arp_responder=True)
         self.mock_tun_bridge_expected.insert(
-            5, mock.call.add_flow(table=constants.PATCH_LV_TO_TUN,
+            6, mock.call.add_flow(table=constants.PATCH_LV_TO_TUN,
                                   priority=1,
                                   proto="arp",
                                   dl_dst="ff:ff:ff:ff:ff:ff",
@@ -300,7 +311,7 @@ class TunnelTest(base.BaseTestCase):
                                   constants.ARP_RESPONDER)
         )
         self.mock_tun_bridge_expected.insert(
-            12, mock.call.add_flow(table=constants.ARP_RESPONDER,
+            13, mock.call.add_flow(table=constants.ARP_RESPONDER,
                                    priority=0,
                                    actions="resubmit(,%s)" %
                                    constants.FLOOD_TO_TUN)
@@ -308,11 +319,13 @@ class TunnelTest(base.BaseTestCase):
         self._verify_mock_calls()
 
     def test_construct_without_arp_responder(self):
-        self._build_agent(l2_population=False, arp_responder=True)
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            self._build_agent(l2_population=False, arp_responder=True)
         self._verify_mock_calls()
 
     def test_construct_vxlan(self):
-        self._build_agent(tunnel_types=['vxlan'])
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            self._build_agent(tunnel_types=['vxlan'])
         self._verify_mock_calls()
 
     def test_provision_local_vlan(self):
@@ -329,8 +342,8 @@ class TunnelTest(base.BaseTestCase):
                                actions="mod_vlan_vid:%s,resubmit(,%s)" %
                                (LV_ID, constants.LEARN_FROM_TUN)),
         ]
-
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.available_local_vlans = set([LV_ID])
         a.tun_br_ofports = TUN_OFPORTS
         a.provision_local_vlan(NET_UUID, p_const.TYPE_GRE, None, LS_ID)
@@ -346,8 +359,8 @@ class TunnelTest(base.BaseTestCase):
         self.mock_int_bridge_expected.append(
             mock.call.add_flow(priority=3, in_port=self.INT_OFPORT,
                                dl_vlan=65535, actions=action_string))
-
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.available_local_vlans = set([LV_ID])
         a.phys_brs['net1'] = self.mock_map_tun_bridge
         a.phys_ofports['net1'] = self.MAP_TUN_PHY_OFPORT
@@ -356,7 +369,8 @@ class TunnelTest(base.BaseTestCase):
         self._verify_mock_calls()
 
     def test_provision_local_vlan_flat_fail(self):
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.provision_local_vlan(NET_UUID, p_const.TYPE_FLAT, 'net2', LS_ID)
         self._verify_mock_calls()
 
@@ -370,8 +384,8 @@ class TunnelTest(base.BaseTestCase):
         self.mock_int_bridge_expected.append(
             mock.call.add_flow(priority=3, in_port=self.INT_OFPORT,
                                dl_vlan=LS_ID, actions=action_string))
-
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.available_local_vlans = set([LV_ID])
         a.phys_brs['net1'] = self.mock_map_tun_bridge
         a.phys_ofports['net1'] = self.MAP_TUN_PHY_OFPORT
@@ -380,7 +394,8 @@ class TunnelTest(base.BaseTestCase):
         self._verify_mock_calls()
 
     def test_provision_local_vlan_vlan_fail(self):
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.provision_local_vlan(NET_UUID, p_const.TYPE_VLAN, 'net2', LS_ID)
         self._verify_mock_calls()
 
@@ -390,8 +405,8 @@ class TunnelTest(base.BaseTestCase):
                 table=constants.TUN_TABLE['gre'], tun_id=LS_ID),
             mock.call.delete_flows(dl_vlan=LVM.vlan)
         ]
-
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.available_local_vlans = set()
         a.local_vlan_map[NET_UUID] = LVM
         a.reclaim_local_vlan(NET_UUID)
@@ -405,8 +420,8 @@ class TunnelTest(base.BaseTestCase):
         self.mock_int_bridge_expected.append(
             mock.call.delete_flows(
                 dl_vlan=65535, in_port=self.INT_OFPORT))
-
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.phys_brs['net1'] = self.mock_map_tun_bridge
         a.phys_ofports['net1'] = self.MAP_TUN_PHY_OFPORT
         a.int_ofports['net1'] = self.INT_OFPORT
@@ -425,7 +440,8 @@ class TunnelTest(base.BaseTestCase):
             mock.call.delete_flows(
                 dl_vlan=LS_ID, in_port=self.INT_OFPORT))
 
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.phys_brs['net1'] = self.mock_map_tun_bridge
         a.phys_ofports['net1'] = self.MAP_TUN_PHY_OFPORT
         a.int_ofports['net1'] = self.INT_OFPORT
@@ -437,23 +453,28 @@ class TunnelTest(base.BaseTestCase):
         self._verify_mock_calls()
 
     def test_port_bound(self):
+        vlan_mapping = {'segmentation_id': LS_ID,
+                        'physical_network': None,
+                        'net_uuid': NET_UUID,
+                        'network_type': 'gre'}
         self.mock_int_bridge_expected += [
-            mock.call.db_get_val('Port', VIF_PORT.port_name, 'tag'),
+            mock.call.db_get_val('Port', 'port', 'other_config'),
             mock.call.set_db_attribute('Port', VIF_PORT.port_name,
-                                       'tag', LVM.vlan),
-            mock.call.delete_flows(in_port=VIF_PORT.ofport)
-        ]
-
-        a = self._build_agent()
+                                       'other_config',
+                                       vlan_mapping)]
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.local_vlan_map[NET_UUID] = LVM
         a.local_dvr_map = {}
         a.port_bound(VIF_PORT, NET_UUID, 'gre', None, LS_ID,
-                     FIXED_IPS, VM_DEVICE_OWNER, False)
+                     FIXED_IPS, VM_DEVICE_OWNER, False, {})
         self._verify_mock_calls()
 
     def test_port_unbound(self):
         with mock.patch.object(ovs_neutron_agent.OVSNeutronAgent,
-                               'reclaim_local_vlan') as reclaim_local_vlan:
+                               'reclaim_local_vlan') as reclaim_local_vlan,\
+                mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+
             a = self._build_agent()
             a.local_vlan_map[NET_UUID] = LVM
             a.port_unbound(VIF_ID, NET_UUID)
@@ -472,8 +493,8 @@ class TunnelTest(base.BaseTestCase):
             mock.call.add_flow(priority=2, in_port=VIF_PORT.ofport,
                                actions='drop')
         ]
-
-        a = self._build_agent()
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
         a.available_local_vlans = set([LV_ID])
         a.local_vlan_map[NET_UUID] = LVM
         a.port_dead(VIF_PORT)
@@ -488,17 +509,18 @@ class TunnelTest(base.BaseTestCase):
             mock.call.add_flow(priority=1, in_port=tunnel_port,
                                actions='resubmit(,3)')
         ]
-
-        a = self._build_agent()
-        a.tunnel_update(
-            mock.sentinel.ctx, tunnel_ip='10.0.10.1',
-            tunnel_type=p_const.TYPE_GRE)
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
+            a.tunnel_update(
+                mock.sentinel.ctx, tunnel_ip='10.0.10.1',
+                tunnel_type=p_const.TYPE_GRE)
         self._verify_mock_calls()
 
     def test_tunnel_update_self(self):
-        a = self._build_agent()
-        a.tunnel_update(
-            mock.sentinel.ctx, tunnel_ip='10.0.0.1')
+        with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+            a = self._build_agent()
+            a.tunnel_update(
+                mock.sentinel.ctx, tunnel_ip='10.0.0.1')
         self._verify_mock_calls()
 
     def test_daemon_loop(self):
@@ -525,16 +547,19 @@ class TunnelTest(base.BaseTestCase):
                               'tunnel_sync'),
             mock.patch.object(time, 'sleep'),
             mock.patch.object(ovs_neutron_agent.OVSNeutronAgent,
-                              'update_stale_ofport_rules')
+                              'update_stale_ofport_rules'),
+            mock.patch.object(ovs_neutron_agent.OVSNeutronAgent,
+                              'cleanup_stale_flows'),
         ) as (log_exception, scan_ports, process_network_ports,
-              ts, time_sleep, update_stale):
+              ts, time_sleep, update_stale, cleanup):
             log_exception.side_effect = Exception(
                 'Fake exception to get out of the loop')
             scan_ports.side_effect = [reply2, reply3]
             process_network_ports.side_effect = [
                 False, Exception('Fake exception to get out of the loop')]
 
-            q_agent = self._build_agent()
+            with mock.patch.object(uuid, 'uuid4', return_value=self.uuid):
+                q_agent = self._build_agent()
 
             # Hack to test loop
             # We start method and expect it will raise after 2nd loop
@@ -559,6 +584,7 @@ class TunnelTest(base.BaseTestCase):
                        'removed': set(['tap0']),
                        'added': set([])}, False)
         ])
+        cleanup.assert_has_calls([])
         self.assertTrue(update_stale.called)
         self._verify_mock_calls()
 
@@ -574,23 +600,22 @@ class TunnelTestUseVethInterco(TunnelTest):
         ]
 
         self.mock_int_bridge_expected = [
+            mock.call.set_agent_uuid_stamp(mock.ANY),
             mock.call.create(),
             mock.call.set_secure_mode(),
             mock.call.delete_port('patch-tun'),
-            mock.call.remove_all_flows(),
             mock.call.add_flow(priority=1, actions='normal'),
             mock.call.add_flow(table=constants.CANARY_TABLE, priority=0,
-                               actions="drop")
+                               actions="drop"),
+            mock.call.db_get_val('Interface', 'int-%s' % self.MAP_TUN_BRIDGE,
+                                 'type')
         ]
 
         self.mock_map_tun_bridge_expected = [
-            mock.call.remove_all_flows(),
             mock.call.add_flow(priority=1, actions='normal'),
-            mock.call.delete_port('phy-%s' % self.MAP_TUN_BRIDGE),
             mock.call.add_port(self.intb),
         ]
         self.mock_int_bridge_expected += [
-            mock.call.delete_port('int-%s' % self.MAP_TUN_BRIDGE),
             mock.call.add_port(self.inta)
         ]
 
@@ -606,15 +631,19 @@ class TunnelTestUseVethInterco(TunnelTest):
         ]
 
         self.mock_tun_bridge_expected = [
-            mock.call.reset_bridge(secure_mode=True),
+            mock.call.set_agent_uuid_stamp(mock.ANY),
+            mock.call.bridge_exists('br-tun'),
+            mock.call.port_exists('patch-int'),
             mock.call.add_patch_port('patch-int', 'patch-tun'),
         ]
         self.mock_int_bridge_expected += [
+            mock.call.port_exists('patch-tun'),
             mock.call.add_patch_port('patch-tun', 'patch-int')
         ]
-
+        self.mock_int_bridge_expected += [
+            mock.call.get_vif_ports(),
+        ]
         self.mock_tun_bridge_expected += [
-            mock.call.remove_all_flows(),
             mock.call.add_flow(priority=1,
                                in_port=self.INT_OFPORT,
                                actions="resubmit(,%s)" %
@@ -637,15 +666,16 @@ class TunnelTestUseVethInterco(TunnelTest):
                     table=constants.TUN_TABLE[tunnel_type],
                     priority=0,
                     actions="drop"))
-        learned_flow = ("table=%s,"
+        learned_flow = ("cookie=%s,"
+                        "table=%s,"
                         "priority=1,"
                         "hard_timeout=300,"
                         "NXM_OF_VLAN_TCI[0..11],"
                         "NXM_OF_ETH_DST[]=NXM_OF_ETH_SRC[],"
                         "load:0->NXM_OF_VLAN_TCI[],"
                         "load:NXM_NX_TUN_ID[]->NXM_NX_TUN_ID[],"
-                        "output:NXM_OF_IN_PORT[]" %
-                        constants.UCAST_TO_TUN)
+                        "output:NXM_OF_IN_PORT[]" % (self.uuid_for_cookie,
+                        constants.UCAST_TO_TUN))
         self.mock_tun_bridge_expected += [
             mock.call.add_flow(table=constants.LEARN_FROM_TUN,
                                priority=1,

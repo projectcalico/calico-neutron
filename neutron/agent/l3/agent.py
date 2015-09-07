@@ -209,19 +209,21 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
                         continue
             break
 
+        self.metadata_driver = None
+        if self.conf.enable_metadata_proxy:
+            self.metadata_driver = metadata_driver.MetadataDriver(self)
+
         self.namespaces_manager = namespace_manager.NamespaceManager(
             self.conf,
             self.driver,
-            self.conf.use_namespaces)
+            self.conf.use_namespaces,
+            self.metadata_driver)
 
         self._queue = queue.RouterProcessingQueue()
         super(L3NATAgent, self).__init__(conf=self.conf)
 
         self.target_ex_net_id = None
         self.use_ipv6 = ipv6_utils.is_enabled()
-
-        if self.conf.enable_metadata_proxy:
-            self.metadata_driver = metadata_driver.MetadataDriver(self)
 
     def _check_config_params(self):
         """Check items in configuration files.
@@ -563,7 +565,6 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
 class L3NATAgentWithStateReport(L3NATAgent):
 
     def __init__(self, host, conf=None):
-        self.use_call = True
         super(L3NATAgentWithStateReport, self).__init__(host=host, conf=conf)
         self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
         self.agent_state = {
@@ -579,7 +580,8 @@ class L3NATAgentWithStateReport(L3NATAgent):
                 'external_network_bridge': self.conf.external_network_bridge,
                 'gateway_external_network_id':
                 self.conf.gateway_external_network_id,
-                'interface_driver': self.conf.interface_driver},
+                'interface_driver': self.conf.interface_driver,
+                'log_agent_heartbeats': self.conf.AGENT.log_agent_heartbeats},
             'start_flag': True,
             'agent_type': l3_constants.AGENT_TYPE_L3}
         report_interval = self.conf.AGENT.report_interval
@@ -609,10 +611,13 @@ class L3NATAgentWithStateReport(L3NATAgent):
         configurations['interfaces'] = num_interfaces
         configurations['floating_ips'] = num_floating_ips
         try:
-            self.state_rpc.report_state(self.context, self.agent_state,
-                                        self.use_call)
+            agent_status = self.state_rpc.report_state(self.context,
+                                                       self.agent_state,
+                                                       True)
+            if agent_status == l3_constants.AGENT_REVIVED:
+                LOG.info(_LI('Agent has just revived. Do a full sync.'))
+                self.fullsync = True
             self.agent_state.pop('start_flag', None)
-            self.use_call = False
             LOG.debug("Report state task successfully completed")
         except AttributeError:
             # This means the server does not support report_state

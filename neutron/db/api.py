@@ -16,6 +16,7 @@
 import contextlib
 
 from oslo_config import cfg
+from oslo_db import api as oslo_db_api
 from oslo_db.sqlalchemy import session
 from sqlalchemy import exc
 
@@ -23,6 +24,8 @@ from sqlalchemy import exc
 _FACADE = None
 
 MAX_RETRIES = 10
+retry_db_errors = oslo_db_api.wrap_db_retry(max_retries=MAX_RETRIES,
+                                            retry_on_deadlock=True)
 
 
 def _create_facade_lazily():

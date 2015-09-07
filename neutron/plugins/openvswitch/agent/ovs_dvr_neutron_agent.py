@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging
 from oslo_utils import excutils
@@ -24,6 +25,7 @@ from neutron.plugins.common import constants as p_const
 from neutron.plugins.openvswitch.common import constants
 
 LOG = logging.getLogger(__name__)
+cfg.CONF.import_group('AGENT', 'neutron.plugins.openvswitch.common.config')
 
 
 # A class to represent a DVR-hosted subnet including vif_ports resident on
@@ -204,7 +206,8 @@ class OVSDVRNeutronAgent(object):
         LOG.info(_LI("L2 Agent operating in DVR Mode with MAC %s"),
                  self.dvr_mac_address)
         # Remove existing flows in integration bridge
-        self.int_br.remove_all_flows()
+        if cfg.CONF.AGENT.drop_flows_on_start:
+            self.int_br.remove_all_flows()
 
         # Add a canary flow to int_br to track OVS restarts
         self.int_br.add_flow(table=constants.CANARY_TABLE, priority=0,
@@ -716,7 +719,7 @@ class OVSDVRNeutronAgent(object):
                     args['proto'] = 'icmp6'
                     args['icmp_type'] = n_const.ICMPV6_TYPE_RA
                     args['dl_src'] = subnet_info['gateway_mac']
-                self.phys_br[physical_network].delete_flows(**args)
+                self.phys_brs[physical_network].delete_flows(**args)
 
             if network_type in constants.TUNNEL_NETWORK_TYPES:
                 args = {'table': constants.DVR_PROCESS,
@@ -732,11 +735,11 @@ class OVSDVRNeutronAgent(object):
             ovsport.remove_subnet(sub_uuid)
 
         if lvm.network_type == p_const.TYPE_VLAN:
-            self.phys_br[physical_network].delete_flows(
+            self.phys_brs[physical_network].delete_flows(
                 table=constants.DVR_PROCESS_VLAN,
                 dl_vlan=lvm.vlan,
                 dl_dst=port.vif_mac)
-            self.phys_br[physical_network].delete_flows(
+            self.phys_brs[physical_network].delete_flows(
                 table=constants.DVR_PROCESS_VLAN,
                 dl_vlan=lvm.vlan,
                 dl_src=port.vif_mac)

@@ -173,10 +173,22 @@ class MetadataProxyHandler(object):
             filters['fixed_ips'] = [
                 'ip_address=%s' % filters['fixed_ips']['ip_address'][0]]
 
+        # do not pass network ids over the wire, the list can be longer than
+        # the maximum allowed HTTP request size
+        networks = filters.get('network_id')
+        if networks:
+            del filters['network_id']
+
         client = self._get_neutron_client()
-        ports = client.list_ports(**filters)
+        ports = client.list_ports(**filters)['ports']
         self.auth_info = client.get_auth_info()
-        return ports['ports']
+
+        if networks:
+            # filter ports by networks
+            networks = set(networks)
+            return [p for p in ports if p['network_id'] in networks]
+
+        return ports
 
     def _get_ports(self, remote_address, network_id=None, router_id=None):
         """Search for all ports that contain passed ip address and belongs to
@@ -286,6 +298,7 @@ class UnixDomainMetadataProxy(object):
                 'metadata_proxy_socket': cfg.CONF.metadata_proxy_socket,
                 'nova_metadata_ip': cfg.CONF.nova_metadata_ip,
                 'nova_metadata_port': cfg.CONF.nova_metadata_port,
+                'log_agent_heartbeats': cfg.CONF.AGENT.log_agent_heartbeats,
             },
             'start_flag': True,
             'agent_type': n_const.AGENT_TYPE_METADATA}

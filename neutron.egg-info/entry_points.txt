@@ -1,0 +1,122 @@
+[neutron.ml2.mechanism_drivers]
+l2population = neutron.plugins.ml2.drivers.l2pop.mech_driver:L2populationMechanismDriver
+cisco_apic = neutron.plugins.ml2.drivers.cisco.apic.mechanism_apic:APICMechanismDriver
+fake_agent = neutron.tests.unit.plugins.ml2.drivers.mech_fake_agent:FakeAgentMechanismDriver
+sdnve = neutron.plugins.ml2.drivers.ibm.mechanism_sdnve:SdnveMechanismDriver
+brocade_fi_ni = neutron.plugins.ml2.drivers.brocade.fi_ni.mechanism_brocade_fi_ni:BrocadeFiNiMechanism
+cisco_n1kv = neutron.plugins.ml2.drivers.cisco.n1kv.mech_cisco_n1kv:N1KVMechanismDriver
+arista = neutron.plugins.ml2.drivers.arista.mechanism_arista:AristaDriver
+fslsdn = neutron.plugins.ml2.drivers.freescale.mechanism_fslsdn:FslsdnMechanismDriver
+ovsvapp = neutron.plugins.ml2.drivers.ovsvapp.mech_driver:OVSvAppAgentMechanismDriver
+test = neutron.tests.unit.plugins.ml2.drivers.mechanism_test:TestMechanismDriver
+nuage = neutron.plugins.ml2.drivers.mech_nuage.driver:NuageMechanismDriver
+logger = neutron.tests.unit.plugins.ml2.drivers.mechanism_logger:LoggerMechanismDriver
+cisco_ucsm = neutron.plugins.ml2.drivers.cisco.ucsm.mech_cisco_ucsm:CiscoUcsmMechanismDriver
+sriovnicswitch = neutron.plugins.ml2.drivers.mech_sriov.mech_driver:SriovNicSwitchMechanismDriver
+cisco_nexus = neutron.plugins.ml2.drivers.cisco.nexus.mech_cisco_nexus:CiscoNexusMechanismDriver
+ofagent = neutron.plugins.ml2.drivers.ofagent.driver:OfagentMechanismDriver
+ncs = neutron.plugins.ml2.drivers.cisco.ncs.driver:NCSMechanismDriver
+openvswitch = neutron.plugins.ml2.drivers.mech_openvswitch:OpenvswitchMechanismDriver
+linuxbridge = neutron.plugins.ml2.drivers.mech_linuxbridge:LinuxbridgeMechanismDriver
+brocade = networking_brocade.vdx.ml2driver.mechanism_brocade:BrocadeMechanism
+bigswitch = neutron.plugins.ml2.drivers.mech_bigswitch.driver:BigSwitchMechanismDriver
+cisco_ncs = neutron.plugins.ml2.drivers.cisco.ncs.driver:NCSMechanismDriver
+hyperv = neutron.plugins.ml2.drivers.hyperv.mech_hyperv:HypervMechanismDriver
+mlnx = neutron.plugins.ml2.drivers.mlnx.mech_mlnx:MlnxMechanismDriver
+opendaylight = neutron.plugins.ml2.drivers.opendaylight.driver:OpenDaylightMechanismDriver
+
+[neutron.service_plugins]
+dummy = neutron.tests.unit.dummy_plugin:DummyServicePlugin
+firewall = neutron_fwaas.services.firewall.fwaas_plugin:FirewallPlugin
+neutron.services.loadbalancer.plugin.LoadBalancerPlugin = neutron_lbaas.services.loadbalancer.plugin:LoadBalancerPlugin
+fsl_firewall = neutron_fwaas.services.firewall.freescale.fwaas_plugin:FirewallPlugin
+brocade_vyatta_l3 = neutron.services.l3_router.brocade.vyatta.vrouter_neutron_plugin.VyattaVRouterPlugin
+metering = neutron.services.metering.metering_plugin:MeteringPlugin
+neutron.services.firewall.fwaas_plugin.FirewallPlugin = neutron_fwaas.services.firewall.fwaas_plugin:FirewallPlugin
+ibm_l3 = neutron.services.l3_router.l3_sdnve:SdnveL3ServicePlugin
+neutron.services.vpn.plugin.VPNDriverPlugin = neutron_vpnaas.services.vpn.plugin:VPNDriverPlugin
+router = neutron.services.l3_router.l3_router_plugin:L3RouterPlugin
+bigswitch_l3 = neutron.plugins.bigswitch.l3_router_plugin:L3RestProxy
+vpnaas = neutron_vpnaas.services.vpn.plugin:VPNDriverPlugin
+brocade_mlx_l3 = neutron.services.l3_router.brocade.mlx.l3_router_plugin:BrocadeRouterPlugin
+lbaas = neutron_lbaas.services.loadbalancer.plugin:LoadBalancerPlugin
+
+[neutron.core_plugins]
+midonet = neutron.plugins.midonet.plugin:MidonetPluginV2
+metaplugin = neutron.plugins.metaplugin.meta_neutron_plugin:MetaPluginV2
+cisco = neutron.plugins.cisco.network_plugin:PluginV2
+ibm = neutron.plugins.ibm.sdnve_neutron_plugin:SdnvePluginV2
+oneconvergence = neutron.plugins.oneconvergence.plugin:OneConvergencePluginV2
+nec = neutron.plugins.nec.nec_plugin:NECPluginV2
+plumgrid = neutron.plugins.plumgrid.plumgrid_plugin.plumgrid_plugin:NeutronPluginPLUMgridV2
+ml2 = neutron.plugins.ml2.plugin:Ml2Plugin
+nuage = neutron.plugins.nuage.plugin:NuagePlugin
+brocade = neutron.plugins.brocade.NeutronPlugin:BrocadePluginV2
+bigswitch = neutron.plugins.bigswitch.plugin:NeutronRestProxyV2
+vmware = neutron.plugins.vmware.plugin:NsxMhPlugin
+embrane = neutron.plugins.embrane.plugins.embrane_ml2_plugin:EmbraneMl2Plugin
+
+[oslo.messaging.notify.drivers]
+neutron.openstack.common.notifier.test_notifier = oslo_messaging.notify._impl_test:TestDriver
+neutron.openstack.common.notifier.log_notifier = oslo_messaging.notify._impl_log:LogDriver
+neutron.openstack.common.notifier.no_op_notifier = oslo_messaging.notify._impl_noop:NoOpDriver
+neutron.openstack.common.notifier.rpc_notifier2 = oslo_messaging.notify._impl_messaging:MessagingV2Driver
+neutron.openstack.common.notifier.rpc_notifier = oslo_messaging.notify._impl_messaging:MessagingDriver
+
+[console_scripts]
+neutron-l3-agent = neutron.cmd.eventlet.agents.l3:main
+neutron-keepalived-state-change = neutron.cmd.keepalived_state_change:main
+neutron-nec-agent = neutron.cmd.eventlet.plugins.nec_neutron_agent:main
+neutron-rootwrap = oslo_rootwrap.cmd:main
+neutron-ovs-cleanup = neutron.cmd.ovs_cleanup:main
+neutron-ns-metadata-proxy = neutron.cmd.eventlet.agents.metadata_proxy:main
+neutron-debug = neutron.debug.shell:main
+neutron-cisco-apic-service-agent = neutron.plugins.ml2.drivers.cisco.apic.apic_topology:service_main
+neutron-ibm-agent = neutron.plugins.ibm.agent.sdnve_neutron_agent:main
+neutron-linuxbridge-agent = neutron.plugins.linuxbridge.agent.linuxbridge_neutron_agent:main
+neutron-usage-audit = neutron.cmd.usage_audit:main
+neutron-rootwrap-daemon = oslo_rootwrap.cmd:daemon
+neutron-ovsvapp-agent = neutron.cmd.eventlet.plugins.ovsvapp_neutron_agent:main
+neutron-dhcp-agent = neutron.cmd.eventlet.agents.dhcp:main
+neutron-mlnx-agent = neutron.cmd.eventlet.plugins.mlnx_neutron_agent:main
+neutron-sanity-check = neutron.cmd.sanity_check:main
+neutron-nvsd-agent = neutron.plugins.oneconvergence.agent.nvsd_neutron_agent:main
+neutron-sriov-nic-agent = neutron.plugins.sriovnicagent.sriov_nic_agent:main
+neutron-metering-agent = neutron.cmd.eventlet.services.metering_agent:main
+neutron-server = neutron.cmd.eventlet.server:main
+neutron-openvswitch-agent = neutron.cmd.eventlet.plugins.ovs_neutron_agent:main
+neutron-restproxy-agent = neutron.plugins.bigswitch.agent.restproxy_agent:main
+neutron-db-manage = neutron.db.migration.cli:main
+neutron-cisco-apic-host-agent = neutron.plugins.ml2.drivers.cisco.apic.apic_topology:agent_main
+neutron-netns-cleanup = neutron.cmd.netns_cleanup:main
+neutron-metadata-agent = neutron.cmd.eventlet.agents.metadata:main
+neutron-hyperv-agent = neutron.cmd.eventlet.plugins.hyperv_neutron_agent:main
+
+[neutron.ml2.extension_drivers]
+test = neutron.tests.unit.plugins.ml2.drivers.ext_test:TestExtensionDriver
+port_security = neutron.plugins.ml2.extensions.port_security:PortSecurityExtensionDriver
+testdb = neutron.tests.unit.plugins.ml2.drivers.ext_test:TestDBExtensionDriver
+cisco_n1kv_ext = neutron.plugins.ml2.drivers.cisco.n1kv.n1kv_ext_driver:CiscoN1kvExtensionDriver
+
+[neutron.ml2.type_drivers]
+flat = neutron.plugins.ml2.drivers.type_flat:FlatTypeDriver
+vlan = neutron.plugins.ml2.drivers.type_vlan:VlanTypeDriver
+gre = neutron.plugins.ml2.drivers.type_gre:GreTypeDriver
+nexus_vxlan = neutron.plugins.ml2.drivers.cisco.nexus.type_nexus_vxlan:NexusVxlanTypeDriver
+local = neutron.plugins.ml2.drivers.type_local:LocalTypeDriver
+vxlan = neutron.plugins.ml2.drivers.type_vxlan:VxlanTypeDriver
+
+[neutron.service_providers]
+neutron.services.vpn.service_drivers.cisco_ipsec.CiscoCsrIPsecVPNDriver = neutron_vpnaas.services.vpn.service_drivers.cisco_ipsec:CiscoCsrIPsecVPNDriver
+neutron.services.loadbalancer.drivers.haproxy.plugin_driver.HaproxyOnHostPluginDriver = neutron_lbaas.services.loadbalancer.drivers.haproxy.plugin_driver:HaproxyOnHostPluginDriver
+neutron.services.firewall.drivers.linux.iptables_fwaas.IptablesFwaasDriver = neutron_fwaas.services.firewall.drivers.linux.iptables_fwaas:IptablesFwaasDriver
+neutron.services.loadbalancer.drivers.a10networks.driver_v1.ThunderDriver = neutron_lbaas.services.loadbalancer.drivers.a10networks.driver_v1:ThunderDriver
+neutron.services.loadbalancer.drivers.netscaler.netscaler_driver.NetScalerPluginDriver = neutron_lbaas.services.loadbalancer.drivers.netscaler.netscaler_driver:NetScalerPluginDriver
+neutron.services.loadbalancer.drivers.radware.driver.LoadBalancerDriver = neutron_lbaas.services.loadbalancer.drivers.radware.driver:LoadBalancerDriver
+neutron.services.vpn.service_drivers.ipsec.IPsecVPNDriver = neutron_vpnaas.services.vpn.service_drivers.ipsec:IPsecVPNDriver
+neutron.services.firewall.drivers.varmour.varmour_fwaas.vArmourFwaasDriver = neutron_fwaas.services.firewall.drivers.varmour.varmour_fwaas:vArmourFwaasDriver
+neutron.services.loadbalancer.drivers.embrane.driver.EmbraneLbaas = neutron_lbaas.services.loadbalancer.drivers.embrane.driver:EmbraneLbaas
+
+[neutron.openstack.common.cache.backends]
+memory = neutron.openstack.common.cache._backends.memory:MemoryBackend
+

@@ -99,7 +99,8 @@ class TestMetadataProxyHandlerRpc(TestMetadataProxyHandlerBase):
         self.handler.plugin_rpc.get_ports.side_effect = AttributeError
         with mock.patch('neutronclient.v2_0.client.Client') as neutron_client:
             mock_list_ports = neutron_client.return_value.list_ports
-            expected_ports = {'ports': ['expected_port']}
+            expected_ports = {'ports': [{'network_id': 'network_id1',
+                                         'payload': 'data'}]}
             mock_list_ports.return_value = expected_ports
             ports = self.handler._get_ports_from_server(ip_address=ip,
                                                         networks=networks)
@@ -187,8 +188,7 @@ class TestMetadataProxyHandlerCache(TestMetadataProxyHandlerBase):
         mock_list_ports.return_value = {'ports': [{'network_id': 'net1',
                                                    'something': 42}]}
         self.handler._get_ports_for_remote_address(remote_address, networks)
-        mock_list_ports.assert_called_once_with(
-            network_id=networks, fixed_ips=fixed_ips)
+        mock_list_ports.assert_called_once_with(fixed_ips=fixed_ips)
         self.assertEqual(1, mock_list_ports.call_count)
         self.handler._get_ports_for_remote_address(remote_address,
                                                    networks)
@@ -278,8 +278,7 @@ class TestMetadataProxyHandlerCache(TestMetadataProxyHandlerBase):
 
         expected.extend([
             new_qclient_call,
-            mock.call().list_ports(
-                network_id=networks, fixed_ips=['ip_address=192.168.1.1']),
+            mock.call().list_ports(fixed_ips=['ip_address=192.168.1.1']),
             mock.call().get_auth_info()
         ])
 
@@ -409,8 +408,7 @@ class TestMetadataProxyHandlerCache(TestMetadataProxyHandlerBase):
             ),
             mock.call().get_auth_info(),
             cached_qclient_call,
-            mock.call().list_ports(network_id=('net1',),
-                                   fixed_ips=['ip_address=192.168.1.10']),
+            mock.call().list_ports(fixed_ips=['ip_address=192.168.1.10']),
             mock.call().get_auth_info(),
         ]
 

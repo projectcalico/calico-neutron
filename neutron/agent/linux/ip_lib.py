@@ -588,6 +588,10 @@ class IpNetnsCommand(IpCommandBase):
                 return True
         return False
 
+    def pids(self, name):
+        output = self._as_root(['o'], ('pids', name), use_root_namespace=True)
+        return [n for n in output.split('\n') if n]
+
 
 def device_exists(device_name, namespace=None):
     """Return True if the device exists in the namespace."""

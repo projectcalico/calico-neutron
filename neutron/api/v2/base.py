@@ -28,6 +28,7 @@ from neutron.api.v2 import resource as wsgi_resource
 from neutron.common import constants as const
 from neutron.common import exceptions
 from neutron.common import rpc as n_rpc
+from neutron.db import api as db_api
 from neutron.i18n import _LE, _LI
 from neutron.openstack.common import policy as common_policy
 from neutron import policy
@@ -184,6 +185,7 @@ class Controller(object):
 
     def __getattr__(self, name):
         if name in self._member_actions:
+            @db_api.retry_db_errors
             def _handle_action(request, id, **kwargs):
                 arg_list = [request.context, id]
                 # Ensure policy engine is initialized
@@ -194,7 +196,7 @@ class Controller(object):
                 except common_policy.PolicyNotAuthorized:
                     msg = _('The resource could not be found.')
                     raise webob.exc.HTTPNotFound(msg)
-                body = kwargs.pop('body', None)
+                body = copy.deepcopy(kwargs.pop('body', None))
                 # Explicit comparison with None to distinguish from {}
                 if body is not None:
                     arg_list.append(body)
@@ -380,13 +382,15 @@ class Controller(object):
                 # We need a way for ensuring that if it has been created,
                 # it is then deleted
 
+    @db_api.retry_db_errors
     def create(self, request, body=None, **kwargs):
         """Creates a new instance of the requested entity."""
         parent_id = kwargs.get(self._parent_id_name)
         self._notifier.info(request.context,
                             self._resource + '.create.start',
                             body)
-        body = Controller.prepare_request_body(request.context, body, True,
+        body = Controller.prepare_request_body(request.context,
+                                               copy.deepcopy(body), True,
                                                self._resource, self._attr_info,
                                                allow_bulk=self._allow_bulk)
         action = self._plugin_handlers[self.CREATE]
@@ -464,6 +468,7 @@ class Controller(object):
                 return notify({self._resource: self._view(request.context,
                                                           obj)})
 
+    @db_api.retry_db_errors
     def delete(self, request, id, **kwargs):
         """Deletes the specified entity."""
         self._notifier.info(request.context,
@@ -498,6 +503,7 @@ class Controller(object):
                                      result,
                                      notifier_method)
 
+    @db_api.retry_db_errors
     def update(self, request, id, body=None, **kwargs):
         """Updates the specified entity's attributes."""
         parent_id = kwargs.get(self._parent_id_name)

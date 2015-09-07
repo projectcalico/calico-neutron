@@ -160,7 +160,8 @@ class AgentDBTestMixIn(object):
         return [dhcp_host]
 
     def _register_one_l3_agent(self, host=L3_HOSTA, internal_only=True,
-                               ext_net_id='', ext_bridge=''):
+                               ext_net_id='', ext_bridge='',
+                               agent_mode=constants.L3_AGENT_MODE_LEGACY):
         l3 = {
             'binary': 'neutron-l3-agent',
             'host': host,
@@ -171,12 +172,40 @@ class AgentDBTestMixIn(object):
                                'external_network_bridge': ext_bridge,
                                'gateway_external_network_id': ext_net_id,
                                'interface_driver': 'interface_driver',
+                               'agent_mode': agent_mode,
                                },
             'agent_type': constants.AGENT_TYPE_L3}
         callback = agents_db.AgentExtRpcCallback()
         callback.report_state(self.adminContext,
                               agent_state={'agent_state': l3},
                               time=timeutils.strtime())
+
+    def _register_dvr_agents(self):
+        dvr_snat_agent = {
+            'binary': 'neutron-l3-agent',
+            'host': L3_HOSTA,
+            'topic': topics.L3_AGENT,
+            'configurations': {'agent_mode': constants.L3_AGENT_MODE_DVR_SNAT,
+                               'use_namespaces': True,
+                               'router_id': None,
+                               'handle_internal_only_routers':
+                               True,
+                               'gateway_external_network_id':
+                               None,
+                               'interface_driver': 'interface_driver',
+                               },
+            'agent_type': constants.AGENT_TYPE_L3}
+        dvr_agent = copy.deepcopy(dvr_snat_agent)
+        dvr_agent['host'] = L3_HOSTB
+        dvr_agent['configurations']['agent_mode'] = constants.L3_AGENT_MODE_DVR
+        callback = agents_db.AgentExtRpcCallback()
+        callback.report_state(self.adminContext,
+                              agent_state={'agent_state': dvr_snat_agent},
+                              time=timeutils.strtime())
+        callback.report_state(self.adminContext,
+                              agent_state={'agent_state': dvr_agent},
+                              time=timeutils.strtime())
+        return [dvr_snat_agent, dvr_agent]
 
 
 class AgentDBTestCase(AgentDBTestMixIn,

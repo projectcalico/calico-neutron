@@ -27,6 +27,7 @@ from neutron.common import topics
 from neutron import context
 from neutron.db import agents_db
 from neutron.db import agentschedulers_db as sched_db
+from neutron.db import common_db_mixin
 from neutron.db import models_v2
 from neutron.extensions import dhcpagentscheduler
 from neutron.scheduler import dhcp_agent_scheduler
@@ -200,7 +201,8 @@ class TestAutoScheduleNetworks(TestDhcpSchedulerBaseTestCase):
 
 
 class TestNetworksFailover(TestDhcpSchedulerBaseTestCase,
-                           sched_db.DhcpAgentSchedulerDbMixin):
+                           sched_db.DhcpAgentSchedulerDbMixin,
+                           common_db_mixin.CommonDbMixin):
     def test_reschedule_network_from_down_agent(self):
         agents = self._create_and_set_agents_down(['host-a', 'host-b'], 1)
         self._test_schedule_bind_network([agents[0]], self.network_id)
@@ -223,7 +225,7 @@ class TestNetworksFailover(TestDhcpSchedulerBaseTestCase,
                 mock.ANY, self.network_id, agents[1].host)
 
     def _test_failed_rescheduling(self, rn_side_effect=None):
-        agents = self._create_and_set_agents_down(['host-a'], 1)
+        agents = self._create_and_set_agents_down(['host-a', 'host-b'], 1)
         self._test_schedule_bind_network([agents[0]], self.network_id)
         with contextlib.nested(
             mock.patch.object(
@@ -277,6 +279,14 @@ class TestNetworksFailover(TestDhcpSchedulerBaseTestCase,
             side_effect=Exception()):
             # just make sure that no exception is raised
             self.remove_networks_from_down_agents()
+
+    def test_reschedule_doesnt_occur_if_no_agents(self):
+        agents = self._create_and_set_agents_down(['host-a', 'host-b'], 2)
+        self._test_schedule_bind_network([agents[0]], self.network_id)
+        with mock.patch.object(
+            self, 'remove_network_from_dhcp_agent') as rn:
+            self.remove_networks_from_down_agents()
+            self.assertFalse(rn.called)
 
 
 class DHCPAgentWeightSchedulerTestCase(TestDhcpSchedulerBaseTestCase):

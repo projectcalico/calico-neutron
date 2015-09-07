@@ -139,11 +139,21 @@ class BaseOVS(object):
         return self.ovsdb.db_get(table, record, column).execute(
             check_error=check_error, log_errors=log_errors)
 
+    def db_list(self, table, records=None, columns=None,
+                check_error=True, log_errors=True, if_exists=False):
+        return (self.ovsdb.db_list(table, records=records, columns=columns,
+                                   if_exists=if_exists).
+                execute(check_error=check_error, log_errors=log_errors))
+
 
 class OVSBridge(BaseOVS):
     def __init__(self, br_name):
         super(OVSBridge, self).__init__()
         self.br_name = br_name
+        self.agent_uuid_stamp = '0x0'
+
+    def set_agent_uuid_stamp(self, val):
+        self.agent_uuid_stamp = val
 
     def set_controller(self, controllers):
         self.ovsdb.set_controller(self.br_name,
@@ -164,8 +174,12 @@ class OVSBridge(BaseOVS):
         self.set_db_attribute('Bridge', self.br_name, 'protocols', protocols,
                               check_error=True)
 
-    def create(self):
-        self.ovsdb.add_br(self.br_name).execute()
+    def create(self, secure_mode=False):
+        with self.ovsdb.transaction() as txn:
+            txn.add(self.ovsdb.add_br(self.br_name))
+            if secure_mode:
+                txn.add(self.ovsdb.set_fail_mode(self.br_name,
+                                                 FAILMODE_SECURE))
         # Don't return until vswitchd sets up the internal port
         self.get_port_ofport(self.br_name)
 
@@ -235,22 +249,61 @@ class OVSBridge(BaseOVS):
                           {'pname': port_name, 'exception': e})
         return ofport
 
+    @staticmethod
+    def _check_ofport(port_id, port_info):
+        if port_info['ofport'] in [UNASSIGNED_OFPORT, INVALID_OFPORT]:
+            LOG.warn(_LW("ofport: %(ofport)s for VIF: %(vif)s is not a"
+                         " positive integer"),
+                     {'ofport': port_info['ofport'], 'vif': port_id})
+            return False
+        return True
+
+    def get_vifs_by_ids(self, port_ids):
+        interface_info = self.db_list(
+            "Interface", columns=["name", "external_ids", "ofport"])
+        by_id = {x['external_ids'].get('iface-id'): x for x in interface_info}
+        intfs_on_bridge = self.ovsdb.list_ports(self.br_name).execute(
+            check_error=True)
+        result = {}
+        for port_id in port_ids:
+            result[port_id] = None
+            if (port_id not in by_id or
+                    by_id[port_id]['name'] not in intfs_on_bridge):
+                LOG.info(_LI("Port %(port_id)s not present in bridge "
+                             "%(br_name)s"),
+                         {'port_id': port_id, 'br_name': self.br_name})
+                continue
+            pinfo = by_id[port_id]
+            if not self._check_ofport(port_id, pinfo):
+                continue
+            mac = pinfo['external_ids'].get('attached-mac')
+            result[port_id] = VifPort(pinfo['name'], pinfo['ofport'],
+                                      port_id, mac, self)
+        return result
+
     def get_datapath_id(self):
         return self.db_get_val('Bridge',
                                self.br_name, 'datapath_id')
 
     def do_action_flows(self, action, kwargs_list):
+        # only add cookie to add/mod actions
+        if action != 'del':
+            for kw in kwargs_list:
+                if 'cookie' not in kw:
+                    kw['cookie'] = self.agent_uuid_stamp
         flow_strs = [_build_flow_expr_str(kw, action) for kw in kwargs_list]
         self.run_ofctl('%s-flows' % action, ['-'], '\n'.join(flow_strs))
 
     def add_flow(self, **kwargs):
         self.do_action_flows('add', [kwargs])
+        LOG.debug("Added flow %s", kwargs)
 
     def mod_flow(self, **kwargs):
         self.do_action_flows('mod', [kwargs])
 
     def delete_flows(self, **kwargs):
         self.do_action_flows('del', [kwargs])
+        LOG.debug("Deleted flow %s", kwargs)
 
     def dump_flows_for_table(self, table):
         retval = None
@@ -260,6 +313,10 @@ class OVSBridge(BaseOVS):
             retval = '\n'.join(item for item in flows.splitlines()
                                if 'NXST' not in item)
         return retval
+
+    def dump_flows_all_tables(self):
+        return [f for f in self.run_ofctl("dump-flows", []).splitlines()
+                if 'NXST' not in f]
 
     def deferred(self, **kwargs):
         return DeferredOVSBridge(self, **kwargs)
