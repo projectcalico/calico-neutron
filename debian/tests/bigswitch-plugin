@@ -1,0 +1,7 @@
+#!/bin/bash
+#-------------------------
+# Testing bigswitch-plugin
+#-------------------------
+set -e
+
+$(dirname $0)/test-plugin neutron-plugin-bigswitch /etc/neutron/plugins/bigswitch/restproxy.ini bigswitch

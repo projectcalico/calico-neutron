@@ -1,0 +1,27 @@
+From 5bd791562e9b125b756742c8d469b73321d66331 Mon Sep 17 00:00:00 2001
+From: Sergey Kolekonov <skolekonov@mirantis.com>
+Date: Wed, 12 Aug 2015 11:25:32 +0300
+Subject: [PATCH] requirements.txt: adjust for Ubuntu 14.04
+
+* Routes!=2.0 restriction is necessary only for running tests with python 3.x,
+  routes 2.0 works just fine with python 2.7
+---
+ requirements.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/requirements.txt b/requirements.txt
+index a1956c0..4e4395e 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -5,7 +5,7 @@ pbr!=0.7,<1.0,>=0.6
+ 
+ Paste
+ PasteDeploy>=1.5.0
+-Routes!=2.0,>=1.12.3
++Routes>=1.12.3
+ eventlet!=0.17.0,>=0.16.1
+ greenlet>=0.3.2
+ httplib2>=0.7.5
+-- 
+1.9.1
+

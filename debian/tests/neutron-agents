@@ -1,0 +1,36 @@
+#!/bin/bash
+#-----------------------
+# Testing neutron agents
+#-----------------------
+set -e
+
+PACKAGES="python-neutron-fwaas neutron-l3-agent neutron-dhcp-agent neutron-metadata-agent neutron-plugin-ml2"
+apt-get -y install $PACKAGES
+
+# update plugin path
+sed -i 's/NEUTRON_PLUGIN_CONFIG\=.*/NEUTRON_PLUGIN_CONFIG\=\"\/etc\/neutron\/plugins\/ml2\/ml2_conf\.ini\"/g' /etc/default/neutron-server
+sed -i 's/core_plugin = .*/core_plugin \= ml2/g' /etc/neutron/neutron.conf
+# update interface drives
+sed -i 's/# interface_driver =$/interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/g' /etc/neutron/l3_agent.ini
+sed -i 's/# interface_driver =$/interface_driver = neutron.agent.linux.interface.OVSInterfaceDriver/g' /etc/neutron/dhcp_agent.ini
+
+service neutron-l3-agent restart
+service neutron-dhcp-agent restart
+service neutron-metadata-agent restart
+service neutron-server restart
+
+sleep 5
+
+DAEMONS=('neutron-server' 'neutron-l3-agent' 'neutron-dhcp-agent' 'neutron-metadata-agent')
+for daemon in "${DAEMONS[@]}"; do
+    if service $daemon status > /dev/null; then
+        echo "OK"
+    else
+        echo "ERROR: ${daemon} IS NOT RUNNING"
+        tail -100 /var/log/neutron/*.log
+        apt-get -y remove --purge $PACKAGES
+        exit 1
+    fi
+done
+
+apt-get -y remove --purge $PACKAGES

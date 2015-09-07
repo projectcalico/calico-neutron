@@ -1,0 +1,20 @@
+# vim:set ft=upstart ts=2 et:
+description "Neutron OpenvSwitch cleanup"
+author "Andrey Korolev <akorolev@mirantis.com>"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+emits neutron-ovs-cleanup
+
+respawn
+
+chdir /var/run
+
+pre-start script
+  mkdir -p /var/run/neutron-ovs-cleanup
+  chown neutron:neutron /var/run/neutron-ovs-cleanup
+  mkdir -p /var/lock/neutron-ovs-cleanup
+  chown neutron:root /var/lock/neutron-ovs-cleanup
+  /usr/bin/neutron-ovs-cleanup --config-file=/etc/neutron/plugin.ini --log-file=/var/log/neutron/neutron-ovs-cleanup.log
+end script

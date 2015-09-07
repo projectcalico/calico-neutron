@@ -1,0 +1,101 @@
+neutron (1:2015.1.1-1~u14.04+mos5327) mos7.0; urgency=medium
+
+  [ Oleg Bondarev ]
+  * 7cd5bd1 OVS agent: handle deleted ports on each rpc_loop iteration
+  * 102d85a OVS agent: flush firewall rules for all deleted ports at
+    once
+
+  [ mos-infra-ci ]
+  * 9905009 Merge "Subject: [PATCH] Stop device_owner from being set to
+    'network:*'" into openstack-ci/fuel-7.0/2015.1.0
+
+  [ Alexander Ignatov ]
+  * b02bc5e Subject: [PATCH] Stop device_owner from being set to
+    'network:*'
+
+  [ Oleg Bondarev ]
+  * fd09d7c Fix a typo in ovs_dvr_neutron_agent
+  * c275516 Avoid DB errors when deleting network's ports and subnets
+
+  [ mos-infra-ci ]
+  * c87f39c Merge "Add correct cookie to the flows added through
+    DeferredBridge" into openstack-ci/fuel-7.0/2015.1.0
+  * 96c6516 Merge "manual add/remove router for dvr_snat agent" into
+    openstack-ci/fuel-7.0/2015.1.0
+
+  [ Eugene Nikanorov ]
+  * 192ef6a Add correct cookie to the flows added through DeferredBridge
+
+  [ mos-infra-ci ]
+  * 8abe41b Merge "DVR: make sure snat portion is always scheduled when
+    needed" into openstack-ci/fuel-7.0/2015.1.0
+
+ -- Oleg Bondarev <obondarev@mirantis.com>  Thu, 03 Sep 2015 15:10:12 +0000
+
+neutron (1:2015.1.1-1~u14.04+mos1) mos7.0; urgency=medium
+
+  * Update the patch for requirements.txt according to the latest Kilo sources
+    - Related-bug: #1453148
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Wed, 12 Aug 2015 11:28:44 +0300
+
+neutron (1:2015.1.0-1~u14.04+mos7) mos7.0; urgency=medium
+
+  * Add pyroute2 to dependencies for neutron-common as it's required to operate
+    with namespaces during cleanup operations
+    - Related-bug: #1436414
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Wed, 29 Jul 2015 15:30:26 +0300
+
+neutron (1:2015.1.0-1~u14.04+mos6) mos7.0; urgency=medium
+
+  * fix build and runtime dependencies
+  * fix a problem with Mellanox agent upstart script
+  * use universal logrotate configuration
+  * use chgid on all daemons
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Mon, 20 Jul 2015 17:22:33 +0300
+
+neutron (1:2015.1.0-1~u14.04+mos5) mos7.0; urgency=medium
+
+  * debian/control:
+    - Add neutron-doc package section
+    - Add python-sphinx to build dependencies
+  * debian/rules:
+    - Add sphinxdoc to build with
+    - Add override_dh_sphinxdoc section
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Thu, 09 Jul 2015 15:35:48 +0300
+
+neutron (1:2015.1.0-1~u14.04+mos4) mos7.0; urgency=medium
+
+  * python-neutron-fwaas was removed to avoid cross-dependency conflict when
+    Neutron packages were updated according to the latest oslo packages naming
+    policy. Adding python-neutron-fwaas back as a dependency
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Wed, 03 Jun 2015 21:54:31 +0300
+
+neutron (1:2015.1.0-1~u14.04+mos3) mos7.0; urgency=medium
+
+  * Fix python-oslo-* naming scheme
+    #LP 1459494
+  * Remove ger-orig-source from rules
+    #LP 1461467
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Thu, 28 May 2015 15:05:54 +0300
+
+neutron (1:2015.1.0-1~u14.04+mos2) mos7.0; urgency=medium
+
+  * Add python-neutron-fwaas as a dependency because L3 agent uses
+    fwaas_driver.ini configuration file which is distributed with
+    python-neutron-fwaas since Kilo
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Tue, 19 May 2015 17:00:12 +0300
+
+neutron (1:2015.1.0-1~u14.04+mos1) mos7.0; urgency=medium
+
+  * Updated specs for master
+  * Updated dependencies according to global-requirements [0]
+    [0] https://github.com/openstack/requirements/blob/stable/kilo/global-requirements.txt
+
+ -- Sergey Kolekonov <skolekonov@mirantis.com>  Sat, 25 Apr 2015 20:47:49 +0300
