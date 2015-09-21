@@ -1,0 +1,7 @@
+#!/bin/bash
+#---------------------------
+# Testing ml2-plugin
+#---------------------------
+set -e
+
+$(dirname $0)/test-plugin neutron-plugin-ml2 /etc/neutron/plugins/ml2/ml2_conf.ini ml2

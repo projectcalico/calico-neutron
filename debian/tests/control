@@ -1,0 +1,4 @@
+Tests: neutron-server python-neutron cisco-plugin
+ ml2-plugin neutron-agents
+Depends: neutron-server, rabbitmq-server, mysql-server, python-mysqldb
+Restrictions: needs-root allow-stderr
