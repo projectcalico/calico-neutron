@@ -1,7 +1,5 @@
-Index: calico-neutron/neutron/agent/dhcp_agent.py
-===================================================================
---- calico-neutron.orig/neutron/agent/dhcp_agent.py	2015-07-10 10:30:21.684930153 +0100
-+++ calico-neutron/neutron/agent/dhcp_agent.py	2015-07-10 10:30:21.680930052 +0100
+--- a/neutron/agent/dhcp_agent.py
++++ b/neutron/agent/dhcp_agent.py
 @@ -1,4 +1,5 @@
  # Copyright 2012 OpenStack Foundation
 +# Copyright 2015 Metaswitch Networks
@@ -411,19 +409,9 @@ Index: calico-neutron/neutron/agent/dhcp_agent.py
      def enable_isolated_metadata_proxy(self, network):
  
          # The proxy might work for either a single network
-Index: calico-neutron/neutron/agent/linux/dhcp.py
-===================================================================
---- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-07-10 10:30:21.684930153 +0100
-+++ calico-neutron/neutron/agent/linux/dhcp.py	2015-07-10 10:30:21.968937280 +0100
-@@ -26,6 +26,7 @@
- import six
- 
- from neutron.agent.linux import ip_lib
-+from neutron.agent.linux import iptables_manager
- from neutron.agent.linux import utils
- from neutron.common import constants
- from neutron.common import exceptions
-@@ -73,6 +74,9 @@
+--- a/neutron/agent/linux/dhcp.py
++++ b/neutron/agent/linux/dhcp.py
+@@ -73,6 +73,9 @@
  METADATA_PORT = 80
  WIN2k3_STATIC_DNS = 249
  NS_PREFIX = 'qdhcp-'
@@ -433,7 +421,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
  
  
  class DictModel(dict):
-@@ -360,22 +364,61 @@
+@@ -360,22 +363,61 @@
              self.NEUTRON_NETWORK_ID_KEY: self.network.id,
          }
  
@@ -511,7 +499,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
  
          possible_leases = 0
          for i, subnet in enumerate(self.network.subnets):
-@@ -385,7 +428,7 @@
+@@ -385,7 +427,7 @@
                  continue
              if subnet.ip_version == 4:
                  mode = 'static'
@@ -520,7 +508,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
                  # Note(scollins) If the IPv6 attributes are not set, set it as
                  # static to preserve previous behavior
                  addr_mode = getattr(subnet, 'ipv6_address_mode', None)
-@@ -394,6 +437,12 @@
+@@ -394,6 +436,12 @@
                                    constants.DHCPV6_STATELESS] or
                          not addr_mode and not ra_mode):
                      mode = 'static'
@@ -533,7 +521,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
  
              cidr = netaddr.IPNetwork(subnet.cidr)
  
-@@ -841,6 +890,7 @@
+@@ -841,6 +889,7 @@
          try:
              self.driver = importutils.import_object(
                  conf.interface_driver, conf)
@@ -541,7 +529,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
          except Exception as e:
              msg = (_("Error importing interface driver '%(driver)s': "
                     "%(inner)s") % {'driver': conf.interface_driver,
-@@ -848,6 +898,9 @@
+@@ -848,6 +897,9 @@
              LOG.error(msg)
              raise SystemExit(1)
  
@@ -551,7 +539,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
      def get_interface_name(self, network, port):
          """Return interface(device) name for use by the DHCP process."""
          return self.driver.get_device_name(port)
-@@ -912,24 +965,31 @@
+@@ -912,24 +964,31 @@
          for port in network.ports:
              port_device_id = getattr(port, 'device_id', None)
              if port_device_id == device_id:
@@ -600,7 +588,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
                      dhcp_port = port
                  # break since we found port that matches device_id
                  break
-@@ -953,13 +1013,21 @@
+@@ -953,13 +1012,21 @@
              LOG.debug(_('DHCP port %(device_id)s on network %(network_id)s'
                          ' does not yet exist.'), {'device_id': device_id,
                                                    'network_id': network.id})
@@ -623,15 +611,7 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
              dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
  
          if not dhcp_port:
-@@ -992,6 +1060,7 @@
-                              interface_name,
-                              port.mac_address,
-                              namespace=network.namespace)
-+            self.fill_dhcp_udp_checksums(namespace=network.namespace)
-         ip_cidrs = []
-         for fixed_ip in port.fixed_ips:
-             subnet = fixed_ip.subnet
-@@ -999,27 +1068,50 @@
+@@ -999,27 +1066,50 @@
              ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
              ip_cidrs.append(ip_cidr)
  
@@ -686,23 +666,8 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
              self._set_default_route(network, device_name)
  
      def destroy(self, network, device_name):
-@@ -1028,3 +1120,12 @@
- 
-         self.plugin.release_dhcp_port(network.id,
-                                       self.get_device_id(network))
-+
-+    def fill_dhcp_udp_checksums(self, namespace):
-+        """Ensure DHCP reply packets always have correct UDP checksums."""
-+        iptables_mgr = iptables_manager.IptablesManager(use_ipv6=False,
-+                                                        namespace=namespace)
-+        ipv4_rule = ('-p udp --dport %d -j CHECKSUM --checksum-fill'
-+                     % constants.DHCP_RESPONSE_PORT)
-+        iptables_mgr.ipv4['mangle'].add_rule('POSTROUTING', ipv4_rule)
-+        iptables_mgr.apply()
-Index: calico-neutron/neutron/agent/linux/interface.py
-===================================================================
---- calico-neutron.orig/neutron/agent/linux/interface.py	2015-07-10 10:30:21.684930153 +0100
-+++ calico-neutron/neutron/agent/linux/interface.py	2015-07-10 10:30:21.680930052 +0100
+--- a/neutron/agent/linux/interface.py
++++ b/neutron/agent/linux/interface.py
 @@ -169,6 +169,13 @@
              LOG.exception(_LE("Failed deleting egress connection state of"
                                " floatingip %s"), ip_str)
@@ -791,10 +756,8 @@ Index: calico-neutron/neutron/agent/linux/interface.py
              LOG.debug(_("Unplugged interface '%s'"), device_name)
          except RuntimeError:
              LOG.error(_("Failed unplugging interface '%s'"),
-Index: calico-neutron/neutron/agent/linux/ip_lib.py
-===================================================================
---- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-07-10 10:30:21.684930153 +0100
-+++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-07-10 10:30:21.680930052 +0100
+--- a/neutron/agent/linux/ip_lib.py
++++ b/neutron/agent/linux/ip_lib.py
 @@ -143,6 +143,19 @@
          """Delete a virtual interface between two namespaces."""
          self._as_root('', 'link', ('del', name))
@@ -815,10 +778,8 @@ Index: calico-neutron/neutron/agent/linux/ip_lib.py
      def ensure_namespace(self, name):
          if not self.netns.exists(name):
              ip = self.netns.add(name)
-Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
-===================================================================
---- calico-neutron.orig/neutron/tests/unit/test_dhcp_agent.py	2015-07-10 10:30:21.684930153 +0100
-+++ calico-neutron/neutron/tests/unit/test_dhcp_agent.py	2015-07-10 10:30:21.680930052 +0100
+--- a/neutron/tests/unit/test_dhcp_agent.py
++++ b/neutron/tests/unit/test_dhcp_agent.py
 @@ -201,33 +201,29 @@
          # sync_state is needed for this test
          cfg.CONF.set_override('report_interval', 1, 'AGENT')
@@ -1047,9 +1008,9 @@ Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
 +            # Grab the network gain to update it.
 +            mock.call.get_network_by_id(fake_port2.network_id),
 +        ])
-         self.call_driver.assert_called_once_with('reload_allocations',
-                                                  fake_network)
- 
++        self.call_driver.assert_called_once_with('reload_allocations',
++                                                 fake_network)
++
 +    def test_port_update_delete_end_coalesce(self):
 +        self.cache.get_network_by_id.return_value = fake_network
 +        self.cache.get_port_by_id.return_value = fake_port2
@@ -1078,9 +1039,9 @@ Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
 +            # Grab the network gain to update it.
 +            mock.call.get_network_by_id(fake_port2.network_id),])
 +        # Only one reload.
-+        self.call_driver.assert_called_once_with('reload_allocations',
-+                                                 fake_network)
-+
+         self.call_driver.assert_called_once_with('reload_allocations',
+                                                  fake_network)
+ 
 +    def test_non_port_update_interrupts_coallesce(self):
 +        self.cache.get_network_by_id.return_value = fake_network
 +        self.plugin.get_network_info.return_value = fake_network
@@ -1163,23 +1124,15 @@ Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
  
          self.cache.assert_has_calls([mock.call.get_port_by_id('unknown')])
          self.assertEqual(self.call_driver.call_count, 0)
-@@ -1230,6 +1322,15 @@
+@@ -1230,6 +1322,7 @@
          self.mock_iproute = mock.MagicMock()
          driver_cls.return_value = self.mock_driver
          iproute_cls.return_value = self.mock_iproute
 +        self.mock_driver.bridged.return_value = True
-+
-+        iptables_cls_p = mock.patch(
-+            'neutron.agent.linux.iptables_manager.IptablesManager')
-+        iptables_cls = iptables_cls_p.start()
-+        self.iptables_inst = mock.Mock()
-+        iptables_cls.return_value = self.iptables_inst
-+        self.mangle_inst = mock.Mock()
-+        self.iptables_inst.ipv4 = {'mangle': self.mangle_inst}
  
      def _test_setup_helper(self, device_is_ready, net=None, port=None):
          net = net or fake_network
-@@ -1256,6 +1357,7 @@
+@@ -1256,6 +1349,7 @@
  
          expected_ips = ['172.9.9.9/24', '169.254.169.254/16']
          expected = [
@@ -1187,7 +1140,7 @@ Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
              mock.call.get_device_name(port),
              mock.call.init_l3(
                  'tap12345678-12',
-@@ -1263,7 +1365,7 @@
+@@ -1263,7 +1357,7 @@
                  namespace=net.namespace)]
  
          if not device_is_ready:
@@ -1196,17 +1149,3 @@ Index: calico-neutron/neutron/tests/unit/test_dhcp_agent.py
                              mock.call.plug(net.id,
                                             port.id,
                                             'tap12345678-12',
-@@ -1279,6 +1381,13 @@
-         cfg.CONF.set_override('enable_metadata_network', True)
-         self._test_setup_helper(False)
- 
-+    def test_setup_calls_fill_dhcp_udp_checksums(self):
-+        self._test_setup_helper(False)
-+        rule = ('-p udp --dport %d -j CHECKSUM --checksum-fill'
-+                % const.DHCP_RESPONSE_PORT)
-+        expected = [mock.call.add_rule('POSTROUTING', rule)]
-+        self.mangle_inst.assert_has_calls(expected)
-+
-     def test_setup_device_is_ready(self):
-         self._test_setup_helper(True)
- 
