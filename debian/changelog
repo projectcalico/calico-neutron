@@ -1,36 +1,33 @@
-neutron (1:2015.1.1-1~u14.04+mos5327) mos7.0; urgency=medium
+neutron (1:2015.1.1-1~u14.04+mos5334) mos7.0; urgency=medium
+
+  [ mos-infra-ci ]
+  * dc6cc48 Merge "Revert "Do not update ACTIVE ports back to BUILD
+    status"" into openstack-ci/fuel-7.0/2015.1.0
+
+  [ Ilya Shakhat ]
+  * 9ba2167 Revert "Do not update ACTIVE ports back to BUILD status"
+  * 4469346 Do not specify host for l2population topics
+
+  [ Oleg Bondarev ]
+  * 46867de L3 agent: skip routers notifications if fullsync is true
+  * dc88479 Do not update ACTIVE ports back to BUILD status
+
+  [ Eugene Nikanorov ]
+  * 7410616 Fix neutron-server scalability
+
+  [ Oleg Bondarev ]
+  * 4003811 Handle ObjectDeletedError when deleting network
+    ports/subnets
+
+  [ Eugene Nikanorov ]
+  * 434f272 Skip port binding if network has been already removed.
 
   [ Oleg Bondarev ]
   * 7cd5bd1 OVS agent: handle deleted ports on each rpc_loop iteration
   * 102d85a OVS agent: flush firewall rules for all deleted ports at
     once
 
-  [ mos-infra-ci ]
-  * 9905009 Merge "Subject: [PATCH] Stop device_owner from being set to
-    'network:*'" into openstack-ci/fuel-7.0/2015.1.0
-
-  [ Alexander Ignatov ]
-  * b02bc5e Subject: [PATCH] Stop device_owner from being set to
-    'network:*'
-
-  [ Oleg Bondarev ]
-  * fd09d7c Fix a typo in ovs_dvr_neutron_agent
-  * c275516 Avoid DB errors when deleting network's ports and subnets
-
-  [ mos-infra-ci ]
-  * c87f39c Merge "Add correct cookie to the flows added through
-    DeferredBridge" into openstack-ci/fuel-7.0/2015.1.0
-  * 96c6516 Merge "manual add/remove router for dvr_snat agent" into
-    openstack-ci/fuel-7.0/2015.1.0
-
-  [ Eugene Nikanorov ]
-  * 192ef6a Add correct cookie to the flows added through DeferredBridge
-
-  [ mos-infra-ci ]
-  * 8abe41b Merge "DVR: make sure snat portion is always scheduled when
-    needed" into openstack-ci/fuel-7.0/2015.1.0
-
- -- Oleg Bondarev <obondarev@mirantis.com>  Thu, 03 Sep 2015 15:10:12 +0000
+ -- mos-infra-ci <mos-infra-ci@review.fuel-infra.org>  Mon, 21 Sep 2015 15:21:39 +0000
 
 neutron (1:2015.1.1-1~u14.04+mos1) mos7.0; urgency=medium
 
