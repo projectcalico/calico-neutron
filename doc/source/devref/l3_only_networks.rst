@@ -1,125 +1,56 @@
+================
 L3-only networks
 ================
+
+https://bugs.launchpad.net/neutron/+bug/1472704
+https://bugs.launchpad.net/neutron/+bug/1458890
 
 This document describes and proposes a kind of Neutron 'network' whose
 key connectivity semantic is that it only guarantees to provide IP
 connectivity between the VMs that are attached to that network.  This
-is interesting, we believe, because the vast majority of data center
-workloads only *need* connectivity at IP and above, and because it
-allows us to experiment with implementations of that connectivity that
-are perhaps simpler and more scalable than implementations that
-provide L2 connectivity.
+is interesting, we believe, because very many data center workloads
+only *need* connectivity at IP and above, and because it allows us to
+experiment with implementations of that connectivity that are perhaps
+simpler and more scalable than implementations that provide L2
+connectivity.
 
-.. note:: This document is written as a Neutron devref - even though
-          it is clearly much more like a draft spec, in its current
-          form - because it began life and received a lot of useful
-          feedback as a devref, and I don't want to disconnect it from
-          that useful history (at
-          https://review.openstack.org/#/c/198439/).  Please provide
-          feedback for now as you would for a proposed spec.  Once the
-          spec is clear, I'll then work on making it into a useful
-          devref.
+.. note:: A previous incarnation of this document was submitted as a
+          Neutron devref and received a lot of useful feedback in that
+          form (https://review.openstack.org/#/c/198439/).  This
+          version is submitted as a proposed Neutron spec.
 
-The naming of things, or is it a 'network'?
--------------------------------------------
+Problem Description
+===================
 
-We began by referring to this new thing as a kind of 'network' for two
-reasons.
+For some OpenStack deployments, Neutron networking is more complex
+than it needs to be, and there is an incentive to use a simpler
+approach in such cases, so that the networking is easier to understand
+and to debug.  A simpler approach may also be more scalable, and
+deliver a faster or less CPU-greedy data plane.
 
-- When launching a group of VMs in OpenStack, one has to specify how
-  those VMs will be networked, and currently one does that by giving
-  the name or ID of a Neutron (L2) network.  Once L3-only 'network's
-  exist, it should also be possible to launch VMs that are networked
-  by attaching them to a L3-only 'network'.  So, either the
-  terminology at that point will have to change, to 'network or
-  <L3-only thing>', or the new thing could also be called a network.
+Two expressions of this are the RFE from a group of large deployers at
+https://bugs.launchpad.net/neutron/+bug/1458890, and Project Calico.
+The large deployers' RFE is expounded in the Problem Description
+section of https://review.openstack.org/#/c/225384/, so I won't repeat
+that here.  Project Calico is described just below.
 
-- Neutron tradition aside, this L3-only concept is intuitively what
-  (or one of the things that) most people think of as a network.  For
-  example, at my employer there is a large accumulated collection of
-  personal PCs, bare metal test machines and hosted VM test and
-  utility machines, all wired together somehow through bridges,
-  switches and routers, which we call and think of as our internal
-  company network.  In practice - with rare exceptions - we only ever
-  care about IP-level connectivity between machines in this network,
-  i.e. that we can ping or ssh to an IP address.
-
-  (The exceptions are also illuminating.  They are that sometimes we
-  want dynamic DHCP to operate on a particular part of the network
-  that is also a L2 domain.  So, sometimes, and only for some parts of
-  the overall network, we do care about the L2 connectivity.  But the
-  dominant overall semantic is IP only.)
-
-However, in Neutron tradition and current terminology, a network is
-fundamentally a L2 construct.  It provides Ethernet forwarding and
-broadcast semantics to the ports that are connected to it, and there
-is a mature system for mapping that onto underlying real networks,
-such as by using one VLAN of an underlying real network to carry the
-traffic for a particular Neutron network.  Although Neutron also
-provides L3 addressing, this is as an optional overlay on the L2
-Neutron networks, and it is possible not to use Neutron's L3 support
-at all, either by using instead some non-Neutron mechanism to assign
-IP addresses to the VMs that need them, or when running workloads that
-do not need IP at all.
-
-Therefore, even though it might be intuitive outside Neutron, it may
-not be practical for our proposed L3-only object to be called a
-network in Neutron.  For the sake of using a consistent name, this
-document will call it 'L3Network' - but it is the semantics that are
-important, and I am happy to discuss and change the name independently
-later.
-
-.. note:: It *may* prove possible to align the 'L3Network' here with
-          the 'SubnetGroup' object of Carl Baldwin's "Model changes to
-          support routed network groups" spec at
-          https://review.openstack.org/#/c/225384/.  However it could
-          be confusing if I were to assume that upfront, so I think
-          best to use the different 'L3Network' term for now.
-
-Internal connectivity semantics
--------------------------------
-
-An L3Network provides full (subject to security policy) IP
-connectivity between the VMs that are attached to it: v4 and v6,
-unicast and multicast.  It provides no L2 capability except as
-required for this IP connectivity - in other words, in that there will
-typically still be an Ethernet header before the IP header in each
-packet, because Ethernet is still being used as the transport between
-any two points in the IP network - plus whatever is needed for correct
-operation of the ICMP, ARP and NDP protocols that exist to support IP.
-This kind of connectivity is suitable for VMs and workloads that only
-communicate over IP.
-
-Reachability between L3Networks
--------------------------------
-
-All L3Networks automatically have reachability to each other.  In
-other words, if one L3Network includes 10.65.0.3, and a second
-L3Network includes 7.68.4.5, then 10.65.0.3 can ping 7.68.4.5, and
-vice versa, without the need for those L3Networks to be explicitly
-associated (such as via a Neutron router).  (All subject to security
-policy, of course.)
-
-(It might be useful in future to have an L3Network that does not have
-automatic reachability to others, or perhaps to partition L3Networks
-into groups, with reachability within each group, but not between
-groups.  This is left for future work, as we have no use case for it
-now.)
-
-L3Networks use the shared address space
----------------------------------------
-
-All L3Networks use the shared address space.
-
-(It might be useful in future to have L3Networks in private address
-spaces, but this is left for future work.)
+In both cases, the people concerned already have working
+implementations of what they want; the problem is just that their
+semantics are not properly described by the current Neutron API.  As
+these systems currently stand, a sequence of Neutron API calls is used
+to set up their networking, and the implementation *interprets* those
+calls to set up its desired semantics - but those semantics are not
+actually the same as what the Neutron API says for the calls that were
+made.  Hence the premise of this spec is: how can we best enhance the
+Neutron API and data model so that it can describe the semantics that
+the large deployers and Calico want to provide?
 
 Project Calico
 --------------
 
 Calico (http://www.projectcalico.org/) is an open source project that
-aims to provide this kind of L3-only connectivity in all kinds of data
-center and cloud environments.  That includes OpenStack as well as
+aims to provide L3-only connectivity in all kinds of data center and
+cloud environments.  That includes OpenStack as well as
 container-based platforms such as Mesos or Kubernetes.
 
 As well as the L3-only connectivity semantic within an L3Network,
@@ -378,15 +309,120 @@ aim to part of a unified design that covers all of the similar
 scheduling requirements in this area; and I suggest that we decouple
 it from the other L3 connectivity and addressing aspects above.
 
+Proposed Change
+===============
+
+A new L3Network object is added to the Neutron API and data model.  It
+can have multiple IPv4 and/or IPv6 subnets.  VMs can be attached to an
+L3Network as an alternative to being attached to a Neutron network.
+
+This spec does not yet specify every detail of L3Network's properties
+and methods, but it describes what an L3Network means, and the
+connectivity that it provides for its attached VMs.
+
+The naming of things, or is it a 'network'?
+-------------------------------------------
+
+We began by referring to this new thing as a kind of 'network' for two
+reasons.
+
+- When launching a group of VMs in OpenStack, one has to specify how
+  those VMs will be networked, and currently one does that by giving
+  the name or ID of a Neutron (L2) network.  Once L3-only 'network's
+  exist, it should also be possible to launch VMs that are networked
+  by attaching them to a L3-only 'network'.  So, either the
+  terminology at that point will have to change, to 'network or
+  <L3-only thing>', or the new thing could also be called a network.
+
+- Neutron tradition aside, this L3-only concept is intuitively what
+  (or one of the things that) most people think of as a network.  For
+  example, at my employer there is a large accumulated collection of
+  personal PCs, bare metal test machines and hosted VM test and
+  utility machines, all wired together somehow through bridges,
+  switches and routers, which we call and think of as our internal
+  company network.  In practice - with rare exceptions - we only ever
+  care about IP-level connectivity between machines in this network,
+  i.e. that we can ping or ssh to an IP address.
+
+  (The exceptions are also illuminating.  They are that sometimes we
+  want dynamic DHCP to operate on a particular part of the network
+  that is also a L2 domain.  So, sometimes, and only for some parts of
+  the overall network, we do care about the L2 connectivity.  But the
+  dominant overall semantic is IP only.)
+
+However, in Neutron tradition and current terminology, a network is
+fundamentally a L2 construct.  It provides Ethernet forwarding and
+broadcast semantics to the ports that are connected to it, and there
+is a mature system for mapping that onto underlying real networks,
+such as by using one VLAN of an underlying real network to carry the
+traffic for a particular Neutron network.  Although Neutron also
+provides L3 addressing, this is as an optional overlay on the L2
+Neutron networks, and it is possible not to use Neutron's L3 support
+at all, either by using instead some non-Neutron mechanism to assign
+IP addresses to the VMs that need them, or when running workloads that
+do not need IP at all.
+
+Therefore, even though it might be intuitive outside Neutron, it may
+not be practical for our proposed L3-only object to be called a
+network in Neutron.  For the sake of using a consistent name, this
+document will call it 'L3Network' - but it is the semantics that are
+important, and I am happy to discuss and change the name independently
+later.
+
+.. note:: It *may* prove possible to align the 'L3Network' here with
+          the 'SubnetGroup' object of Carl Baldwin's "Model changes to
+          support routed network groups" spec at
+          https://review.openstack.org/#/c/225384/.  However it could
+          be confusing if I were to assume that upfront, so I think
+          best to use the different 'L3Network' term for now.
+
+Internal connectivity semantics
+-------------------------------
+
+An L3Network provides full (subject to security policy) IP
+connectivity between the VMs that are attached to it: v4 and v6,
+unicast and multicast.  It provides no L2 capability except as
+required for this IP connectivity - in other words, in that there will
+typically still be an Ethernet header before the IP header in each
+packet, because Ethernet is still being used as the transport between
+any two points in the IP network - plus whatever is needed for correct
+operation of the ICMP, ARP and NDP protocols that exist to support IP.
+This kind of connectivity is suitable for VMs and workloads that only
+communicate over IP.
+
+Reachability between L3Networks
+-------------------------------
+
+All L3Networks automatically have reachability to each other.  In
+other words, if one L3Network includes 10.65.0.3, and a second
+L3Network includes 7.68.4.5, then 10.65.0.3 can ping 7.68.4.5, and
+vice versa, without the need for those L3Networks to be explicitly
+associated (such as via a Neutron router).  (All subject to security
+policy, of course.)
+
+(It might be useful in future to have an L3Network that does not have
+automatic reachability to others, or perhaps to partition L3Networks
+into groups, with reachability within each group, but not between
+groups.  This is left for future work, as we have no use case for it
+now.)
+
+L3Networks use the shared address space
+---------------------------------------
+
+All L3Networks use the shared address space.
+
+(It might be useful in future to have L3Networks in private address
+spaces, but this is left for future work.)
+
 Project Calico implementation notes
------------------------------------
+===================================
 
 The following notes shouldn't be needed, as this document is about
 specifying *semantics* on the Neutron API; but are provided in case
 they throw light on anything that is unclear above.
 
 Connectivity between IP addresses in the default address scope
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------------------
 
 Each compute host uses Linux to route the data to and from its VMs.
 For an endpoint in the default address scope, everything happens in
@@ -425,7 +461,7 @@ accessed via a TAP named tapa429fb36-04; and three VMs, with the .21,
 and hence with routes via those compute host addresses.
 
 DHCP
-~~~~
+----
 
 DHCP service is provided by a DHCP agent that runs on each compute
 host, that invokes Dnsmasq using its --bridge-interface option.  The
@@ -450,7 +486,7 @@ Patches to allow this behavior were merged into Dnsmasq before its
 2.73 release, and into Neutron before its Liberty release.
 
 Connectivity for private IP addresses
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------
 
 Full details here are still to be tied down, but broadly this is the
 same as in the default case except for the following points.
@@ -468,7 +504,7 @@ same as in the default case except for the following points.
   Neutron L2 network types.
 
 networking-calico
-~~~~~~~~~~~~~~~~~
+-----------------
 
 The openstack/networking-calico project, part of the Neutron
 'stadium', contains Calico's Neutron-specific code, comprising:
@@ -498,7 +534,7 @@ and also make any corresponding adaptations to how Calico is
 implemented in Neutron.
 
 References
-----------
+==========
 
  - http://www.projectcalico.org/
  - http://docs.openstack.org/developer/networking-calico
