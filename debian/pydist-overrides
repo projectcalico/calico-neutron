@@ -1,3 +1,7 @@
 neutron_server neutron-server
 neutron_common neutron-common
 setuptools-git
+pbr_ python-pbr
+requests_ python-requests
+eventlet_ python-eventlet
+retrying_ python-retrying
