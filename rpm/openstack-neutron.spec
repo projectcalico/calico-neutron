@@ -4,7 +4,7 @@
 %{!?upstream_version: %global upstream_version %{version}%{?milestone}}
 
 Name:		openstack-%{service}
-Version:	2015.1.1
+Version:	2015.1.1calico1.2.1
 Release:	1%{?milestone}%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -950,6 +950,10 @@ exit 0
 
 
 %changelog
+* Fri Nov 13 2015 Matt Dupre <matt@projectcalico.org> 2015.1.1calico1.2.1-1
+- Add support for routed interface drivers
+- Actually delete interface driver ns-* routes
+
 * Fri Aug 21 2015 Haikel Guemar <hguemar@fedoraproject.org> 2015.1.1-1
 - Update to upstream 2015.1.1
 
