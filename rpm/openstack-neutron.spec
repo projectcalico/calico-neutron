@@ -1,7 +1,7 @@
 %global release_name juno
 
 Name:		openstack-neutron
-Version:	2014.2.3
+Version:	2014.2.3calico1.2.1
 Release:	1%{?dist}
 Provides:	openstack-quantum = %{version}-%{release}
 Obsoletes:	openstack-quantum < 2013.2-0.4.b3
@@ -981,6 +981,10 @@ exit 0
 
 
 %changelog
+* Fri Nov 13 2015 Matt Dupre <matt@projectcalico.org> 2014.2.3calico1.2.1-1
+- Add support for routed interface drivers
+- Actually delete interface driver ns-* routes
+
 * Mon Apr 13 2015 Ihar Hrachyshka <ihrachys@redhat.com> 2014.2.3-1
 - Update to upstream 2014.2.3, rhbz#1210459
 
@@ -1222,7 +1226,7 @@ exit 0
 - Forcing python-six version to be at least >= 1.4.1
 
 * Tue Mar 11 2014 Miguel Ángel Ajo <majopela@redhat.com> - 2014.1-0.8.b3
-- Updated to Icehouse milestone 3 
+- Updated to Icehouse milestone 3
 - Added neutron-dhcp-agent dependency bz#1019487
 - Add openstack-neutron-ibm plugin
 - Add openstack-neutron-ofagent plugin from ryu project
