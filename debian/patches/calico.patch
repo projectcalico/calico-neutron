@@ -1,7 +1,7 @@
 Index: calico-neutron/neutron/agent/dhcp/agent.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/dhcp/agent.py	2015-09-22 19:35:24.078699726 +0100
-+++ calico-neutron/neutron/agent/dhcp/agent.py	2015-09-22 19:36:01.239851701 +0100
+--- calico-neutron.orig/neutron/agent/dhcp/agent.py	2015-11-13 15:41:54.524492022 +0000
++++ calico-neutron/neutron/agent/dhcp/agent.py	2015-11-13 15:41:54.520491970 +0000
 @@ -58,9 +58,24 @@
          self.conf = cfg.CONF
          self.cache = NetworkCache()
@@ -59,8 +59,8 @@ Index: calico-neutron/neutron/agent/dhcp/agent.py
                  # the subnets and ports are deleted before this function is
 Index: calico-neutron/neutron/agent/linux/dhcp.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-09-22 19:35:24.078699726 +0100
-+++ calico-neutron/neutron/agent/linux/dhcp.py	2015-09-22 19:36:01.239851701 +0100
+--- calico-neutron.orig/neutron/agent/linux/dhcp.py	2015-11-13 15:41:54.524492022 +0000
++++ calico-neutron/neutron/agent/linux/dhcp.py	2015-11-13 15:41:54.520491970 +0000
 @@ -53,6 +53,10 @@
  NS_PREFIX = 'qdhcp-'
  DNSMASQ_SERVICE_NAME = 'dnsmasq'
@@ -319,8 +319,8 @@ Index: calico-neutron/neutron/agent/linux/dhcp.py
      def destroy(self, network, device_name):
 Index: calico-neutron/neutron/agent/linux/interface.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/interface.py	2015-09-22 19:35:24.078699726 +0100
-+++ calico-neutron/neutron/agent/linux/interface.py	2015-09-22 19:36:01.239851701 +0100
+--- calico-neutron.orig/neutron/agent/linux/interface.py	2015-11-13 15:41:54.524492022 +0000
++++ calico-neutron/neutron/agent/linux/interface.py	2015-11-13 15:42:43.049088749 +0000
 @@ -164,6 +164,13 @@
              LOG.exception(_LE("Failed deleting egress connection state of"
                                " floatingip %s"), ip_str)
@@ -335,7 +335,7 @@ Index: calico-neutron/neutron/agent/linux/interface.py
      def check_bridge_exists(self, bridge):
          if not ip_lib.device_exists(bridge):
              raise exceptions.BridgeDoesNotExist(bridge=bridge)
-@@ -430,6 +437,71 @@
+@@ -430,6 +437,73 @@
                        device_name)
  
  
@@ -386,8 +386,10 @@ Index: calico-neutron/neutron/agent/linux/interface.py
 +        device.set_log_fail_as_error(False)
 +        for ip_cidr in ip_cidrs:
 +            LOG.debug("Remove subnet route %s" % ip_cidr)
++            net = netaddr.IPNetwork(ip_cidr)
++            LOG.debug("=> real cidr %s" % net.cidr)
 +            try:
-+                device.route.delete_onlink_route(ip_cidr)
++                device.route.delete_onlink_route(str(net.cidr))
 +            except RuntimeError:
 +                LOG.debug("Subnet route %s did not exist" % ip_cidr)
 +
@@ -409,8 +411,8 @@ Index: calico-neutron/neutron/agent/linux/interface.py
          super(MetaInterfaceDriver, self).__init__(conf)
 Index: calico-neutron/neutron/agent/linux/ip_lib.py
 ===================================================================
---- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-09-22 19:35:24.078699726 +0100
-+++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-09-22 19:36:01.239851701 +0100
+--- calico-neutron.orig/neutron/agent/linux/ip_lib.py	2015-11-13 15:41:54.524492022 +0000
++++ calico-neutron/neutron/agent/linux/ip_lib.py	2015-11-13 15:41:54.524492022 +0000
 @@ -136,6 +136,19 @@
          """Delete a virtual interface between two namespaces."""
          self._as_root([], 'link', ('del', name))
@@ -433,8 +435,8 @@ Index: calico-neutron/neutron/agent/linux/ip_lib.py
              ip = self.netns.add(name)
 Index: calico-neutron/neutron/tests/unit/agent/dhcp/test_agent.py
 ===================================================================
---- calico-neutron.orig/neutron/tests/unit/agent/dhcp/test_agent.py	2015-09-22 19:35:24.078699726 +0100
-+++ calico-neutron/neutron/tests/unit/agent/dhcp/test_agent.py	2015-09-22 19:36:01.239851701 +0100
+--- calico-neutron.orig/neutron/tests/unit/agent/dhcp/test_agent.py	2015-11-13 15:41:54.524492022 +0000
++++ calico-neutron/neutron/tests/unit/agent/dhcp/test_agent.py	2015-11-13 15:41:54.524492022 +0000
 @@ -288,11 +288,11 @@
          network.id = '1'
          dhcp = dhcp_agent.DhcpAgent(cfg.CONF)
