@@ -35,7 +35,6 @@ class FakeCreateProcess(object):
 
 class AgentUtilsExecuteTest(base.BaseTestCase):
     def setUp(self):
-        self.skipTest('Skipped by Ubuntu')
         super(AgentUtilsExecuteTest, self).setUp()
         self.root_helper = "echo"
         self.test_file = self.useFixture(
