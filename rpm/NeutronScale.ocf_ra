@@ -1,0 +1,200 @@
+#!/bin/bash
+#
+#	Neutron Scale OCF RA.
+#       Handles the dynamic config part of the agent service
+#       group (host entries)
+#
+# Copyright (c) 2014 Red Hat
+#
+# This is a one-shot OCF resource agent with the next properties:
+#
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of version 2 of the GNU General Public License as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it would be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# Further, this software is distributed without any warranty that it is
+# free of the rightful claim of any third person regarding infringement
+# or the like.  Any license provided herein, whether implied or
+# otherwise, applies only to this software file.  Patent licenses, if
+# any, provided herein do not apply to combinations of this program with
+# other software, or any other product whatsoever.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write the Free Software Foundation,
+# Inc., 59 Temple Place - Suite 330, Boston MA 02111-1307, USA.
+#
+
+#######################################################################
+# Initialization:
+
+
+: ${OCF_FUNCTIONS_DIR=${OCF_ROOT}/lib/heartbeat}
+: ${OCF_NEUTRON_DIR=${OCF_ROOT}/lib/neutron}
+. ${OCF_FUNCTIONS_DIR}/ocf-shellfuncs
+
+OCF_RESKEY_hostbasename_default=neutron-n
+
+: ${OCF_RESKEY_hostbasename=${OCF_RESKEY_hostbasename_default}}
+
+#######################################################################
+
+meta_data() {
+	cat <<END
+<?xml version="1.0"?>
+<!DOCTYPE resource-agent SYSTEM "ra-api-1.dtd">
+<resource-agent name="neutron-scale" version="0.9">
+<version>1.0</version>
+
+<longdesc lang="en">
+This resource agent sets host parameter in neutron config files to allow
+neutron agents to scale
+
+</longdesc>
+<shortdesc lang="en">neutron host base name resource agent</shortdesc>
+
+<parameters>
+ <parameter name="hostbasename" unique="1" required="0">
+  <longdesc lang="en">
+   neutron host base name
+  </longdesc>
+  <shortdesc lang="en">neutron host base name</shortdesc>
+  <content type="string" default="neutron-n"/>
+ </parameter>
+</parameters>
+
+<actions>
+<action name="start"        timeout="40" />
+<action name="stop"         timeout="300" />
+<action name="monitor"      timeout="20" interval="10" depth="0" />
+<action name="reload"       timeout="20" />
+<action name="migrate_to"   timeout="20" />
+<action name="migrate_from" timeout="20" />
+<action name="meta-data"    timeout="5" />
+<action name="validate-all"   timeout="20" />
+</actions>
+</resource-agent>
+END
+}
+
+#######################################################################
+
+neutronconfigfiles="dhcp_agent.ini fwaas_driver.ini l3_agent.ini lbaas_agent.ini metadata_agent.ini neutron.conf plugins/openvswitch/ovs_neutron_plugin.ini"
+
+neutron_scale_usage() {
+	cat <<END
+usage: $0 {start|stop|monitor|migrate_to|migrate_from|validate-all|meta-data}
+
+Expects to have a fully populated OCF RA-compliant environment set.
+END
+}
+
+neutron_scale_validate() {
+	if [ ! -d /etc/neutron ]; then
+		ocf_log err "neutron-scale can only run on neutron nodes"
+		return $OCF_ERR_INSTALLED
+	fi
+	if [ ! -x $(which openstack-config) ]; then
+		ocf_log err "neutron-scale requires openstack-config"
+		return $OCF_ERR_INSTALLED
+	fi
+	if [ -z ${OCF_RESKEY_CRM_meta_clone_max} ]; then
+		ocf_log err "neutron-scale agent can only be used as globally unique clone resource: meta_clone_max missing"
+		return $OCF_ERR_CONFIGURED
+	fi
+	if [ -z ${OCF_RESKEY_CRM_meta_clone} ]; then
+		ocf_log err "neutron-scale agent can only be used as globally unique clone resource meta_clone missing"
+		return $OCF_ERR_CONFIGURED
+	fi
+	return $OCF_SUCCESS
+}
+
+neutron_scale_start() {
+	hostid=${OCF_RESKEY_hostbasename}-${OCF_RESKEY_CRM_meta_clone}
+	for i in $neutronconfigfiles; do
+		if [ -f "/etc/neutron/$i" ]; then
+			openstack-config --set /etc/neutron/$i DEFAULT host $hostid
+			if [ $? != 0 ]; then
+				ocf_log err "neutron-scale: unable to set host info to $hostid for /etc/neutron/$i"
+				return OCF_ERR_GENERIC
+			else
+				ocf_log info "neutron-scale: host $hostid set for /etc/neutron/$i"
+			fi
+		else
+			ocf_log info "/etc/neutron/$i not installed. skipping"
+		fi
+	done
+	touch ${HA_RSCTMP}/neutron-scale
+	return $OCF_SUCCESS
+}
+
+neutron_scale_stop() {
+	for i in $neutronconfigfiles; do
+		if [ -f "/etc/neutron/$i" ]; then
+			openstack-config --del /etc/neutron/$i DEFAULT host
+			if [ $? != 0 ]; then
+				ocf_log err "neutron-scale: unable to delete host info for /etc/neutron/$i"
+				return OCF_ERR_GENERIC
+			else
+				ocf_log info "neutron-scale: host delete for /etc/neutron/$i"
+			fi
+		else
+			ocf_log info "/etc/neutron/$i not installed. skipping"
+		fi
+	done
+	rm -f ${HA_RSCTMP}/neutron-scale
+	return $OCF_SUCCESS
+}
+
+neutron_scale_monitor() {
+	if [ ! -f ${HA_RSCTMP}/neutron-scale ]; then
+		return $OCF_NOT_RUNNING
+	fi
+	return $OCF_SUCCESS
+}
+
+case $__OCF_ACTION in
+	meta-data)
+		meta_data
+		exit $OCF_SUCCESS
+		;;
+	validate-all)
+		neutron_scale_validate
+		;;
+	start)
+		neutron_scale_validate && neutron_scale_start
+		;;
+	stop)
+		neutron_scale_validate && neutron_scale_stop
+		;;
+	monitor)
+		neutron_scale_monitor
+		;;
+	reload)
+		exit $OCF_SUCCESS
+		;;
+	migrate_to)
+		ocf_log info "Migrating ${OCF_RESOURCE_INSTANCE} to ${OCF_RESKEY_CRM_meta_migrate_target}."
+		exit $OCF_SUCCESS
+		;;
+	migrate_from)
+		ocf_log info "Migrating ${OCF_RESOURCE_INSTANCE} from ${OCF_RESKEY_CRM_meta_migrate_source}."
+		neutron_scale_start
+		;;
+	usage|help)
+		neutron_scale_usage
+		exit $OCF_SUCCESS
+		;;
+	*)
+		neutron_scale_usage
+		exit $OCF_ERR_UNIMPLEMENTED
+		;;
+esac
+rc=$?
+ocf_log debug "${OCF_RESOURCE_INSTANCE} $__OCF_ACTION : $rc"
+exit $rc
+

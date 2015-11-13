@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenStack Neutron NEC OpenFlow Agent
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=neutron
+ExecStart=/usr/bin/neutron-nec-agent --config-file /usr/share/neutron/neutron-dist.conf --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/nec/nec.ini --log-file /var/log/neutron/nec-agent.log
+PrivateTmp=true
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target

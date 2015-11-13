@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenStack Neutron Mellanox Agent
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=neutron
+ExecStart=/usr/bin/neutron-mlnx-agent --config-file /usr/share/neutron/neutron-dist.conf --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/mlnx/mlnx.ini --log-file /var/log/neutron/mlnx-agent.log
+PrivateTmp=true
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
