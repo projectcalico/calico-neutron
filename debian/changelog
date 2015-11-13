@@ -1,3 +1,9 @@
+neutron (1:2014.2.3-0ubuntu2~cloud0calico1.2.1+1) trusty; urgency=medium
+
+  * Actually delete interface driver ns-* routes
+
+ -- Matt Dupre <matt@projectcalico.org>  Fri, 13 Nov 2015 15:20:37 +0000
+
 neutron (1:2014.2.3-0ubuntu2~cloud0calico1.0.0+2) trusty; urgency=low
 
   * Revert checksum-related change made for
