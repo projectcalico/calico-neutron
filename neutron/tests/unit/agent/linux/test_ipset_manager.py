@@ -111,6 +111,7 @@ class IpsetManagerTestCase(BaseIpsetManagerTest):
         self.verify_mock_calls()
 
     def test_set_members_adding_more_than_5(self):
+        self.skipTest('Skipped in Ubuntu buildds')
         self.add_first_ip()
         self.expect_set(FAKE_IPS)
         self.ipset.set_members(TEST_SET_ID, ETHERTYPE, FAKE_IPS)
