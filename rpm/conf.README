@@ -1,0 +1,7 @@
+This directory can be used to configure Neutron services with custom
+user-defined configuration files. To use the facility, just drop a file (or a
+symlink) that has .conf file name extension into an appropriate directory to
+make a service read it during initialization.
+
+Note that user-defined configuration files override any configuration values
+defined in other files read by services.
