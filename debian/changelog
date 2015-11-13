@@ -1,3 +1,9 @@
+neutron (1:2015.1.1-0ubuntu2calico1.2.1+1) trusty; urgency=medium
+
+  * Actually delete interface driver ns-* routes
+
+ -- Matt Dupre <matt@projectcalico.org>  Fri, 13 Nov 2015 15:45:08 +0000
+
 neutron (1:2015.1.1-0ubuntu2calico1.0.0+1) trusty; urgency=medium
 
   * Rebase Calico Nova changes onto new upstream release
