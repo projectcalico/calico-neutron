@@ -29,11 +29,11 @@ distribution:
 - calico\_2014.1.5 and ubuntu\_2014.1.5, for installation on Ubuntu
   14.04 (Trusty) with OpenStack Icehouse.
 
-- calico\_2014.2.3 and ubuntu\_2014.2.3, for installation on Ubuntu
-  14.04 (Trusty) with OpenStack Juno.
+- calico\_2014.2.3, ubuntu\_2014.2.3 and rhel7\_2014.2.3, for installation on
+  Ubuntu 14.04 (Trusty) and Red Hat Enterprise Linux 7 with OpenStack Juno.
 
-- calico\_2014.2.2 and rhel7\_2014.2.2, for installation on Red Hat
-  Enterprise Linux 7.
+- calico\_2015.1.1, ubuntu\_2015.1.1 and rhel7\_2015.1.1, for installation on
+  Ubuntu 14.04 (Trusty) and Red Hat Enterprise Linux 7 with OpenStack Kilo.
 
 - mirantis\_2014.2.2 and fuel\_6.1, for installing Calico using
   Mirantis Fuel 6.1.
