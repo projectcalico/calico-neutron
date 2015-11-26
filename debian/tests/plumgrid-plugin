@@ -1,0 +1,9 @@
+#!/bin/bash
+#------------------------
+# Testing plumgrid-plugin
+#------------------------
+set -e
+
+# NOTE(jamespage): Disable due to missing (undocumented) dependencies
+
+$(dirname $0)/test-plugin neutron-plugin-plumgrid /etc/neutron/plugins/plumgrid/plumgrid.ini plumgrid

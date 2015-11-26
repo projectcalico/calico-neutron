@@ -1,0 +1,7 @@
+var/log/neutron
+var/lib/neutron
+var/lib/neutron/lock
+etc/neutron
+etc/neutron/rootwrap.d
+etc/neutron/plugins
+etc/neutron/policy.d

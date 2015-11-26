@@ -1,0 +1,26 @@
+# vim:set ft=upstart ts=2 et:
+description "Neutron API Server"
+author "Chuck Short <zulcss@ubuntu.com>"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+
+chdir /var/run
+
+pre-start script
+  mkdir -p /var/run/neutron
+  chown neutron:root /var/run/neutron
+end script
+
+script
+  [ -x "/usr/bin/neutron-server" ] || exit 0
+  [ -r /etc/default/openstack ] && . /etc/default/openstack
+  [ -r /etc/default/neutron-server ] && . /etc/default/neutron-server
+  [ -r "$NEUTRON_PLUGIN_CONFIG" ] && DAEMON_ARGS="$DAEMON_ARGS --config-file=$NEUTRON_PLUGIN_CONFIG"
+  [ "x$USE_SYSLOG" = "xyes" ] && DAEMON_ARGS="$DAEMON_ARGS --use-syslog"
+  [ "x$USE_LOGFILE" != "xno" ] && DAEMON_ARGS="$DAEMON_ARGS --log-file=/var/log/neutron/neutron-server.log"
+  exec start-stop-daemon --start --chuid neutron --exec /usr/bin/neutron-server -- \
+    --config-file=/etc/neutron/neutron.conf ${DAEMON_ARGS}
+end script

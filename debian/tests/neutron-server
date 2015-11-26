@@ -1,0 +1,28 @@
+#!/bin/bash
+#-----------------------
+# Testing neutron-server
+#-----------------------
+set -e
+
+mysql -u root << EOF
+CREATE DATABASE neutron;
+GRANT ALL PRIVILEGES ON neutron.* TO 'neutron'@'localhost' \
+  IDENTIFIED BY 'changeme';
+GRANT ALL PRIVILEGES ON neutron.* TO 'neutron'@'%' \
+  IDENTIFIED BY 'changeme';
+EOF
+
+sed -i -e 's!connection = sqlite.*!connection = mysql://neutron:changeme@localhost/neutron!g' /etc/neutron/neutron.conf
+neutron-db-manage upgrade head
+service neutron-server restart
+sleep 5
+
+DAEMONS=('neutron-server')
+for daemon in "${DAEMONS[@]}"; do
+    if service $daemon status> /dev/null; then
+        echo "OK"
+    else
+        echo "ERROR: ${daemon} IS NOT RUNNING"
+        exit 1
+    fi
+done

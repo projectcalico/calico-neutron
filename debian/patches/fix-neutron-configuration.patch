@@ -1,0 +1,29 @@
+--- a/etc/neutron.conf
++++ b/etc/neutron.conf
+@@ -60,7 +60,7 @@ lock_path = $state_path/lock
+ # previous versions, the class name of a plugin can be specified instead of its
+ # entrypoint name.
+ #
+-# core_plugin =
++core_plugin = ml2
+ # Example: core_plugin = ml2
+ 
+ # (ListOpt) List of service plugin entrypoints to be loaded from the
+@@ -613,7 +613,7 @@ lock_path = $state_path/lock
+ # Use "sudo neutron-rootwrap /etc/neutron/rootwrap.conf" to use the real
+ # root filter facility.
+ # Change to "sudo" to skip the filtering and just run the command directly
+-# root_helper = sudo
++root_helper = sudo /usr/bin/neutron-rootwrap /etc/neutron/rootwrap.conf
+ 
+ # Set to true to add comments to generated iptables rules that describe
+ # each rule's purpose. (System must support the iptables comments module.)
+@@ -650,7 +650,7 @@ admin_password = %SERVICE_PASSWORD%
+ [database]
+ # This line MUST be changed to actually run the plugin.
+ # Example:
+-# connection = mysql://root:pass@127.0.0.1:3306/neutron
++connection = sqlite:////var/lib/neutron/neutron.sqlite
+ # Replace 127.0.0.1 above with the IP address of the database used by the
+ # main neutron server. (Leave it as is if the database runs on this host.)
+ # connection = sqlite://

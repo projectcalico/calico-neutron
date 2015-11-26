@@ -1,0 +1,7 @@
+#!/bin/bash
+#-----------------------
+# Testing midonet-plugin
+#-----------------------
+set -e
+
+$(dirname $0)/test-plugin neutron-plugin-midonet /etc/neutron/plugins/midonet/midonet.ini midonet
