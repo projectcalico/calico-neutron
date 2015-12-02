@@ -1,8 +1,15 @@
-neutron (1:2015.1.2-0ubuntu1~cloud0) trusty-kilo; urgency=medium
+neutron (1:2015.1.2-0ubuntu2~cloud0) trusty-kilo; urgency=medium
 
-  * New upstream release for the Ubuntu Cloud Archive.
+  * New package for the Ubuntu Cloud Archive.
 
- -- Openstack Ubuntu Testing Bot <openstack-testing-bot@ubuntu.com>  Thu, 22 Oct 2015 08:24:51 +0000
+ -- Openstack Ubuntu Testing Bot <openstack-testing-bot@ubuntu.com>  Tue, 24 Nov 2015 21:58:27 +0000
+
+neutron (1:2015.1.2-0ubuntu2) vivid; urgency=medium
+
+  * Fix DHCP agent delete non-existant interface (LP: #1498370)
+    - d/p/dhcp-protect-against-case-when-device-name-is-none.patch
+
+ -- Edward Hope-Morley <edward.hope-morley@canonical.com>  Tue, 10 Nov 2015 00:11:31 +0000
 
 neutron (1:2015.1.2-0ubuntu1) vivid; urgency=medium
 

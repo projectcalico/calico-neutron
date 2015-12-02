@@ -1,0 +1,67 @@
+From a27b30d7263aefce0ffbae95316e4e5cd48165a5 Mon Sep 17 00:00:00 2001
+From: Gary Kotton <gkotton@vmware.com>
+Date: Sun, 27 Sep 2015 00:24:31 -0700
+Subject: [PATCH] DHCP: protect against case when device name is None
+
+There are edge cases when the agent attempts to unplug an interface and
+the device does not exist.
+
+Closes-bug: #1498370
+(cherry picked from commit caebc8fb8e8d9782746c3cc3ddc86f786342c819)
+(cherry picked from commit 0b07910f33ed26fbdd13530eafbdefd74104424d)
+Change-Id: I6917ec94f685f3dd3bff6aa1d43dc56aab76274a
+---
+ neutron/agent/linux/dhcp.py                 |  5 ++++-
+ neutron/tests/unit/agent/dhcp/test_agent.py | 20 ++++++++++++++++++++
+ 2 files changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/neutron/agent/linux/dhcp.py b/neutron/agent/linux/dhcp.py
+index 94e55ab..58b8f37 100644
+--- a/neutron/agent/linux/dhcp.py
++++ b/neutron/agent/linux/dhcp.py
+@@ -1072,7 +1072,10 @@ class DeviceManager(object):
+ 
+     def destroy(self, network, device_name):
+         """Destroy the device used for the network's DHCP on this host."""
+-        self.driver.unplug(device_name, namespace=network.namespace)
++        if device_name:
++            self.driver.unplug(device_name, namespace=network.namespace)
++        else:
++            LOG.debug('No interface exists for network %s', network.id)
+ 
+         self.plugin.release_dhcp_port(network.id,
+                                       self.get_device_id(network))
+diff --git a/neutron/tests/unit/agent/dhcp/test_agent.py b/neutron/tests/unit/agent/dhcp/test_agent.py
+index 71b896b..be82d40 100644
+--- a/neutron/tests/unit/agent/dhcp/test_agent.py
++++ b/neutron/tests/unit/agent/dhcp/test_agent.py
+@@ -1370,6 +1370,26 @@ class TestDeviceManager(base.BaseTestCase):
+             plugin.assert_has_calls(
+                 [mock.call.release_dhcp_port(fake_net.id, mock.ANY)])
+ 
++    def test_destroy_with_none(self):
++        fake_net = dhcp.NetModel(
++            True, dict(id=FAKE_NETWORK_UUID,
++                       tenant_id='aaaaaaaa-aaaa-aaaa-aaaaaaaaaaaa'))
++
++        with mock.patch('neutron.agent.linux.interface.NullDriver') as dvr_cls:
++            mock_driver = mock.MagicMock()
++            mock_driver.get_device_name.return_value = 'tap12345678-12'
++            dvr_cls.return_value = mock_driver
++
++            plugin = mock.Mock()
++
++            dh = dhcp.DeviceManager(cfg.CONF, plugin)
++            dh.destroy(fake_net, None)
++
++            dvr_cls.assert_called_once_with(cfg.CONF)
++            plugin.assert_has_calls(
++                [mock.call.release_dhcp_port(fake_net.id, mock.ANY)])
++            self.assertFalse(mock_driver.called)
++
+     def test_get_interface_name(self):
+         fake_net = dhcp.NetModel(
+             True, dict(id='12345678-1234-5678-1234567890ab',
+-- 
+1.9.1
+
