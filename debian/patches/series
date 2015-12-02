@@ -1,3 +1,4 @@
 fix-neutron-configuration.patch
 skip-iptest.patch
+dhcp-protect-against-case-when-device-name-is-none.patch
 calico.patch
