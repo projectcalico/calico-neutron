@@ -1,0 +1,4 @@
+etc/neutron/plugins/cisco/* etc/neutron/plugins/cisco
+usr/bin/neutron-cisco-cfg-agent usr/bin
+usr/bin/neutron-cisco-apic-host-agent
+usr/bin/neutron-cisco-apic-service-agent

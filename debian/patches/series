@@ -1,0 +1,3 @@
+fix-neutron-configuration.patch
+disable-udev-tests.patch
+#skip-pagination.patch
