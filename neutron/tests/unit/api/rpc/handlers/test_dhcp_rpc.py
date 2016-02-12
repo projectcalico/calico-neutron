@@ -19,6 +19,7 @@ from oslo_db import exception as db_exc
 from neutron.api.rpc.handlers import dhcp_rpc
 from neutron.common import constants
 from neutron.common import exceptions as n_exc
+from neutron.common import utils
 from neutron.tests import base
 
 
@@ -190,6 +191,7 @@ class TestDhcpRpcCallback(base.BaseTestCase):
                 }
         expected_port = {'port': {'network_id': 'foo_network_id',
                                   'device_owner': constants.DEVICE_OWNER_DHCP,
+                                  'binding:host_id': 'foo_host',
                                   'fixed_ips': [{'subnet_id': 'foo_subnet_id'}]
                                   },
                          'id': 'foo_port_id'
@@ -198,11 +200,45 @@ class TestDhcpRpcCallback(base.BaseTestCase):
         def _fake_port_action(plugin, context, port, action):
             self.assertEqual(expected_port, port)
 
+        self.plugin.get_port.return_value = {
+            'device_id': constants.DEVICE_ID_RESERVED_DHCP_PORT}
         self.callbacks._port_action = _fake_port_action
         self.callbacks.update_dhcp_port(mock.Mock(),
                                         host='foo_host',
                                         port_id='foo_port_id',
                                         port=port)
+
+    def test_update_reserved_dhcp_port(self):
+        port = {'port': {'network_id': 'foo_network_id',
+                         'device_owner': constants.DEVICE_OWNER_DHCP,
+                         'fixed_ips': [{'subnet_id': 'foo_subnet_id'}]}
+                }
+        expected_port = {'port': {'network_id': 'foo_network_id',
+                                  'device_owner': constants.DEVICE_OWNER_DHCP,
+                                  'binding:host_id': 'foo_host',
+                                  'fixed_ips': [{'subnet_id': 'foo_subnet_id'}]
+                                  },
+                         'id': 'foo_port_id'
+                         }
+
+        def _fake_port_action(plugin, context, port, action):
+            self.assertEqual(expected_port, port)
+
+        self.plugin.get_port.return_value = {
+            'device_id': utils.get_dhcp_agent_device_id('foo_network_id',
+                                                        'foo_host')}
+        self.callbacks._port_action = _fake_port_action
+        self.callbacks.update_dhcp_port(
+            mock.Mock(), host='foo_host', port_id='foo_port_id', port=port)
+
+        self.plugin.get_port.return_value = {
+            'device_id': 'other_id'}
+        self.assertRaises(n_exc.DhcpPortInUse,
+                          self.callbacks.update_dhcp_port,
+                          mock.Mock(),
+                          host='foo_host',
+                          port_id='foo_port_id',
+                          port=port)
 
     def test_update_dhcp_port(self):
         port = {'port': {'network_id': 'foo_network_id',
@@ -211,10 +247,13 @@ class TestDhcpRpcCallback(base.BaseTestCase):
                 }
         expected_port = {'port': {'network_id': 'foo_network_id',
                                   'device_owner': constants.DEVICE_OWNER_DHCP,
+                                  'binding:host_id': 'foo_host',
                                   'fixed_ips': [{'subnet_id': 'foo_subnet_id'}]
                                   },
                          'id': 'foo_port_id'
                          }
+        self.plugin.get_port.return_value = {
+            'device_id': constants.DEVICE_ID_RESERVED_DHCP_PORT}
         self.callbacks.update_dhcp_port(mock.Mock(),
                                         host='foo_host',
                                         port_id='foo_port_id',

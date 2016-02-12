@@ -313,5 +313,11 @@ class DhcpRpcCallback(object):
                   'from %(host)s.',
                   {'port': port,
                    'host': host})
+        port['port'][portbindings.HOST_ID] = host
         plugin = manager.NeutronManager.get_plugin()
+        old_port = plugin.get_port(context, port['id'])
+        if (old_port['device_id'] != constants.DEVICE_ID_RESERVED_DHCP_PORT
+            and old_port['device_id'] !=
+            utils.get_dhcp_agent_device_id(port['port']['network_id'], host)):
+            raise n_exc.DhcpPortInUse(port_id=port['id'])
         return self._port_action(plugin, context, port, 'update_port')

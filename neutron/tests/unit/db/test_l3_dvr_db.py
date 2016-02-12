@@ -283,8 +283,9 @@ class L3DvrTestCase(test_db_base_plugin_v2.NeutronDbPluginV2TestCase):
             mock.patch.object(self.mixin,
                               'clear_unused_fip_agent_gw_port'),
             mock.patch.object(l3_dvr_db.l3_db.L3_NAT_db_mixin,
-                              'delete_floatingip')) as (gf, vf, df):
+                              '_delete_floatingip')) as (gf, vf, df):
             gf.return_value = floatingip
+            df.return_value = floatingip
             self.mixin.delete_floatingip(self.ctx, fip_id)
             return vf
 
@@ -318,7 +319,9 @@ class L3DvrTestCase(test_db_base_plugin_v2.NeutronDbPluginV2TestCase):
         floatingip = {
             'id': _uuid(),
             'fixed_port_id': None,
-            'floating_network_id': _uuid()
+            'floating_network_id': _uuid(),
+            'router_id': None,
+            'port_id': None
         }
         mock_fip_clear = self._delete_floatingip_test_setup(floatingip)
         self.assertFalse(mock_fip_clear.call_count)
@@ -327,7 +330,9 @@ class L3DvrTestCase(test_db_base_plugin_v2.NeutronDbPluginV2TestCase):
         floatingip = {
             'id': _uuid(),
             'fixed_port_id': _uuid(),
-            'floating_network_id': _uuid()
+            'floating_network_id': _uuid(),
+            'router_id': None,
+            'port_id': None
         }
         mock_fip_clear = self._delete_floatingip_test_setup(floatingip)
         self.assertTrue(mock_fip_clear.called)

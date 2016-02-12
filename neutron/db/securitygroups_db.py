@@ -13,6 +13,7 @@
 #    under the License.
 
 import netaddr
+from oslo_db import api as oslo_db_api
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
 import sqlalchemy as sa
@@ -118,6 +119,8 @@ class SecurityGroupDbMixin(ext_sg.SecurityGroupPluginBase):
 
     __native_bulk_support = True
 
+    @oslo_db_api.wrap_db_retry(max_retries=db_api.MAX_RETRIES,
+                               retry_on_request=True)
     def create_security_group_bulk(self, context, security_group_rule):
         return self._create_bulk('security_group', context,
                                  security_group_rule)

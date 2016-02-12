@@ -111,12 +111,18 @@ def serve_wsgi(cls):
 
 class RpcWorker(object):
     """Wraps a worker to be handled by ProcessLauncher"""
-    def __init__(self, plugin):
-        self._plugin = plugin
+
+    start_listeners_method = 'start_rpc_listeners'
+
+    def __init__(self, plugins):
+        self._plugins = plugins
         self._servers = []
 
     def start(self):
-        self._servers = self._plugin.start_rpc_listeners()
+        for plugin in self._plugins:
+            if hasattr(plugin, self.start_listeners_method):
+                servers = getattr(plugin, self.start_listeners_method)()
+                self._servers.extend(servers)
 
     def wait(self):
         for server in self._servers:
@@ -130,8 +136,14 @@ class RpcWorker(object):
             self._servers = []
 
 
+class RpcReportsWorker(RpcWorker):
+    start_listeners_method = 'start_report_listener'
+
+
 def serve_rpc():
     plugin = manager.NeutronManager.get_plugin()
+    service_plugins = (
+        manager.NeutronManager.get_service_plugins().values())
 
     # If 0 < rpc_workers then start_rpc_listeners would be called in a
     # subprocess and we cannot simply catch the NotImplementedError.  It is
@@ -146,11 +158,14 @@ def serve_rpc():
         raise NotImplementedError()
 
     try:
-        rpc = RpcWorker(plugin)
+        # core plugin is among service plugins
+        rpc = RpcWorker(service_plugins)
+        rpc_rep = RpcReportsWorker([plugin])
 
         if cfg.CONF.rpc_workers < 1:
+            rpc_rep.start()
             rpc.start()
-            return rpc
+            return [rpc, rpc_rep]
         else:
             # dispose the whole pool before os.fork, otherwise there will
             # be shared DB connections in child processes which may cause
@@ -158,7 +173,10 @@ def serve_rpc():
             session.get_engine().pool.dispose()
             launcher = common_service.ProcessLauncher(wait_interval=1.0)
             launcher.launch_service(rpc, workers=cfg.CONF.rpc_workers)
-            return launcher
+            # two launchers in one process are known to be buggy, so using the
+            # same launcher for reports workers
+            launcher.launch_service(rpc_rep, workers=5)
+            return [launcher]
     except Exception:
         with excutils.save_and_reraise_exception():
             LOG.exception(_LE('Unrecoverable error: please check log for '

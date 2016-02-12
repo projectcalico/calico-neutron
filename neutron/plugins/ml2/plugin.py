@@ -169,6 +169,13 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
                                   fanout=False)
         return self.conn.consume_in_threads()
 
+    def start_report_listener(self):
+        self.conn2 = n_rpc.create_connection(new=True)
+        self.conn2.create_consumer(topics.REPORTS,
+                                   [agents_db.AgentExtRpcCallback()],
+                                   fanout=False)
+        return self.conn2.consume_in_threads()
+
     def _filter_nets_provider(self, context, networks, filters):
         return [network
                 for network in networks
@@ -683,7 +690,7 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
         for port_id in port_ids:
             try:
                 self.delete_port(context, port_id)
-            except exc.PortNotFound:
+            except (exc.PortNotFound, sa_exc.ObjectDeletedError):
                 # concurrent port deletion can be performed by
                 # release_dhcp_port caused by concurrent subnet_delete
                 LOG.info(_LI("Port %s was deleted concurrently"), port_id)
@@ -696,7 +703,7 @@ class Ml2Plugin(db_base_plugin_v2.NeutronDbPluginV2,
         for subnet_id in subnet_ids:
             try:
                 self.delete_subnet(context, subnet_id)
-            except exc.SubnetNotFound:
+            except (exc.SubnetNotFound, sa_exc.ObjectDeletedError):
                 LOG.info(_LI("Subnet %s was deleted concurrently"),
                          subnet_id)
             except Exception:

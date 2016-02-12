@@ -1978,9 +1978,17 @@ class TestBasicRouterOperations(BasicRouterOperationsFramework):
 
     def test_routers_updated(self):
         agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
+        agent.fullsync = False
         agent._queue = mock.Mock()
         agent.routers_updated(None, [FAKE_ID])
         self.assertEqual(1, agent._queue.add.call_count)
+
+    def test_routers_updated_during_fullsync(self):
+        agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
+        agent._queue = mock.Mock()
+        agent.routers_updated(None, [FAKE_ID])
+        self.assertEqual(1, len(agent.rpc_priority_updates))
+        self.assertIn(FAKE_ID, agent.rpc_priority_updates)
 
     def test_removed_from_agent(self):
         agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
@@ -1990,9 +1998,17 @@ class TestBasicRouterOperations(BasicRouterOperationsFramework):
 
     def test_added_to_agent(self):
         agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
+        agent.fullsync = False
         agent._queue = mock.Mock()
         agent.router_added_to_agent(None, [FAKE_ID])
         self.assertEqual(1, agent._queue.add.call_count)
+
+    def test_added_to_agent_during_fullsync(self):
+        agent = l3_agent.L3NATAgent(HOSTNAME, self.conf)
+        agent._queue = mock.Mock()
+        agent.router_added_to_agent(None, [FAKE_ID])
+        self.assertEqual(1, len(agent.rpc_priority_updates))
+        self.assertIn(FAKE_ID, agent.rpc_priority_updates)
 
     def test_destroy_namespace(self):
         namespace = 'qrouter-bar'
