@@ -225,6 +225,11 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
         self.target_ex_net_id = None
         self.use_ipv6 = ipv6_utils.is_enabled()
 
+        # if router_updated notification is received when agent is about to
+        # resync, it will be skipped for reasons of efficiency. This list is to
+        # preserve PRIORITY_RPC during fullsync for such routers.
+        self.rpc_priority_updates = set()
+
     def _check_config_params(self):
         """Check items in configuration files.
 
@@ -353,6 +358,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
     def router_deleted(self, context, router_id):
         """Deal with router deletion RPC message."""
         LOG.debug('Got router deleted notification for %s', router_id)
+        self.rpc_priority_updates.discard(router_id)
         update = queue.RouterUpdate(router_id,
                                     queue.PRIORITY_RPC,
                                     action=queue.DELETE_ROUTER)
@@ -365,6 +371,13 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
             # This is needed for backward compatibility
             if isinstance(routers[0], dict):
                 routers = [router['id'] for router in routers]
+
+            if self.fullsync:
+                LOG.debug('Skipping notification since agent is about to '
+                          'perform a full sync')
+                self.rpc_priority_updates |= set(routers)
+                return
+
             for id in routers:
                 update = queue.RouterUpdate(id, queue.PRIORITY_RPC)
                 self._queue.add(update)
@@ -372,6 +385,7 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
     def router_removed_from_agent(self, context, payload):
         LOG.debug('Got router removed from agent :%r', payload)
         router_id = payload['router_id']
+        self.rpc_priority_updates.discard(router_id)
         update = queue.RouterUpdate(router_id,
                                     queue.PRIORITY_RPC,
                                     action=queue.DELETE_ROUTER)
@@ -531,11 +545,22 @@ class L3NATAgent(firewall_l3_agent.FWaaSL3AgentRpcCallback,
             LOG.debug('Processing :%r', routers)
             for r in routers:
                 ns_manager.keep_router(r['id'])
+                priority = (
+                    queue.PRIORITY_RPC if r['id'] in self.rpc_priority_updates
+                    else queue.PRIORITY_SYNC_ROUTERS_TASK)
+                self.rpc_priority_updates.discard(r['id'])
                 update = queue.RouterUpdate(r['id'],
-                                            queue.PRIORITY_SYNC_ROUTERS_TASK,
+                                            priority,
                                             router=r,
                                             timestamp=timestamp)
                 self._queue.add(update)
+            # handle possible race condition when router added/updated
+            # notification was received during fullsync but server did not
+            # return info for such router with fullsync response
+            for router_id in self.rpc_priority_updates:
+                update = queue.RouterUpdate(router_id, queue.PRIORITY_RPC)
+                self._queue.add(update)
+            self.rpc_priority_updates = set()
             self.fullsync = False
             LOG.debug("periodic_sync_routers_task successfully completed")
 
@@ -566,7 +591,7 @@ class L3NATAgentWithStateReport(L3NATAgent):
 
     def __init__(self, host, conf=None):
         super(L3NATAgentWithStateReport, self).__init__(host=host, conf=conf)
-        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
+        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.REPORTS)
         self.agent_state = {
             'binary': 'neutron-l3-agent',
             'host': host,

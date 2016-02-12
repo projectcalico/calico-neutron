@@ -1220,6 +1220,7 @@ class TestDeviceManager(base.BaseTestCase):
 
         dh = dhcp.DeviceManager(cfg.CONF, plugin)
         dh._set_default_route = mock.Mock()
+        dh.cleanup_stale_ports = mock.Mock()
         interface_name = dh.setup(net)
 
         self.assertEqual(interface_name, 'tap12345678-12')

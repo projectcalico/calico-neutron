@@ -1,6 +1,27 @@
 CHANGES
 =======
 
+* DVR: notify specific agent when deleting floating ip
+* DVR: Notify specific agent when update floatingip
+* DVR: fix router remove from dvr agent after deleting last port
+* DVR: only notify needed agents on new VM port creation
+* Process user iptables rules before INVALID
+* Don't drop ARP table jump during OVS rewiring
+* DVR: notify specific agent when creating floating ip
+* Avoid race condition for reserved DHCP ports
+* Cleanup dhcp namespace upon dhcp setup
+* Bug-Fix for unexpected DHCP agent redundant
+* Update dhcp host portbinding on failover
+* Wrap create_security_group_bulk with db retry on request
+* Changed filter field to router_id
+* Revert "Do not update ACTIVE ports back to BUILD status"
+* Do not specify host for l2population topics
+* L3 agent: skip routers notifications if fullsync is true
+* Do not update ACTIVE ports back to BUILD status
+* Fix neutron-server scalability
+* Avoid using .one() doing broad query
+* Handle ObjectDeletedError when deleting network ports/subnets
+* Skip port binding if network has been already removed
 * OVS agent: handle deleted ports on each rpc_loop iteration
 * OVS agent: flush firewall rules for all deleted ports at once
 * Subject: [PATCH] Stop device_owner from being set to 'network:*'
