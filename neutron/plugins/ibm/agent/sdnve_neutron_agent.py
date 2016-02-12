@@ -117,7 +117,7 @@ class SdnveNeutronAgent(object):
 
         self.topic = topics.AGENT
         self.plugin_rpc = SdnvePluginApi(topics.PLUGIN)
-        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
+        self.state_rpc = agent_rpc.PluginReportStateAPI(topics.REPORTS)
 
         self.context = context.get_admin_context_without_session()
         self.endpoints = [self]

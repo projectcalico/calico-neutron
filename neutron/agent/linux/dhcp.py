@@ -23,6 +23,7 @@ import time
 import netaddr
 from oslo_config import cfg
 from oslo_log import log as logging
+import oslo_messaging
 from oslo_utils import importutils
 import six
 
@@ -1045,9 +1046,13 @@ class DeviceManager(object):
             for port in network.ports:
                 port_device_id = getattr(port, 'device_id', None)
                 if port_device_id == constants.DEVICE_ID_RESERVED_DHCP_PORT:
-                    dhcp_port = self.plugin.update_dhcp_port(
-                        port.id, {'port': {'network_id': network.id,
-                                           'device_id': device_id}})
+                    try:
+                        dhcp_port = self.plugin.update_dhcp_port(
+                            port.id, {'port': {'network_id': network.id,
+                                               'device_id': device_id}})
+                    except oslo_messaging.RemoteError:
+                        LOG.info(_LI("Skipping port %s"), port.id)
+                        continue
                     if dhcp_port:
                         break
 
@@ -1147,8 +1152,22 @@ class DeviceManager(object):
         if (self.driver_bridged and
             self.conf.use_namespaces):
             self._set_default_route(network, interface_name)
+            self.cleanup_stale_ports(network, port)
 
         return interface_name
+
+    def cleanup_stale_ports(self, network, dhcp_port):
+        dev_prefix = 'tap'
+        namespace = "%s%s" % (NS_PREFIX, network.id)
+        ns_ip = ip_lib.IPWrapper(namespace=namespace)
+        for d in ns_ip.get_devices(exclude_loopback=True):
+            if d.name.startswith(dev_prefix):
+                # delete all ports except current active DHCP port
+                if d.name[len(dev_prefix):] not in dhcp_port.id:
+                    LOG.debug("Found stale device %s, deleting", d.name)
+                    # stale tap device
+                    self.driver.unplug(d.name, namespace=namespace,
+                                       prefix=dev_prefix)
 
     def update(self, network, device_name):
         """Update device settings for the network's DHCP on this host."""

@@ -45,16 +45,23 @@ def main():
         api_thread = pool.spawn(neutron_api.wait)
 
         try:
-            neutron_rpc = service.serve_rpc()
+            neutron_rpc_list = service.serve_rpc()
         except NotImplementedError:
             LOG.info(_LI("RPC was already started in parent process by "
                          "plugin."))
         else:
-            rpc_thread = pool.spawn(neutron_rpc.wait)
+            rpc_threads = []
+            for neutron_rpc in neutron_rpc_list:
+                rpc_threads.append(pool.spawn(neutron_rpc.wait))
 
-            # api and rpc should die together.  When one dies, kill the other.
-            rpc_thread.link(lambda gt: api_thread.kill())
-            api_thread.link(lambda gt: rpc_thread.kill())
+            def kill_threads(gt):
+                for thread in rpc_threads + [api_thread]:
+                    if thread is not gt:
+                        thread.kill()
+
+            # api and rpc should die together.  When one dies, kill the others.
+            for thread in rpc_threads + [api_thread]:
+                thread.link(kill_threads)
 
         pool.waitall()
     except KeyboardInterrupt:
