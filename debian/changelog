@@ -1,36 +1,28 @@
-neutron (1:2015.1.1-1~u14.04+mos5327) mos7.0; urgency=medium
+neutron (1:2015.1.1-1~u14.04+mos5348) mos7.0; urgency=medium
 
   [ Oleg Bondarev ]
-  * 7cd5bd1 OVS agent: handle deleted ports on each rpc_loop iteration
-  * 102d85a OVS agent: flush firewall rules for all deleted ports at
-    once
+  * dbcc3d3 DVR: notify specific agent when deleting floating ip
+  * 0723acb DVR: Notify specific agent when update floatingip
+  * 87b74c8 DVR: fix router remove from dvr agent after deleting last
+    port
+  * 00198bf DVR: only notify needed agents on new VM port creation
 
-  [ mos-infra-ci ]
-  * 9905009 Merge "Subject: [PATCH] Stop device_owner from being set to
-    'network:*'" into openstack-ci/fuel-7.0/2015.1.0
+  [ Denis V. Meltsaykin ]
+  * 2822189 Merge "DVR: notify specific agent when creating floating ip"
+    into openstack-ci/fuel-7.0/2015.1.0
 
-  [ Alexander Ignatov ]
-  * b02bc5e Subject: [PATCH] Stop device_owner from being set to
-    'network:*'
+  [ Kevin Benton ]
+  * a8a3a7c Process user iptables rules before INVALID
 
   [ Oleg Bondarev ]
-  * fd09d7c Fix a typo in ovs_dvr_neutron_agent
-  * c275516 Avoid DB errors when deleting network's ports and subnets
-
-  [ mos-infra-ci ]
-  * c87f39c Merge "Add correct cookie to the flows added through
-    DeferredBridge" into openstack-ci/fuel-7.0/2015.1.0
-  * 96c6516 Merge "manual add/remove router for dvr_snat agent" into
-    openstack-ci/fuel-7.0/2015.1.0
+  * c770508 Don't drop ARP table jump during OVS rewiring
+  * 868e711 DVR: notify specific agent when creating floating ip
 
   [ Eugene Nikanorov ]
-  * 192ef6a Add correct cookie to the flows added through DeferredBridge
+  * 5d5722a Avoid race condition for reserved DHCP ports
+  * e3eb7cc Cleanup dhcp namespace upon dhcp setup
 
-  [ mos-infra-ci ]
-  * 8abe41b Merge "DVR: make sure snat portion is always scheduled when
-    needed" into openstack-ci/fuel-7.0/2015.1.0
-
- -- Oleg Bondarev <obondarev@mirantis.com>  Thu, 03 Sep 2015 15:10:12 +0000
+ -- Oleg Bondarev <obondarev@mirantis.com>  Tue, 29 Dec 2015 07:12:27 +0000
 
 neutron (1:2015.1.1-1~u14.04+mos1) mos7.0; urgency=medium
 
