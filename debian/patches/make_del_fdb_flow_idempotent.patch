@@ -1,0 +1,50 @@
+Description: Addresses an issue where del_fdb_flow() gets a duplicate call for
+             the same port, which results in a KeyError. This change makes the
+             call more idempotent, so that it doesn't cause other follow-on
+             errors as a result of the uncaught exception.
+             Cherry-picked from commit 7b0869bda43eef6c766992ce14f9c8502a2b73f5
+             Conflicts:
+               (from stable/juno) neutron/plugins/ofagent/agent/ofa_neutron_agent.py
+               The changes to this file have been dropped from the cherry-pick
+               as _del_fdb_flow() doesn't exist for ofagent in Icehouse.
+               del_fdb_flow is _del_fdb_flow in Icehouse and has one less argument.
+Author: Dermot Tynan <tynan@hp.com>
+Origin: Upstream
+Bug-Ubuntu: https://bugs.launchpad.net/bugs/1531963
+
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -396,6 +396,9 @@
+ 
+     def _del_fdb_flow(self, port_info, agent_ip, lvm, ofport):
+         if port_info == q_const.FLOODING_ENTRY:
++            if ofport not in lvm.tun_ofports:
++                LOG.debug("attempt to remove a non-existent port %s", ofport)
++                return
+             lvm.tun_ofports.remove(ofport)
+             if len(lvm.tun_ofports) > 0:
+                 ofports = ','.join(lvm.tun_ofports)
+--- a/neutron/tests/unit/openvswitch/test_ovs_neutron_agent.py
++++ b/neutron/tests/unit/openvswitch/test_ovs_neutron_agent.py
+@@ -717,6 +717,21 @@
+             self.agent.fdb_remove(None, fdb_entry)
+             del_port_fn.assert_called_once_with('gre-02020202')
+ 
++    def test_del_fdb_flow_idempotency(self):
++        lvm = mock.Mock()
++        lvm.network_type = 'gre'
++        lvm.vlan = 'vlan1'
++        lvm.segmentation_id = 'seg1'
++        lvm.tun_ofports = set(['1', '2'])
++        with contextlib.nested(
++            mock.patch.object(self.agent.tun_br, 'mod_flow'),
++            mock.patch.object(self.agent.tun_br, 'delete_flows')
++        ) as (mod_flow_fn, delete_flows_fn):
++            self.agent._del_fdb_flow(n_const.FLOODING_ENTRY,
++                                     '1.1.1.1', lvm, '3')
++            self.assertFalse(mod_flow_fn.called)
++            self.assertFalse(delete_flows_fn.called)
++
+     def test_recl_lv_port_to_preserve(self):
+         self._prepare_l2_pop_ofports()
+         self.agent.l2_pop = True
