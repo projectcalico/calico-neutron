@@ -1,5 +1,8 @@
+make_del_fdb_flow_idempotent.patch
 fix-quantum-configuration.patch
 disable-udev-tests.patch
 skip-ipv6-tests.patch
 use-concurrency.patch
+fix-reconnect-race-condition-with-rabbitmq-cluster.patch
+ovs-restart.patch
 calico.patch
