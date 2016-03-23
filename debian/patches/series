@@ -5,3 +5,4 @@ skip-ipv6-tests.patch
 use-concurrency.patch
 fix-reconnect-race-condition-with-rabbitmq-cluster.patch
 ovs-restart.patch
+fix-neutron-agent-fanout-queue-not-found-loop.patch
