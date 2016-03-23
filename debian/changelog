@@ -1,3 +1,12 @@
+neutron (1:2014.1.5-0ubuntu4) trusty; urgency=medium
+
+  * neutron-openvswitch-agent stuck on 'q-agent-notifier-port-update_fanout-x'
+    is NOT_FOUND exception, this bug caused RabbitMQ HA(active + active) failover
+    in Icehouse not work with large scaled nova compute nodes. (LP: #1393391):
+    - d/p/fix-neutron-agent-fanout-queue-not-found-loop.patch
+
+ -- Hui Xiang <hui.xiang@canonical.com>  Mon, 25 Jan 2016 15:25:13 +0800
+
 neutron (1:2014.1.5-0ubuntu3calico1.2.1+1) trusty; urgency=medium
 
   * Re-release Calico version after merging new Ubuntu packaging updates

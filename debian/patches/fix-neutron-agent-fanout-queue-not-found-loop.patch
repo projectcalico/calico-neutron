@@ -1,0 +1,29 @@
+Description: Fix-neutron-agent-fanout-queue-not-found-loop
+
+  neutron-openvswitch-agent stuck on 'q-agent-notifier-port-update_fanout-x'
+  is NOT_FOUND exception, this bug caused RabbitMQ HA(active + active) failover
+  in Icehouse not work with large scaled nova compute nodes.
+
+Author: hui.xiang@canonical.com
+Origin: other
+Bug: https://bugs.launchpad.net/neutron/+bug/1393391
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- a/neutron/openstack/common/rpc/impl_kombu.py
++++ b/neutron/openstack/common/rpc/impl_kombu.py
+@@ -792,6 +792,15 @@
+                 self.consume()
+             except greenlet.GreenletExit:
+                 return
++            except Exception as e:
++                if e.code == 404:
++                    # Redeclare queue if it is deleted due to HA cluster
++                    # disconnection, LP#1393391
++                    LOG.warn(_("Queue NOT FOUND : %s"), e)
++                    self.channel = self.connection.channel()
++                    for consumer in self.consumers:
++                        consumer.reconnect(self.channel)
++
+         if self.consumer_thread is None:
+             self.consumer_thread = eventlet.spawn(_consumer_thread)
+         return self.consumer_thread
