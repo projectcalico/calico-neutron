@@ -1,4 +1,0 @@
-fix-neutron-configuration.patch
-skip-iptest.patch
-ovs-restart.patch
-calico.patch

@@ -53,10 +53,6 @@ WIN2k3_STATIC_DNS = 249
 NS_PREFIX = 'qdhcp-'
 DNSMASQ_SERVICE_NAME = 'dnsmasq'
 
-# FIXME (Calico SMC) This is Metaswitch Networks' Enterprise Number.  It
-# should be replaced by OpenStack's own EN before upstreaming this patch.
-METASWITCH_EN = 19444
-
 
 class DictModel(dict):
     """Convert dict into an object that provides attribute access to values."""
@@ -303,57 +299,20 @@ class Dnsmasq(DhcpLocalProcess):
             return []
 
     def _build_cmdline_callback(self, pid_file):
-        if self.device_manager.bridged():
-            cmd = [
-                'dnsmasq',
-                '--no-hosts',
-                '--no-resolv',
-                '--strict-order',
-                '--bind-interfaces',
-                '--interface=%s' % self.interface_name,
-                '--except-interface=lo',
-                '--pid-file=%s' % pid_file,
-                '--dhcp-hostsfile=%s' % self.get_conf_file_name('host'),
-                '--addn-hosts=%s' % self.get_conf_file_name('addn_hosts'),
-                '--dhcp-optsfile=%s' % self.get_conf_file_name('opts'),
-                '--dhcp-leasefile=%s' % self.get_conf_file_name('leases'),
-            ]
-        else:
-            # Calculate a DUID that is unique for each network.  This is
-            # required because dnsmasq's default algorithm for choosing one
-            # does not work if multiple dnsmasqs are listening onto the same
-            # interface.  (dnsmasq chooses its DUID by time and initialises it
-            # on the first DHCP packet received.  If there are multiple
-            # dnsmasq processes listening on the same interface, they receive
-            # the same DHCPSOLICIT and hence pick the same DUID.)
-            duid = ("neutron-dhcp-agent.%s" % self.network.id).encode("hex")
-
-            # When the DHCP port and VM TAP interfaces are not
-            # bridged, we change the dnsmasq invocation as follows.
-            #   --interface=tap* # to listen on all TAP interfaces
-            #   --bind-dynamic instead of --bind-interfaces, to
-            #     automatically start listening on new TAP
-            #     interfaces as they appear
-            #   --bridge-interface=%s,tap* # to treat all TAP
-            #     interfaces as aliases of the DHCP port.
-            cmd = [
-                'dnsmasq',
-                '--no-hosts',
-                '--no-resolv',
-                '--strict-order',
-                '--bind-dynamic',
-                '--interface=%s' % self.interface_name,
-                '--interface=tap*',
-                '--bridge-interface=%s,tap*' % self.interface_name,
-                '--except-interface=lo',
-                '--pid-file=%s' % pid_file,
-                '--dhcp-hostsfile=%s' % self.get_conf_file_name('host'),
-                '--addn-hosts=%s' % self.get_conf_file_name('addn_hosts'),
-                '--dhcp-optsfile=%s' % self.get_conf_file_name('opts'),
-                '--dhcp-leasefile=%s' % self.get_conf_file_name('leases'),
-                '--dhcp-duid=%s,%s' % (METASWITCH_EN, duid),
-                '--enable-ra',
-                ]
+        cmd = [
+            'dnsmasq',
+            '--no-hosts',
+            '--no-resolv',
+            '--strict-order',
+            '--bind-interfaces',
+            '--interface=%s' % self.interface_name,
+            '--except-interface=lo',
+            '--pid-file=%s' % pid_file,
+            '--dhcp-hostsfile=%s' % self.get_conf_file_name('host'),
+            '--addn-hosts=%s' % self.get_conf_file_name('addn_hosts'),
+            '--dhcp-optsfile=%s' % self.get_conf_file_name('opts'),
+            '--dhcp-leasefile=%s' % self.get_conf_file_name('leases'),
+        ]
 
         possible_leases = 0
         for i, subnet in enumerate(self.network.subnets):
@@ -363,7 +322,7 @@ class Dnsmasq(DhcpLocalProcess):
                 continue
             if subnet.ip_version == 4:
                 mode = 'static'
-            elif self.device_manager.bridged():
+            else:
                 # Note(scollins) If the IPv6 attributes are not set, set it as
                 # static to preserve previous behavior
                 addr_mode = getattr(subnet, 'ipv6_address_mode', None)
@@ -372,12 +331,6 @@ class Dnsmasq(DhcpLocalProcess):
                                   constants.DHCPV6_STATELESS] or
                         not addr_mode and not ra_mode):
                     mode = 'static'
-            else:
-                # For routed IPv6 networking specify 'off-link' flag
-                # to Dnsmasq.  This results in VM adding a default
-                # route to the link-local address of the TAP interface
-                # on the compute host.
-                mode = 'static,off-link'
 
             cidr = netaddr.IPNetwork(subnet.cidr)
 
@@ -934,16 +887,12 @@ class DeviceManager(object):
         try:
             self.driver = importutils.import_object(
                 conf.interface_driver, conf)
-            self.driver_bridged = bool(self.driver.bridged())
         except Exception as e:
             LOG.error(_LE("Error importing interface driver '%(driver)s': "
                           "%(inner)s"),
                       {'driver': conf.interface_driver,
                        'inner': e})
             raise SystemExit(1)
-
-    def bridged(self):
-        return self.driver_bridged
 
     def get_interface_name(self, network, port):
         """Return interface(device) name for use by the DHCP process."""
@@ -1007,36 +956,28 @@ class DeviceManager(object):
         for port in network.ports:
             port_device_id = getattr(port, 'device_id', None)
             if port_device_id == device_id:
-                if self.driver_bridged:
-                    port_fixed_ips = []
-                    ips_needs_removal = False
-                    for fixed_ip in port.fixed_ips:
-                        if fixed_ip.subnet_id in dhcp_enabled_subnet_ids:
-                            port_fixed_ips.append(
-                                {'subnet_id': fixed_ip.subnet_id,
-                                 'ip_address': fixed_ip.ip_address})
-                            dhcp_enabled_subnet_ids.remove(fixed_ip.subnet_id)
-                        else:
-                            ips_needs_removal = True
-
-                    # If there are dhcp_enabled_subnet_ids here that means that
-                    # we need to add those to the port and call update.
-                    if dhcp_enabled_subnet_ids or ips_needs_removal:
-                        port_fixed_ips.extend(
-                            [dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
-                        dhcp_port = self.plugin.update_dhcp_port(
-                            port.id, {'port': {'network_id': network.id,
-                                               'fixed_ips': port_fixed_ips}})
-                        if not dhcp_port:
-                            raise exceptions.Conflict()
+                port_fixed_ips = []
+                ips_needs_removal = False
+                for fixed_ip in port.fixed_ips:
+                    if fixed_ip.subnet_id in dhcp_enabled_subnet_ids:
+                        port_fixed_ips.append(
+                            {'subnet_id': fixed_ip.subnet_id,
+                             'ip_address': fixed_ip.ip_address})
+                        dhcp_enabled_subnet_ids.remove(fixed_ip.subnet_id)
                     else:
-                        dhcp_port = port
+                        ips_needs_removal = True
 
+                # If there are dhcp_enabled_subnet_ids here that means that
+                # we need to add those to the port and call update.
+                if dhcp_enabled_subnet_ids or ips_needs_removal:
+                    port_fixed_ips.extend(
+                        [dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
+                    dhcp_port = self.plugin.update_dhcp_port(
+                        port.id, {'port': {'network_id': network.id,
+                                           'fixed_ips': port_fixed_ips}})
+                    if not dhcp_port:
+                        raise exceptions.Conflict()
                 else:
-                    # When the DHCP port and VM TAP interfaces are not
-                    # bridged, we don't allocate a unique IP address
-                    # for the DHCP port.
-                    LOG.debug("port.fixed_ips = %s" % port.fixed_ips)
                     dhcp_port = port
                 # break since we found port that matches device_id
                 break
@@ -1060,21 +1001,13 @@ class DeviceManager(object):
             LOG.debug('DHCP port %(device_id)s on network %(network_id)s'
                       ' does not yet exist.', {'device_id': device_id,
                                                'network_id': network.id})
-
-            # When the DHCP port and VM TAP interfaces are not
-            # bridged, we don't allocate a unique IP address for the
-            # DHCP port.
-            port_fixed_ips = []
-            if self.driver_bridged:
-                port_fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids]
-
             port_dict = dict(
                 name='',
                 admin_state_up=True,
                 device_id=device_id,
                 network_id=network.id,
                 tenant_id=network.tenant_id,
-                fixed_ips=port_fixed_ips)
+                fixed_ips=[dict(subnet_id=s) for s in dhcp_enabled_subnet_ids])
             dhcp_port = self.plugin.create_dhcp_port({'port': port_dict})
 
         if not dhcp_port:
@@ -1115,49 +1048,26 @@ class DeviceManager(object):
                 ip_cidr = '%s/%s' % (fixed_ip.ip_address, net.prefixlen)
                 ip_cidrs.append(ip_cidr)
 
-        if not self.driver_bridged:
-            # When the DHCP port and VM TAP interfaces are not
-            # bridged, assign the subnet's gateway IP address to the
-            # DHCP port.
-            LOG.debug("ip_cidrs = %s" % ip_cidrs)
-
-            for i, subnet in enumerate(network.subnets):
-                if not subnet.enable_dhcp:
-                    continue
-
-                gateway = subnet.gateway_ip
-                for hr in subnet.host_routes:
-                    if hr.destination == "0.0.0.0/0":
-                        gateway = hr.nexthop
-
-                if gateway:
-                    net = netaddr.IPNetwork(subnet.cidr)
-                    ip_cidrs.append('%s/%s' % (gateway, net.prefixlen))
-
-        if (self.driver_bridged and
-            self.conf.enable_isolated_metadata and
+        if (self.conf.enable_isolated_metadata and
             self.conf.use_namespaces):
             ip_cidrs.append(METADATA_DEFAULT_CIDR)
 
-        LOG.debug("ip_cidrs = %s" % ip_cidrs)
         self.driver.init_l3(interface_name, ip_cidrs,
                             namespace=network.namespace)
 
         # ensure that the dhcp interface is first in the list
-        if self.driver.bridged and network.namespace is None:
+        if network.namespace is None:
             device = ip_lib.IPDevice(interface_name)
             device.route.pullup_route(interface_name)
 
-        if (self.driver_bridged and
-            self.conf.use_namespaces):
+        if self.conf.use_namespaces:
             self._set_default_route(network, interface_name)
 
         return interface_name
 
     def update(self, network, device_name):
         """Update device settings for the network's DHCP on this host."""
-        if (self.driver_bridged and
-            self.conf.use_namespaces):
+        if self.conf.use_namespaces:
             self._set_default_route(network, device_name)
 
     def destroy(self, network, device_name):
