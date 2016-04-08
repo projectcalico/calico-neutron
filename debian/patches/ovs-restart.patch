@@ -1,0 +1,115 @@
+From b79ed67ef703be3a034ed0cf95d401b0711dae46 Mon Sep 17 00:00:00 2001
+From: James Page <james.page@ubuntu.com>
+Date: Fri, 18 Dec 2015 15:02:11 +0000
+Subject: [PATCH] Ensure that tunnels are fully reset on ovs restart
+
+When the l2population mechanism driver is enabled, if ovs is restarted
+tunnel ports are not re-configured in full due to stale ofport handles
+in the OVS agent.
+
+Reset all handles when OVS is restarted to ensure that tunnels are
+fully recreated in this situation.
+
+Change-Id: If0e034a034a7f000a1c58aa8a43d2c857dee6582
+Closes-bug: #1460164
+(cherry picked from commit 17c14977ce0e2291e911739f8c85838f1c1f3473)
+---
+ .../plugins/openvswitch/agent/ovs_neutron_agent.py |  9 ++++++--
+ .../openvswitch/agent/test_ovs_neutron_agent.py    | 24 ++++++++++++++++++++--
+ 2 files changed, 29 insertions(+), 4 deletions(-)
+
+diff --git a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+index 81f647a..8f7ee60 100644
+--- a/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
++++ b/neutron/plugins/openvswitch/agent/ovs_neutron_agent.py
+@@ -209,8 +209,8 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         self.bridge_mappings = bridge_mappings
+         self.setup_physical_bridges(self.bridge_mappings)
+         self.local_vlan_map = {}
+-        self.tun_br_ofports = {p_const.TYPE_GRE: {},
+-                               p_const.TYPE_VXLAN: {}}
++
++        self._reset_tunnel_ofports()
+ 
+         self.polling_interval = polling_interval
+         self.minimize_polling = minimize_polling
+@@ -285,6 +285,10 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+         except Exception:
+             LOG.exception(_LE("Failed reporting state!"))
+ 
++    def _reset_tunnel_ofports(self):
++        self.tun_br_ofports = {p_const.TYPE_GRE: {},
++                               p_const.TYPE_VXLAN: {}}
++
+     def setup_rpc(self):
+         self.agent_id = 'ovs-agent-%s' % cfg.CONF.host
+         self.topic = topics.AGENT
+@@ -1561,6 +1565,7 @@ class OVSNeutronAgent(sg_rpc.SecurityGroupAgentRpcCallbackMixin,
+                 self.setup_physical_bridges(self.bridge_mappings)
+                 if self.enable_tunneling:
+                     self.reset_tunnel_br()
++                    self._reset_tunnel_ofports()
+                     self.setup_tunnel_br()
+                     tunnel_sync = True
+                 if self.enable_distributed_routing:
+diff --git a/neutron/tests/unit/plugins/openvswitch/agent/test_ovs_neutron_agent.py b/neutron/tests/unit/plugins/openvswitch/agent/test_ovs_neutron_agent.py
+index 650a134..2479a7f 100644
+--- a/neutron/tests/unit/plugins/openvswitch/agent/test_ovs_neutron_agent.py
++++ b/neutron/tests/unit/plugins/openvswitch/agent/test_ovs_neutron_agent.py
+@@ -1045,6 +1045,12 @@ class TestOvsNeutronAgent(base.BaseTestCase):
+             self.agent.tunnel_delete(context=None, **kwargs)
+             self.assertTrue(clean_tun_fn.called)
+ 
++    def test_reset_tunnel_ofports(self):
++        tunnel_handles = self.agent.tun_br_ofports
++        self.agent.tun_br_ofports = {'gre': {'10.10.10.10': '1'}}
++        self.agent._reset_tunnel_ofports()
++        self.assertEqual(self.agent.tun_br_ofports, tunnel_handles)
++
+     def _test_ovs_status(self, *args):
+         reply2 = {'current': set(['tap0']),
+                   'added': set(['tap2']),
+@@ -1054,6 +1060,8 @@ class TestOvsNeutronAgent(base.BaseTestCase):
+                   'added': set([]),
+                   'removed': set(['tap0'])}
+ 
++        self.agent.enable_tunneling = True
++
+         with contextlib.nested(
+             mock.patch.object(async_process.AsyncProcess, "_spawn"),
+             mock.patch.object(log.KeywordArgumentAdapter, 'exception'),
+@@ -1069,10 +1077,17 @@ class TestOvsNeutronAgent(base.BaseTestCase):
+                               'setup_physical_bridges'),
+             mock.patch.object(time, 'sleep'),
+             mock.patch.object(ovs_neutron_agent.OVSNeutronAgent,
+-                              'update_stale_ofport_rules')
++                              'update_stale_ofport_rules'),
++            mock.patch.object(ovs_neutron_agent.OVSNeutronAgent,
++                              'reset_tunnel_br'),
++            mock.patch.object(ovs_neutron_agent.OVSNeutronAgent,
++                              'setup_tunnel_br'),
++            mock.patch.object(ovs_neutron_agent.OVSNeutronAgent,
++                              '_reset_tunnel_ofports')
+         ) as (spawn_fn, log_exception, scan_ports, process_network_ports,
+               check_ovs_status, setup_int_br, setup_phys_br, time_sleep,
+-              update_stale):
++              update_stale, reset_tunnel_br, setup_tunnel_br,
++              reset_tunnel_ofports):
+             log_exception.side_effect = Exception(
+                 'Fake exception to get out of the loop')
+             scan_ports.side_effect = [reply2, reply3]
+@@ -1097,6 +1112,11 @@ class TestOvsNeutronAgent(base.BaseTestCase):
+         # re-setup the bridges
+         setup_int_br.assert_has_calls([mock.call()])
+         setup_phys_br.assert_has_calls([mock.call({})])
++        # Ensure that tunnel handles are reset and bridge
++        # and flows reconfigured.
++        self.assertTrue(reset_tunnel_br.called)
++        self.assertTrue(reset_tunnel_ofports.called)
++        self.assertTrue(setup_tunnel_br.called)
+ 
+     def test_ovs_status(self):
+         self._test_ovs_status(constants.OVS_NORMAL,
+-- 
+1.9.1
+
