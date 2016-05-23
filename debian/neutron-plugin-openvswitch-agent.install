@@ -1,0 +1,3 @@
+etc/neutron/rootwrap.d/openvswitch-plugin.filters etc/neutron/rootwrap.d
+usr/bin/neutron-openvswitch-agent usr/bin
+usr/bin/neutron-ovsvapp-agent

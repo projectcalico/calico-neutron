@@ -1,0 +1,7 @@
+#!/bin/bash
+#-------------------
+# Testing nec-plugin
+#-------------------
+set -e
+
+$(dirname $0)/test-plugin neutron-plugin-nec /etc/neutron/plugins/nec/nec.ini nec
