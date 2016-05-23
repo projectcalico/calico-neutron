@@ -1,3 +1,9 @@
+neutron (1:2015.1.4-0ubuntu1calico1.2.1+1) trusty; urgency=medium
+
+  * Rebase Calico Neutron changes onto new upstream release.
+
+ -- Neil Jerram <neil@tigera.io>  Mon, 23 May 2016 12:27:32 +0100
+
 neutron (1:2015.1.4-0ubuntu1) trusty-kilo; urgency=medium
 
   * New upstream stable release (LP: #1580334).
@@ -178,12 +184,12 @@ neutron (1:2015.1.0-0ubuntu1) vivid; urgency=medium
 neutron (1:2015.1~rc1-0ubuntu1) vivid; urgency=medium
 
   * New upstream milestone release:
-    - debian/control: Update dependencies. 
+    - debian/control: Update dependencies.
     - debian/patches/disable-udev-tests.patch: Dropped no longer needed.
     - debian/patches/fixup-driver-test-execution.patch: Dropped no longer needed.
     - debian/patches/skip-iptest.patch: Skip failing test
     - debian/neutron-plugin-openvswitch-agent.install: Added neutron-ovsvapp-agent binary.
-    - debian/neutron-plugin-cisco.install: Added neutron-cisco-apic-service-agent and 
+    - debian/neutron-plugin-cisco.install: Added neutron-cisco-apic-service-agent and
       neutron-cisco-apic-host-agent
 
  -- Chuck Short <zulcss@ubuntu.com>  Wed, 15 Apr 2015 13:59:07 -0400
@@ -192,14 +198,14 @@ neutron (1:2015.1~b3-0ubuntu3) vivid; urgency=medium
 
   * d/tests/*: Disable nec plugin tests due to out-of-archive python
     requirements post decomposition, drop hyperv tests as hyperv agent
-    now not part of this package. 
+    now not part of this package.
 
  -- James Page <james.page@ubuntu.com>  Tue, 31 Mar 2015 10:58:16 +0100
 
 neutron (1:2015.1~b3-0ubuntu2) vivid; urgency=medium
 
   * d/control: Drop versioning on runtime dependency for python-neutron-fwaas
-    as this creates an circular dependency at build time in neutron-fwaas. 
+    as this creates an circular dependency at build time in neutron-fwaas.
 
  -- James Page <james.page@ubuntu.com>  Tue, 31 Mar 2015 08:56:54 +0100
 
@@ -213,7 +219,7 @@ neutron (1:2015.1~b3-0ubuntu1) vivid; urgency=medium
       separate project upstream.
     - d/control,d/neutron-plugin-openflow*: Dropped, decomposed into
       separate project upstream.
-    - d/neutron-common.install: Add neutron-rootwrap-daemon and 
+    - d/neutron-common.install: Add neutron-rootwrap-daemon and
       neutron-keepalived-state-change binaries.
     - d/rules: Ignore neutron-hyperv-agent when installing; only for Windows.
     - d/neutron-plugin-cisco.install: Drop neutron-cisco-cfg-agent as
@@ -250,7 +256,7 @@ neutron (1:2015.1~b2-0ubuntu4) vivid; urgency=medium
 neutron (1:2015.1~b2-0ubuntu3) vivid; urgency=medium
 
   * Drop patch from previous upload, switch autopkgtests to using mysql
-    as the database backend instead as this is supported by upstream. 
+    as the database backend instead as this is supported by upstream.
 
  -- James Page <james.page@ubuntu.com>  Wed, 18 Mar 2015 16:28:05 +0000
 
@@ -343,7 +349,7 @@ neutron (1:2015.1~b1-0ubuntu1) vivid; urgency=medium
 
   [ Chuck Short ]
   * Open for vivid.
-  * d/control: Update bzr branch. 
+  * d/control: Update bzr branch.
   * d/control: Add python-oslo.serialization build dependency.
   * d/control: Add python-oslotest as a build dependency.
   * d/patches/fix-neutron-configuration.patch: Refreshed
@@ -409,7 +415,7 @@ neutron (1:2014.2~b3-0ubuntu4) utopic; urgency=medium
   * d/control: Add radvd to neutron-l3-agent Depends to support
     IPv6 subnet configurations.
   * d/control: Add keepalived to neutron-l3-agent Depends to support
-    HA router configurations (LP: #1371137). 
+    HA router configurations (LP: #1371137).
   * d/control,neutron-plugin-opencontrail.install: Add plugin package for
     OpenContrail.
   * d/control,neutron-plugin-nuage.install: Add plugin package for Nuage.
@@ -418,7 +424,7 @@ neutron (1:2014.2~b3-0ubuntu4) utopic; urgency=medium
 
 neutron (1:2014.2~b3-0ubuntu3) utopic; urgency=medium
 
-  * d/control: Align versioned dependencies to b3 release, wrap-and-sort. 
+  * d/control: Align versioned dependencies to b3 release, wrap-and-sort.
   * d/rules: Re-enable test suite.
   * d/rules: Enable auto-configuration of test concurrency.
   * d/p/*: Refresh.
@@ -427,7 +433,7 @@ neutron (1:2014.2~b3-0ubuntu3) utopic; urgency=medium
 
 neutron (1:2014.2~b3-0ubuntu2) utopic; urgency=medium
 
-  * debian/control: Fix typo in depdencies. 
+  * debian/control: Fix typo in depdencies.
 
  -- Chuck Short <zulcss@ubuntu.com>  Wed, 10 Sep 2014 08:48:38 -0400
 
@@ -470,7 +476,7 @@ neutron (1:2014.2~b1-0ubuntu3) utopic; urgency=medium
 
   * SECURITY UPDATE: specify /etc/neutron/rootwrap.conf for use with
     nova-rootwrap
-    - CVE-2013-1068 (LP: #1185019) 
+    - CVE-2013-1068 (LP: #1185019)
 
  -- Chuck Short <zulcss@ubuntu.com>  Wed, 18 Jun 2014 12:43:51 -0400
 
@@ -478,7 +484,7 @@ neutron (1:2014.2~b1-0ubuntu2) utopic; urgency=medium
 
   * debian/tests/neutron-daemons: Dont test neutron-lbaas since
     it needs to be configured properly in order to run the tests.
-    (LP: #1240712) 
+    (LP: #1240712)
 
  -- Chuck Short <zulcss@ubuntu.com>  Fri, 13 Jun 2014 10:25:04 -0400
 
@@ -514,7 +520,7 @@ neutron (1:2014.1-0ubuntu3) utopic; urgency=medium
 
 neutron (1:2014.1-0ubuntu2) utopic; urgency=medium
 
-  * Rebuild for sqlalchemy 0.9. 
+  * Rebuild for sqlalchemy 0.9.
 
  -- Chuck Short <zulcss@ubuntu.com>  Thu, 08 May 2014 11:24:37 -0500
 
@@ -530,13 +536,13 @@ neutron (1:2014.1~rc2-0ubuntu4) trusty; urgency=medium
 
   * d/neutron-vpn-agent.upstart: Wait for neutron-ovs-cleanup service to
     start if installed to ensure that Open vSwitch state is cleaned up
-    on reboot (LP: #1307208). 
+    on reboot (LP: #1307208).
 
  -- James Page <james.page@ubuntu.com>  Mon, 14 Apr 2014 11:07:44 +0100
 
 neutron (1:2014.1~rc2-0ubuntu3) trusty; urgency=medium
 
-  * Fix the Breaks/Replaces from the previous version, as they were 
+  * Fix the Breaks/Replaces from the previous version, as they were
     accidentally added to the wrong package (and with the wrong versioning).
 
  -- Steve Langasek <steve.langasek@ubuntu.com>  Thu, 10 Apr 2014 23:36:09 +0000
@@ -595,7 +601,7 @@ neutron (1:2014.1~b3-0ubuntu1) trusty; urgency=medium
 
   [ Chuck Short ]
   * New upstream release.
-  * debian/rules: Re-enabled tests. 
+  * debian/rules: Re-enabled tests.
   * debian/patches/requirements.patch: Dropped no longer needed.
   * debian/patches/sql-alchemy-0.8.3-compat.patch: Dropped no longer needed.
   * debian/patches/bump-sqlalchemy-version.patch: Dropped no longer needed.
@@ -624,22 +630,22 @@ neutron (1:2014.1~b3-0ubuntu1) trusty; urgency=medium
 
 neutron (1:2014.1~b2-0ubuntu6) trusty; urgency=medium
 
-  * debian/rules: Temporarily disable testsuite due to upstream breakage. 
+  * debian/rules: Temporarily disable testsuite due to upstream breakage.
 
  -- Chuck Short <zulcss@ubuntu.com>  Thu, 06 Feb 2014 08:33:08 -0500
 
 neutron (1:2014.1~b2-0ubuntu5) trusty; urgency=medium
 
-  * debian/patches/disable-udev-tests.patch: Skip more tests 
+  * debian/patches/disable-udev-tests.patch: Skip more tests
     because of udev failures.
-  * debian/patches/skip-ipv6-tests.patch: Skip tests that fail 
+  * debian/patches/skip-ipv6-tests.patch: Skip tests that fail
     on the buildds due to ipv6.
 
  -- Chuck Short <zulcss@ubuntu.com>  Mon, 03 Feb 2014 09:02:45 -0500
 
 neutron (1:2014.1~b2-0ubuntu4) trusty; urgency=medium
 
-  * debian/rules: Really run_tests.sh. 
+  * debian/rules: Really run_tests.sh.
 
  -- Chuck Short <zulcss@ubuntu.com>  Thu, 30 Jan 2014 11:44:21 -0500
 
@@ -653,7 +659,7 @@ neutron (1:2014.1~b2-0ubuntu3) trusty; urgency=medium
 neutron (1:2014.1~b2-0ubuntu2) trusty; urgency=medium
 
   * debian/patches/skip-lb-test.patch: Skipped lb configuration
-    test. 
+    test.
 
  -- Chuck Short <zulcss@ubuntu.com>  Mon, 27 Jan 2014 12:01:50 -0500
 
@@ -706,8 +712,8 @@ neutron (1:2014.1~b1-0ubuntu1) trusty; urgency=low
   * debian/control: open icehouse release.
 
   [ James Page ]
-  * debian/patches: Refresh patches against upstream master. 
-  * debian/control: Drop quantum-* transitional packages, no longer needed. 
+  * debian/patches: Refresh patches against upstream master.
+  * debian/control: Drop quantum-* transitional packages, no longer needed.
 
  -- Chuck Short <zulcss@ubuntu.com>  Thu, 05 Dec 2013 11:40:39 -0500
 
@@ -733,7 +739,7 @@ neutron (1:2013.2~rc1-0ubuntu2) saucy; urgency=low
 
   * d/tests/control,neutron-server: Limit neutron-server tests to core
     neutron daemons to avoid tests failures for plugin agents which don't
-    start correctly without additional configuration. 
+    start correctly without additional configuration.
 
  -- James Page <james.page@ubuntu.com>  Thu, 03 Oct 2013 23:05:05 +0100
 
@@ -767,27 +773,27 @@ neutron (1:2013.2~rc1-0ubuntu1) saucy; urgency=low
 
 neutron (1:2013.2~b3-0ubuntu6) saucy; urgency=low
 
-  * debian/rules: Dont ftbfs the tests if they fail. 
+  * debian/rules: Dont ftbfs the tests if they fail.
 
  -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 20:37:18 -0400
 
 neutron (1:2013.2~b3-0ubuntu5) saucy; urgency=low
 
   * debian/tests/neutron-daemons: Fix typo.
-  * debian/rules: FTBFS if testsuite fails. 
+  * debian/rules: FTBFS if testsuite fails.
 
  -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 17:27:25 -0400
 
 neutron (1:2013.2~b3-0ubuntu4) saucy; urgency=low
 
   * debian/patches/remove_jsonrpclib.patch: Remove jsonrpclib
-    its not needed other than the arista driver. 
+    its not needed other than the arista driver.
 
  -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 15:19:22 -0400
 
 neutron (1:2013.2~b3-0ubuntu3) saucy; urgency=low
 
-  * debian/tests: Fixed autopkg tests. 
+  * debian/tests: Fixed autopkg tests.
 
  -- Chuck Short <zulcss@ubuntu.com>  Tue, 10 Sep 2013 12:10:05 -0400
 
@@ -809,7 +815,7 @@ neutron (1:2013.2~b3-0ubuntu1) saucy; urgency=low
   * debian/patches/ignore-quantum-binaries.patch: Dropped
   * debian/control: Add python-babel as a build depends.
   * debian/neutron-common.install: Add neutron-usage-audit binary.
-  * debian/rules: Pass the tests even if it fails, temporary measure 
+  * debian/rules: Pass the tests even if it fails, temporary measure
     until we figure out why the tests fail.
 
   [ Adam Gandelman ]
@@ -835,7 +841,7 @@ neutron (1:2013.2~b3-0ubuntu1) saucy; urgency=low
 neutron (1:2013.2~b2-0ubuntu3) saucy; urgency=low
 
   * d/p/neutron-conf.patch: Cherry picked commit from upstream VCS which
-    fixes a number of 'quantum' references across all configuration files. 
+    fixes a number of 'quantum' references across all configuration files.
   * d/neutron_sudoers: Remove typo to re-enable passwordless sudo for neutron.
   * d/p/fix-quantum-conf.patch: Enable use of neutron-rootwrap by default,
     fixup problem with use of /var/lib/quantum for keystone signing_dir.
@@ -863,11 +869,11 @@ neutron (1:2013.2~b2-0ubuntu1) saucy; urgency=low
 
   [ Chuck Short ]
   * New upstream version.
-  * debian/patches/fix-quantum-configuration.patch: Refreshed 
+  * debian/patches/fix-quantum-configuration.patch: Refreshed
   * Renamed quantum -> neutron inline with upstream:
     - debian/neutron*.install: Update paths and files for rename.
     - debian/cron.d: Update for new neutron names.
-    - debian/control: 
+    - debian/control:
       + Add transtional packages.
       + Add breaks/replaces with previous versions of quantum.
   * debian/patches/fix-ubuntu-tests.patch: Refreshed
@@ -897,7 +903,7 @@ quantum (1:2013.2~b1-0ubuntu2) saucy; urgency=low
 
   [ Yolanda Robla ]
   * debian/tests: added autopkg tests
- 
+
   [Chuck Short]
   * debian/patches/fix-ubuntu-tests.patch: Rediff to skip tests
     that were randomly failing in the PPAS or locally.
@@ -919,7 +925,7 @@ quantum (1:2013.1-0ubuntu2) raring; urgency=low
 
   * Fix invalid multi-line cron jobs (LP: #1170312):
     - d/cron.d/*: Consolidate jobs into a single command line, set syntax
-      highlighting to type 'crontab'. 
+      highlighting to type 'crontab'.
 
  -- James Page <james.page@ubuntu.com>  Mon, 22 Apr 2013 15:58:12 +0100
 
@@ -931,7 +937,7 @@ quantum (1:2013.1-0ubuntu1) raring; urgency=low
 
 quantum (1:2013.1~rc2-0ubuntu1) raring; urgency=low
 
-  * New upstream release. 
+  * New upstream release.
 
  -- Chuck Short <zulcss@ubuntu.com>  Tue, 26 Mar 2013 08:33:56 -0500
 
@@ -949,12 +955,12 @@ quantum (1:2013.1~rc1-0ubuntu1) raring; urgency=low
     changes, remove tarballs.openstack.org.
   * d/rules: Disable PEP-8 tests until fixed upstream.
   * d/control,quantum-plugin-midonet.install: Added plugin package for
-    Midonet. 
+    Midonet.
   * d/control,quantum-lbaas-*: Added Load Balancing as-a Service agent
-    package. 
+    package.
   * d/control: Bumped Standards-Version, no changes.
   * d/p/fix-quantum-configuration.patch: Added midonet sqlite path to
-    patch, fixed up linuxbridge path. 
+    patch, fixed up linuxbridge path.
   * d/p/fix-ubuntu-tests.patch: Re-added skipTest for linuxbridge tests
     that attempt to setup udev monitors.
   * d/quantum-metadata-agent.*: Refactor metadata-agent into separate
@@ -1007,7 +1013,7 @@ quantum (2013.1.g3-0ubuntu1) raring; urgency=low
 quantum (2013.1~g2-0ubuntu1) raring; urgency=low
 
   [ Chuck Short ]
-  * New upstream version. 
+  * New upstream version.
   * debian/patches/fix-quantum-configuration.patch: Refreshed.
 
   [ Yolanda Robla ]
@@ -1061,7 +1067,7 @@ quantum (2013.1~g1-0ubuntu1) raring; urgency=low
 quantum (2012.2-0ubuntu1) quantal; urgency=low
 
   [ Chuck Short ]
-  * New upstream release. 
+  * New upstream release.
 
   [ Adam Gandelman ]
   * debian/cron.d/quantum-{l3, dhcp]-agent-netns-cleanup: Schedule hourly
@@ -1190,7 +1196,7 @@ quantum (2012.2~f2-0ubuntu1~cloud0) precise-folsom; urgency=low
 
   [ Adam Gandelman ]
   * debian/control, pydist-overrides: Add python-setuptools-git as a
-    Build-Depends, override as necessary. 
+    Build-Depends, override as necessary.
 
  -- Chuck Short <zulcss@ubuntu.com>  Fri, 06 Jul 2012 12:41:43 -0400
 
@@ -1198,7 +1204,7 @@ quantum (2012.2~f1-0ubuntu1~cloud0) precise-folsom; urgency=low
 
   [ Chuck Short ]
   * New upstream release.
-  * Add missing upsart jobs for agents. 
+  * Add missing upsart jobs for agents.
   * Add sudo wrapper for quantum-rootwrap. (LP: #999142)
 
   [ Adam Gandelman ]
@@ -1216,21 +1222,21 @@ quantum (2012.1-0ubuntu1) precise; urgency=low
 
   [Chuck Short]
   * New upstream release.
-  * Add missing upsart jobs for agents. 
+  * Add missing upsart jobs for agents.
   * Add sudo wrapper for quantum-rootwrap. (LP: #999142)
 
  -- Chuck Short <zulcss@ubuntu.com>  Fri, 01 Jun 2012 10:26:49 -0400
 
 quantum (2012.1-0ubuntu4) precise; urgency=low
 
-  * debian/control: Add breaks replaces since files have moved around. 
+  * debian/control: Add breaks replaces since files have moved around.
   * Fix typo in upstart job.
 
  -- Chuck Short <zulcss@ubuntu.com>  Mon, 23 Apr 2012 11:23:38 -0400
 
 quantum (2012.1-0ubuntu3) precise; urgency=low
 
-  * Split out agents into its own packages. (LP: #979192) 
+  * Split out agents into its own packages. (LP: #979192)
     Thanks to Ghe Rivero.
   * Add upstart job. (LP: #979190)
   * Fix installation issues. (LP: #979159)
@@ -1239,27 +1245,27 @@ quantum (2012.1-0ubuntu3) precise; urgency=low
 
 quantum (2012.1-0ubuntu2) precise; urgency=low
 
-  * Fix lintian warnings about empty packages. 
+  * Fix lintian warnings about empty packages.
 
  -- Chuck Short <zulcss@ubuntu.com>  Fri, 06 Apr 2012 22:14:42 -0400
 
 quantum (2012.1-0ubuntu1) precise; urgency=low
 
-  * New upstream release. 
+  * New upstream release.
 
  -- Chuck Short <zulcss@ubuntu.com>  Thu, 05 Apr 2012 11:07:46 -0400
 
 quantum (2012.1~rc2-0ubuntu1) precise; urgency=low
 
-  *  New upstream release: 
-     - debian/quantum-plugin-{ryu,openvswitch}.install: 
+  *  New upstream release:
+     - debian/quantum-plugin-{ryu,openvswitch}.install:
        Install agents.
 
  -- Chuck Short <zulcss@ubuntu.com>  Tue, 03 Apr 2012 20:29:11 -0400
 
 quantum (2012.1~rc1-0ubuntu5) precise; urgency=low
 
-  * Add missing files. (LP: #972019, LP: #971981, LP: #960731) 
+  * Add missing files. (LP: #972019, LP: #971981, LP: #960731)
 
  -- Chuck Short <zulcss@ubuntu.com>  Mon, 02 Apr 2012 20:29:29 -0400
 
@@ -1275,7 +1281,7 @@ quantum (2012.1~rc1-0ubuntu4) precise; urgency=low
 
 quantum (2012.1~rc1-0ubuntu3) precise; urgency=low
 
-  * debian/control: Fix spelling typos. (LP: #960713) 
+  * debian/control: Fix spelling typos. (LP: #960713)
 
  -- Paolo Rotolo <paolorotolo@ubuntu-it.org>  Fri, 23 Mar 2012 21:35:54 +0100
 
@@ -1293,7 +1299,7 @@ quantum (2012.1~rc1-0ubuntu2) precise; urgency=low
 
 quantum (2012.1~rc1~20120316.764-0ubuntu1) precise; urgency=low
 
-  * New upstream release. 
+  * New upstream release.
   * debian/watch: Watch correct URL
 
  -- Adam Gandelman <adamg@canonical.com>  Fri, 16 Mar 2012 12:04:48 -0700
@@ -1302,7 +1308,7 @@ quantum (2012.1~e4-0ubuntu1) precise; urgency=low
 
   * New upstream release.
   * debian/rules: Take in account the new build changes.
-  * debian/quantum-server.install: Install the right files due to 
+  * debian/quantum-server.install: Install the right files due to
     build changes.
   * Client no longer is a part of quantum.
   * debian/control: Add python-lxml
@@ -1314,7 +1320,7 @@ quantum (2012.1~e4-0ubuntu1) precise; urgency=low
 quantum (2012.1~e2+git20120112-0ubuntu1) precise; urgency=low
 
   * New upstream release.
-  * debian/rules: 
+  * debian/rules:
     - Fix git snapshot creation.
     - Fix running test suite during the build.
   * debian/control: Add adduser for quantum-server.
@@ -1325,13 +1331,13 @@ quantum (2012.1~e2+git20120112-0ubuntu1) precise; urgency=low
 
 quantum (2012.1~e2-0ubuntu2) precise; urgency=low
 
-  * debian/control: Build for architecture all. 
+  * debian/control: Build for architecture all.
 
  -- Chuck Short <zulcss@ubuntu.com>  Mon, 19 Dec 2011 10:28:16 -0500
 
 quantum (2012.1~e2-0ubuntu1) precise; urgency=low
 
-  * New upstream release. 
+  * New upstream release.
   * debian/rules: Add alternate get-orig-source.
   * debian/patches/fix-version.patch: Removed no longer needed.
   * Fix lintian warnings.
@@ -1346,7 +1352,7 @@ quantum (2012.1~e2~20111209.f8152-0ubuntu1) precise; urgency=low
     from jenkins yet.
   * debian/rules: Update for new build system.
   * debian/rules: Clean up files when running clean.
-  * debian/quantum-server.install, debian/quantum-server.dirs, 
+  * debian/quantum-server.install, debian/quantum-server.dirs,
     debian/quantum-plugins.*: Update for build system changes.
   * debian/quantum-server.postinst: Fix user creation.
   * debian/rules: Enable testsuite when building.
